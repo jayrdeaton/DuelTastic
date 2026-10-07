@@ -356,7 +356,11 @@ interface MatchOverlaysProps {
 // lined up with where a player could actually touch. FakeLandscapeView is still the right tool for
 // genuinely-whole-screen content with no fixed shape to match — just not this.
 function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, userSettings, setUserSettings, confirmVisible, cancelBack, humanPlayers, colors, profileNames, seatProfiles, profileUnlockToast, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress }: MatchOverlaysProps) {
-  const liveOrientation = useOrientationState()
+  // The ONE orientation read in this component, feeding both angles below. Lock Orientation freezes
+  // it app-wide (see _layout.tsx's AppOrientationProvider), so while that's on, every overlay here
+  // holds still together: fixed-zone and single-seat content alike, including a two-player fixed-zone
+  // overlay that would otherwise follow a landscape/portrait change.
+  const orientation = useOrientationState()
   // getFixedZoneRotation, not getViewRotation directly — this board's own zones are frozen forever
   // at 'faceToFace'/true (see GameRound), never reflowing no matter which way the device is spun
   // while flat, which is exactly the layout getFixedZoneRotation is for (see its own doc): a genuine
@@ -366,17 +370,12 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
   // branch of OnboardingOverlay/RoundOverDialog, and the shared-neutral-zone chips below) — anything
   // with just ONE seat to address has no zone to protect from a spurious 180° flip, and wants
   // singleSeatRotation below instead.
-  const rotation = getFixedZoneRotation(liveOrientation.orientationMode, liveOrientation.p1OnRight, liveOrientation.upsideDown)
-  // A second, independent orientation subscription (not derived from liveOrientation above) because
-  // it needs its OWN lock behavior: userSettings.lockOrientation should freeze single-seat overlay
-  // content (a centered dialog, or a corner button with no second seat to stay neutral for) in
-  // place, exactly like index.tsx's own FakeLandscapeView/useRotation pair already does for the
-  // title screen — but must never freeze the board's own fixed-zone content above, which has no
-  // "lock" concept of its own and always tracks the live landscape/portrait split it's actually
-  // being touched in. getViewRotation, not getFixedZoneRotation: this is for content with no fixed
-  // zone to protect, so the portrait "upside down" reading should reposition it too, not be ignored.
-  const singleSeatOrientation = useOrientationState(userSettings.lockOrientation)
-  const singleSeatRotation = getViewRotation(singleSeatOrientation.orientationMode, singleSeatOrientation.p1OnRight, singleSeatOrientation.upsideDown)
+  const rotation = getFixedZoneRotation(orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown)
+  // Same reading as `rotation` above, for single-seat content (a centered dialog, or a corner button
+  // with no second seat to stay neutral for). getViewRotation, not getFixedZoneRotation: this is for
+  // content with no fixed zone to protect, so the portrait "upside down" reading should reposition it
+  // too, not be ignored.
+  const singleSeatRotation = getViewRotation(orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown)
   const { dark } = useAutoPaperTheme()
   // Same chip colors as GameRound's own board-level fg/bg — duplicated here rather than passed as
   // props since this component already computes `dark` for the chips below, and these chips need
@@ -398,7 +397,7 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
   // flags: two-plus players held face-to-face, where the top of the screen always reads upside-down
   // to whichever player is on the far side (see RoundOverDialog's own getOpposingZoneRotation), so
   // the shared vertical midline (leftSlot/rightSlot below) is the only neutral spot for both.
-  const useCornerLayout = !needsSharedNeutralZone(liveOrientation.orientationMode, humanPlayers.length)
+  const useCornerLayout = !needsSharedNeutralZone(orientation.orientationMode, humanPlayers.length)
 
   return (
     <>
@@ -449,7 +448,7 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
       rather than only the MatchOverDialog's own exit button. */}
       {controlsVisible &&
         (useCornerLayout ? (
-          <FakeLandscapeView locked={userSettings.lockOrientation} style={[StyleSheet.absoluteFill, styles.cornerChipsWrap]}>
+          <FakeLandscapeView style={[StyleSheet.absoluteFill, styles.cornerChipsWrap]}>
             <View style={[styles.cornerLeftSlot, { top: 8 + cornerInsets.top, left: 8 + cornerInsets.left }]}>
               <IconButton icon='arrow-left' iconColor={chipFg} containerColor={chipBg} style={styles.chipButton} size={22} onPress={onBackPress} accessibilityLabel='Back' />
             </View>
@@ -499,8 +498,9 @@ export default function GameScreen() {
   // alongside a permanently-'faceToFace' mode (nothing reads it when orientationMode is
   // 'faceToFace' — see wallPath, TouchInputLayer's zone split, PowerupHud's corner pick), so it's
   // just a fixed placeholder. The floating dialogs/countdown still visually rotate to match
-  // whichever way the phone is actually held — see MatchOverlays, which reads that live signal
-  // independently and applies it on top of this same fixed 'faceToFace' zone split.
+  // whichever way the phone is actually held (or stay put while Lock Orientation is on): see
+  // MatchOverlays, which reads that shared signal independently and applies it on top of this same
+  // fixed 'faceToFace' zone split.
   const [orientationMode] = useState<OrientationMode>('faceToFace')
   const [p1OnRight] = useState(true)
 

@@ -28,8 +28,15 @@ function isValidEnabledPowerups(value: unknown): value is PowerupType[] {
   return Array.isArray(value) && value.every((v) => POWERUP_ALL_TYPES.includes(v as PowerupType))
 }
 
+// lockedRotation is optional and absent from DEFAULT_SETTINGS: it only exists while Lock Orientation
+// is on, and settings saved before it existed don't have it either. It must pass when missing, because
+// a failed isValidSettings makes createGameSettingsProvider discard EVERY saved setting, not just this.
+function isValidLockedRotation(value: unknown): value is GameSettings['lockedRotation'] {
+  return value === undefined || value === 0 || value === 90 || value === 180 || value === -90
+}
+
 export function isValidSettings(value: unknown): value is GameSettings {
   if (!value || typeof value !== 'object') return false
   const v = value as Partial<GameSettings>
-  return (v.speedTier === 'slow' || v.speedTier === 'normal' || v.speedTier === 'fast') && typeof v.speedRampEnabled === 'boolean' && (v.gameMode === 'twoPlayer' || v.gameMode === 'vsCpu') && (v.cpuDifficulty === 'easy' || v.cpuDifficulty === 'normal' || v.cpuDifficulty === 'hard') && (v.gridSizeTier === 'small' || v.gridSizeTier === 'medium' || v.gridSizeTier === 'large') && (v.trailSpeedTier === 'off' || v.trailSpeedTier === 'medium' || v.trailSpeedTier === 'fast') && !!v.keyScheme && isValidKeyScheme(v.keyScheme[1]) && isValidKeyScheme(v.keyScheme[2]) && typeof v.lockOrientation === 'boolean' && isValidEnabledPowerups(v.enabledPowerups) && (v.arenaVariant === 'open' || v.arenaVariant === 'pillars' || v.arenaVariant === 'gauntlet' || v.arenaVariant === 'portals' || v.arenaVariant === 'underpass') && typeof v.extendIntoSafeArea === 'boolean' && typeof v.wrapEdges === 'boolean' && typeof v.deferBottomEdgeGestures === 'boolean'
+  return (v.speedTier === 'slow' || v.speedTier === 'normal' || v.speedTier === 'fast') && typeof v.speedRampEnabled === 'boolean' && (v.gameMode === 'twoPlayer' || v.gameMode === 'vsCpu') && (v.cpuDifficulty === 'easy' || v.cpuDifficulty === 'normal' || v.cpuDifficulty === 'hard') && (v.gridSizeTier === 'small' || v.gridSizeTier === 'medium' || v.gridSizeTier === 'large') && (v.trailSpeedTier === 'off' || v.trailSpeedTier === 'medium' || v.trailSpeedTier === 'fast') && !!v.keyScheme && isValidKeyScheme(v.keyScheme[1]) && isValidKeyScheme(v.keyScheme[2]) && typeof v.lockOrientation === 'boolean' && isValidLockedRotation(v.lockedRotation) && isValidEnabledPowerups(v.enabledPowerups) && (v.arenaVariant === 'open' || v.arenaVariant === 'pillars' || v.arenaVariant === 'gauntlet' || v.arenaVariant === 'portals' || v.arenaVariant === 'underpass') && typeof v.extendIntoSafeArea === 'boolean' && typeof v.wrapEdges === 'boolean' && typeof v.deferBottomEdgeGestures === 'boolean'
 }

@@ -16,10 +16,11 @@ export default function HomeScreen() {
   const { settings, setSettings } = useGameSettings()
   // Follows the device's current physical tilt (see @tastic/core's useOrientationState, which
   // useRotation reads internally) — Lock Orientation (see SettingsDialog) is the opt-in for pinning
-  // it. No P1/P2 concept on this screen at all, but the rotation angle itself still needs the real
+  // it, applied app-wide by _layout.tsx's AppOrientationProvider (nothing is passed in here). No
+  // P1/P2 concept on this screen at all, but the rotation angle itself still needs the real
   // p1OnRight reading (which direction the device was actually turned) to pick the correct sign —
   // see @tastic/split-screen's FakeLandscapeView/@tastic/core's getViewRotation.
-  const rotation = useRotation(settings.lockOrientation)
+  const rotation = useRotation()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   // First launch only (and once per session): opens the how-to-play cards over this screen. Called
@@ -54,9 +55,9 @@ export default function HomeScreen() {
       Portal-rendered modal isn't affected by a local transform on an ancestor) but still gets the
       same live `rotation` passed directly, rotating its own content in place instead. No explicit
       orientationMode/p1OnRight/upsideDown here — this screen never needs the raw triple for
-      anything else, so FakeLandscapeView's own ambient useOrientationState(locked) read (the same
-      live source `rotation` above already comes from) is exactly equivalent. */}
-      <FakeLandscapeView locked={settings.lockOrientation} style={styles.rotatable}>
+      anything else, so FakeLandscapeView's own ambient useOrientationState() read (the same
+      shared source `rotation` above already comes from) is exactly equivalent. */}
+      <FakeLandscapeView style={styles.rotatable}>
         <IconButton icon='trophy' iconColor={fg} size={24} style={[styles.topLeft, { top: 8 + rotatedInsets.top, left: 8 + rotatedInsets.left }]} onPress={() => router.push('/achievements')} accessibilityLabel='Stats & Achievements' />
         <IconButton icon='cog' iconColor={fg} size={24} style={[styles.topRight, { top: 8 + rotatedInsets.top, right: 8 + rotatedInsets.right }]} onPress={() => setSettingsOpen(true)} accessibilityLabel='Settings' />
 
