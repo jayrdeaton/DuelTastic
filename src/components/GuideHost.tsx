@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 
 import { GUIDE_VERSION } from '@/constants/guide'
 import { getGuideSteps } from '@/constants/guideSteps'
-import { useGameSettings } from '@/hooks/useGameSettings'
+import { useSettings } from '@/hooks/useSettings'
 import { guideActions, selectGuideVersionSeen } from '@/redux/guideSlice'
 import type { RootState } from '@/redux/store'
 
@@ -25,7 +25,7 @@ interface Props {
 // it. `children` is the stable element _layout passes in, so a tilt-driven re-render here never
 // re-renders the screen stack under it (same isolation _layout's AppOrientationProvider relies on).
 export function GuideHost({ children }: Props) {
-  const { settings } = useGameSettings()
+  const { settings } = useSettings()
   const rotation = useRotation()
   const touch = useIsTouchPrimaryDevice()
   const seenVersion = useSelector((state: RootState) => selectGuideVersionSeen(state))

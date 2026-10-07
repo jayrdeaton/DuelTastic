@@ -127,7 +127,7 @@ export interface PlayerState {
   crashCell: GridCell | null
 }
 
-export interface GameSettings {
+export interface Settings {
   speedTier: SpeedTier
   speedRampEnabled: boolean
   gameMode: GameMode
@@ -144,7 +144,7 @@ export interface GameSettings {
   lockOrientation: boolean
   // The angle the lock is holding. Written by OrientationProvider's onLockChange (recorded on lock,
   // cleared on unlock) and handed back as lockInitialValue, so a relaunch reopens in the locked
-  // orientation instead of portrait. Never set by the UI directly; see isValidLockedRotation.
+  // orientation instead of portrait. Never set by the UI directly; absent while unlocked.
   lockedRotation?: ViewRotation
   // Which powerup types can spawn this round — not a separate on/off flag: "powerups off" is just
   // an empty array (see gameEngine.ts's maybeSpawnPickup, which only ever spawns from this list),
@@ -168,7 +168,7 @@ export interface GameSettings {
   // iOS-only. Off by default — deliberately opt-in rather than always-on, so it only kicks in for
   // someone who's actually hit the problem and gone looking for a fix, instead of every player
   // eating a "swipe twice to go home" surprise from day one. Mirrored into native UserDefaults (see
-  // useGameSettings.tsx) for @tastic/edge-guard's own config plugin swizzle of
+  // Providers.tsx's EdgeGuardBridge) for @tastic/edge-guard's own config plugin swizzle of
   // preferredScreenEdgesDeferringSystemGestures to read at runtime.
   deferBottomEdgeGestures: boolean
 }
@@ -199,7 +199,7 @@ export interface GameState {
   tunnels: Tunnel[]
   // Cells inside the round's device safe-area margin (see gameEngine.ts's buildUnsafeAreaCells) —
   // only non-empty when the round is bleeding under that margin (extendIntoSafeArea; see
-  // GameSettings' own comment), since otherwise the board's own pixel container already stops short
+  // Settings' own comment), since otherwise the board's own pixel container already stops short
   // of the inset and every cell is already clear of it. A pickup never spawns here (see
   // maybeSpawnPickup) because a notch/Dynamic Island/home-indicator/speaker cutout can physically
   // hide it there — the board itself stays fully traversable, same as any other cosmetically-

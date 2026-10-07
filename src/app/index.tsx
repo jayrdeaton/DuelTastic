@@ -9,11 +9,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { AnimatedHeroTitle } from '@/components/AnimatedHeroTitle'
 import { SettingsDialog } from '@/components/SettingsDialog'
-import { useGameSettings } from '@/hooks/useGameSettings'
+import { useSettings } from '@/hooks/useSettings'
 import { GameMode } from '@/types'
 
 export default function HomeScreen() {
-  const { settings, setSettings } = useGameSettings()
+  const { settings, setSettings } = useSettings()
   // Follows the device's current physical tilt (see @tastic/core's useOrientationState, which
   // useRotation reads internally) — Lock Orientation (see SettingsDialog) is the opt-in for pinning
   // it, applied app-wide by _layout.tsx's AppOrientationProvider (nothing is passed in here). No

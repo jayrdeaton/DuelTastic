@@ -11,7 +11,7 @@ import { KeyScheme, Player, Profile } from '@/types'
 // future @tastic game that wants into the same shared roster) — see @tastic/profile's own README
 // for why only the BASE identity fields travel through this, never keyScheme.
 const SHARED_GROUP_ID = 'group.com.infinitetoken.tastic'
-// Matches DEFAULT_SETTINGS.keyScheme's own neutral default (see gameSettingsValidation.ts and
+// Matches DEFAULT_SETTINGS.keyScheme's own neutral default (see redux/settingsSlice.ts and
 // app/profiles.tsx's own NEW_PROFILE_KEY_SCHEME) — what a profile that's never had one set locally
 // on THIS app falls back to. That's exactly the state of any profile created on another @tastic app
 // (BoxHockey has no concept of keyScheme at all) the very first time it's selected here.
@@ -47,7 +47,7 @@ interface Props {
 }
 
 // Single source of truth for saved player profiles, mounted once in _layout.tsx — same
-// single-Provider rationale as useGameSettings.tsx/useGameStats.tsx (expo-router keeps prior
+// single-Provider rationale as useGameStats.tsx (expo-router keeps prior
 // screens mounted, so a per-screen copy could go stale or clobber a concurrent update).
 //
 // Base identity fields (name/color/tag) now live in Redux (redux/store.ts's `profiles` key,

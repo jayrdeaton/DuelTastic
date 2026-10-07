@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
 import { useGameState } from '@/hooks/useGameState'
-import { GameSettings } from '@/types'
+import { Settings } from '@/types'
 
 // Deterministic, fake-timer-compatible rAF — jest-expo's own RN environment may already define
 // requestAnimationFrame through a scheduler that isn't guaranteed to advance with
@@ -19,8 +19,8 @@ function installFakeRaf() {
   }
 }
 
-const SETTINGS: GameSettings = { speedTier: 'fast', speedRampEnabled: false, gameMode: 'twoPlayer', cpuDifficulty: 'normal', gridSizeTier: 'medium', trailSpeedTier: 'off', keyScheme: { 1: 'wasd', 2: 'arrows' }, lockOrientation: false, enabledPowerups: [], arenaVariant: 'open', extendIntoSafeArea: false, wrapEdges: false, deferBottomEdgeGestures: false }
-const CPU_SETTINGS: GameSettings = { ...SETTINGS, gameMode: 'vsCpu', cpuDifficulty: 'hard' }
+const SETTINGS: Settings = { speedTier: 'fast', speedRampEnabled: false, gameMode: 'twoPlayer', cpuDifficulty: 'normal', gridSizeTier: 'medium', trailSpeedTier: 'off', keyScheme: { 1: 'wasd', 2: 'arrows' }, lockOrientation: false, enabledPowerups: [], arenaVariant: 'open', extendIntoSafeArea: false, wrapEdges: false, deferBottomEdgeGestures: false }
+const CPU_SETTINGS: Settings = { ...SETTINGS, gameMode: 'vsCpu', cpuDifficulty: 'hard' }
 const COLORS = { 1: '#3B82F6', 2: '#EF4444' }
 const ORIENTATION = 'faceToFace'
 const P1_ON_RIGHT = true

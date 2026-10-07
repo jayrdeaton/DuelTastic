@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { GRID_CELL_PX, MAX_TICK_DT_MS, scaleMsForCellPx, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_MIN_INTERVAL_MS, SPEED_TIER_INTERVAL_MS, TRAIL_SPEED_RATE } from '@/constants/game'
-import { Direction, GameSettings, OrientationMode, Player } from '@/types'
+import { Direction, OrientationMode, Player, Settings } from '@/types'
 import { applyCpuActivation, applyCpuTurn } from '@/utils/cpuAi'
 import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/utils/gameEngine'
 
@@ -9,7 +9,7 @@ import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet,
 // derived live from the device's own physical tilt (see useOrientationState), not a stored
 // setting. safeAreaInsetsPx defaults to all-zero — see GameRound's own comment on GameRoundProps
 // for why the caller is what decides whether it's actually the device's real insets or zeroed out.
-export function useGameState(width: number, height: number, settings: GameSettings, colors: Record<Player, string>, orientationMode: OrientationMode, p1OnRight: boolean, safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 }) {
+export function useGameState(width: number, height: number, settings: Settings, colors: Record<Player, string>, orientationMode: OrientationMode, p1OnRight: boolean, safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 }) {
   const cellPx = GRID_CELL_PX[settings.gridSizeTier]
 
   const [state, setState] = useState(() => createInitialGameState(width, height, orientationMode, colors, cellPx, p1OnRight, settings.arenaVariant, safeAreaInsetsPx))

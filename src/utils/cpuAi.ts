@@ -32,7 +32,7 @@ export interface ChooseCpuDirectionParams {
   // optional/defaulted so existing call sites/tests (predating tunnels) are unaffected.
   tunnelCellSet?: ReadonlySet<string>
   tunnelOccupied?: ReadonlySet<string>
-  // The round's true GameSettings.wrapEdges — optional/defaulted (false) so existing call
+  // The round's true Settings.wrapEdges — optional/defaulted (false) so existing call
   // sites/tests are unaffected. This is the ground truth, not a per-difficulty decision: whether
   // it's actually USED is gated to 'hard' further down (see this function's own wrapAware local),
   // same "truth flows in, the difficulty-indexed logic decides how much of it to use" shape

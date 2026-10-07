@@ -236,8 +236,8 @@ function pickRandomEmptyCell(grid: GridSize, occupied: ReadonlySet<string>, rand
 // collected (or none has spawned yet this round) a replacement appears immediately, on the very
 // next tick, with no interval/cooldown to wait out. `occupied` here should already reflect every
 // cell committed this tick (see tickGame's own `working` set) so a pickup never spawns under a
-// cycle that just moved there. `enabledPowerups` is the per-round selection from GameSettings — an
-// empty list (the "powerups off" case, see GameSettings' own comment) means this never spawns
+// cycle that just moved there. `enabledPowerups` is the per-round selection from Settings — an
+// empty list (the "powerups off" case, see Settings' own comment) means this never spawns
 // anything at all.
 function maybeSpawnPickup(grid: GridSize, tick: number, pickups: PowerupPickup[], occupied: ReadonlySet<string>, enabledPowerups: PowerupType[], random: () => number, portalCells: ReadonlySet<string> = new Set(), tunnelCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): PowerupPickup[] {
   if (enabledPowerups.length === 0) return pickups
@@ -325,7 +325,7 @@ export function stepsFor(effects: PlayerEffects): number {
 // applyCpuTurn/applyCpuActivation from it). `trailSpeedRate` defaults to 1 (the original
 // behavior). `enabledPowerups`/`random` default to []/Math.random so every existing call site and
 // test — which never pass them — sees byte-identical behavior to before powerups existed. An empty
-// `enabledPowerups` is what "powerups off" actually means (see GameSettings' own comment) — there's
+// `enabledPowerups` is what "powerups off" actually means (see Settings' own comment) — there's
 // no separate boolean gate. `portalLookup` defaults to a fresh build from `state.portals` (empty
 // for every arena but 'portals'), same "rebuild by default, or pass an already-built one" shape as
 // `occupied` itself. The per-player tunnel-hazard sets aren't threaded as their own params at all —

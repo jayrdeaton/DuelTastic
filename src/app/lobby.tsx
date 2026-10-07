@@ -4,7 +4,7 @@ import { CornerActionButtons, getColorPopoverId, getCpuDifficultyPopoverId, getI
 import type { Profile as BaseProfile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,13 +13,14 @@ import { useDispatch, useSelector } from 'react-redux'
 import { LOBBY_SHARED_CONTROLS_IDS, LobbySharedControls } from '@/components/LobbySharedControls'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { DEFAULT_P1_COLOR, DEFAULT_P2_COLOR, LOBBY_PANEL_SWAP_FADE_MS, POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/constants/game'
-import { useGameSettings } from '@/hooks/useGameSettings'
 import { useProfiles } from '@/hooks/useProfiles'
+import { useSettings } from '@/hooks/useSettings'
+import { liveplayActions } from '@/redux/liveplaySlice'
 import { seatColorsActions } from '@/redux/seatColorsSlice'
+import { DEFAULT_SETTINGS } from '@/redux/settingsSlice'
 import { type AppDispatch, type RootState } from '@/redux/store'
 import { ArenaVariant, CpuDifficulty, GridSizeTier, KeyScheme, Player, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 import { humanPlayersFor, parseGameMode } from '@/utils/gameParams'
-import { DEFAULT_SETTINGS } from '@/utils/gameSettingsValidation'
 import { safeBack } from '@/utils/navigation'
 
 // Small -> large vehicles, echoing the game's own light-cycle theme rather than a generic S/M/L
@@ -108,7 +109,7 @@ function pickRandom<T>(options: readonly { value: T }[]): T {
 }
 
 export default function LobbyScreen() {
-  // Read only from this screen's own route param, never from useGameSettings().gameMode — the
+  // Read only from this screen's own route param, never from useSettings().gameMode — the
   // settings hook's AsyncStorage read is async, and racing it here could momentarily show the
   // wrong number of player panels.
   const params = useLocalSearchParams<{ gameMode: string }>()
@@ -119,7 +120,7 @@ export default function LobbyScreen() {
   // decide that seat's own persistence rule.
   const p2IsHuman = humanPlayers.includes(2)
 
-  const { settings, setSettings, commitRoundSettings } = useGameSettings()
+  const { settings, setSettings } = useSettings()
   const { profiles, lastSelected, updateProfile, selectProfile } = useProfiles()
   // Create/rename/delete all live on their own routed screen now (see app/profiles.tsx, reachable
   // only from P1's dropdown since P2's rotated zone can't host a working text keyboard), which
@@ -354,7 +355,7 @@ export default function LobbyScreen() {
   )
 
   // Covers exactly the fields LobbySharedControls itself exposes — board shape/size, pace, and
-  // powerups — not the full GameSettings blob. Per-player stuff (colors, key scheme, CPU
+  // powerups — not the full Settings blob. Per-player stuff (colors, key scheme, CPU
   // difficulty) and app-wide prefs (lock orientation) live outside this row and aren't "match
   // settings" in the sense a player means when they ask to shuffle or reset the current round.
   // extendIntoSafeArea is the one exception left inside the row: still a toggle in the same bundled
@@ -397,14 +398,22 @@ export default function LobbyScreen() {
     }, [])
   )
 
+  // Read through a ref rather than listed as a dependency of the effect below: this screen stays
+  // mounted (and still all Ready) under /game, so a settings change made there (toggling Lock
+  // Orientation or Edge Guard in /game's Settings dialog, or the lock recording its angle) would
+  // otherwise re-run that effect and push a second /game.
+  const settingsRef = useRef(settings)
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
+
   useEffect(() => {
     if (!humanPlayers.every((p) => ready[p])) return
-    // `gameMode` here, not `settings.gameMode` — same race the comment above guards against:
-    // this screen's own route param is the trustworthy value, not the settings hook's own
-    // (possibly still-loading) copy.
-    commitRoundSettings({ ...settings, gameMode })
+    // `gameMode` (this screen's own route param), not settings.gameMode: the route param is the mode
+    // this loadout was opened for.
+    dispatch(liveplayActions.setActiveRoundSettings({ ...settingsRef.current, gameMode }))
     router.push('/game')
-  }, [ready, humanPlayers, settings, gameMode, commitRoundSettings])
+  }, [ready, humanPlayers, gameMode, dispatch])
 
   const bg = dark ? '#000000' : '#FFFFFF'
   const fg = dark ? '#FFFFFF' : '#000000'

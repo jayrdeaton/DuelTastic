@@ -29,18 +29,18 @@ interface Props {
   // single-select as a second, multi-select section shared with wrapEdges below (one section, two
   // rows, no divider between them — they're both simple board-shape toggles, not settings that need
   // separating from each other the way they're separated from the layout picker above). Converted
-  // to/from a plain boolean at this prop boundary. See GameSettings.extendIntoSafeArea's own comment
+  // to/from a plain boolean at this prop boundary. See Settings.extendIntoSafeArea's own comment
   // for what it does.
   extendIntoSafeArea: boolean
   extendIntoSafeAreaOption: MenuOption<'extendIntoSafeArea'>
   onExtendIntoSafeAreaChange: (value: boolean) => void
   // Same bundled-multi-select section as extendIntoSafeArea directly above (not a separate section
-  // of its own — see that prop's comment for why). See GameSettings.wrapEdges' own comment for what
+  // of its own — see that prop's comment for why). See Settings.wrapEdges' own comment for what
   // this one does.
   wrapEdges: boolean
   wrapEdgesOption: MenuOption<'wrapEdges'>
   onWrapEdgesChange: (value: boolean) => void
-  // Which powerup types can spawn this round — "off" is simply an empty array (see GameSettings'
+  // Which powerup types can spawn this round — "off" is simply an empty array (see Settings'
   // own comment), so this one multi-select control covers both at once rather than needing a
   // separate on/off toggle alongside it.
   enabledPowerups: PowerupType[]

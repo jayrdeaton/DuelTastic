@@ -4,13 +4,13 @@ import { BaseSettingsDialog } from '@tastic/hud'
 import { useGuide } from '@tastic/hud/guide'
 
 import { release } from '@/constants/release'
-import { GameSettings } from '@/types'
+import { Settings } from '@/types'
 
 export interface SettingsDialogProps {
   visible: boolean
   onDismiss: () => void
-  settings: GameSettings
-  setSettings: (update: Partial<GameSettings>) => void
+  settings: Settings
+  setSettings: (update: Partial<Settings>) => void
   // Live physical-hold rotation (see @tastic/core's getViewRotation) — this is a centered,
   // app-wide modal with no per-player zone to match (unlike OnboardingOverlay/RoundOverDialog), so
   // it just rotates its own content in place; defaults to 0 for call sites that don't have a live
@@ -22,7 +22,7 @@ export interface SettingsDialogProps {
   showHowToPlay?: boolean
 }
 
-// Thin adapter over @tastic/hud's shared settings shell — LightCycles' own GameSettings (lock
+// Thin adapter over @tastic/hud's shared settings shell — LightCycles' own Settings (lock
 // orientation, edge guard) is the only thing that varies here; everything else (sound, haptics,
 // appearance, update checking) is identical across every app using BaseSettingsDialog and lives
 // entirely inside that package now. Keeps this file's own external props unchanged so none of its

@@ -4,7 +4,7 @@ import { ColorStats, CpuDifficulty, DifficultyRecord, ProfileStats, StatsState, 
 
 // Pulled out of hooks/useGameStats.tsx specifically so it's testable without dragging in
 // @react-native-async-storage/async-storage, which throws at import time under Jest's plain Node
-// environment (its native module is never linked there) — mirrors gameSettingsValidation.ts.
+// environment (its native module is never linked there).
 
 // A zeroed vsCpu bucket: an empty win/loss/draw record, an empty per-difficulty breakdown, and a
 // zeroed win streak. Built from @tastic/achievements' own defaults rather than restating the
@@ -83,7 +83,7 @@ function isValidColorStats(value: unknown): value is ColorStats {
 
 // Doesn't reject unrecognized keys in `colors` — a stray/corrupted key is just an inert extra map
 // entry, not a reason to discard the whole stats blob (matches Theme.tsx's per-field fallback
-// philosophy rather than gameSettingsValidation.ts's all-or-nothing shape check).
+// philosophy rather than an all-or-nothing shape check).
 function isValidColorsMap(value: unknown): value is Record<string, ColorStats> {
   if (!value || typeof value !== 'object') return false
   return Object.values(value).every(isValidColorStats)

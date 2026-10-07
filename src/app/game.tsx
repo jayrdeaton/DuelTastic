@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useDispatch, useSelector } from 'react-redux'
 
 import GameBoardHost from '@/components/GameBoardHost'
 import MatchOverDialog from '@/components/MatchOverDialog'
@@ -22,12 +23,14 @@ import { SettingsDialog } from '@/components/SettingsDialog'
 import TouchInputLayer from '@/components/TouchInputLayer'
 import { ACHIEVEMENT_TIER_COLORS } from '@/constants/achievements'
 import { deathAnimationDurationMs, MAX_BOARD_CONTENT_WIDTH, ROUND_OVER_DIALOG_HOLD_MS, TRAIL_SPEED_RATE } from '@/constants/game'
-import { useGameSettings } from '@/hooks/useGameSettings'
 import { useGameSound } from '@/hooks/useGameSound'
 import { useGameState } from '@/hooks/useGameState'
 import { useGameStats } from '@/hooks/useGameStats'
 import { useProfiles } from '@/hooks/useProfiles'
-import { AchievementDefinition, Direction, GameMode, GamePhase, GameSettings, OrientationMode, Player, RoundOutcome } from '@/types'
+import { useSettings } from '@/hooks/useSettings'
+import { liveplayActions } from '@/redux/liveplaySlice'
+import type { AppDispatch, RootState } from '@/redux/store'
+import { AchievementDefinition, Direction, GameMode, GamePhase, OrientationMode, Player, RoundOutcome, Settings } from '@/types'
 import { humanPlayersFor } from '@/utils/gameParams'
 import { safeBack } from '@/utils/navigation'
 
@@ -65,7 +68,7 @@ interface GameRoundProps {
   // Dynamic Island/home-indicator/speaker cutout would physically hide it (see gameEngine.ts's
   // buildUnsafeAreaCells).
   safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number }
-  settings: GameSettings
+  settings: Settings
   colors: Record<Player, string>
   // Seat -> saved profile name, only for seats that had one selected at lobby handoff — see
   // GameScreen's own profileSnapshot comment for why this is frozen once, not read live.
@@ -133,7 +136,8 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // The persisted, cross-round defaults (not this round's already-locked-in `settings` prop above)
   // — matches every other screen's settings button, which always edits "next time," never the
   // round already underway.
-  const { settings: userSettings, setSettings: setUserSettings, setIsActivelyPlaying } = useGameSettings()
+  const { settings: userSettings, setSettings: setUserSettings } = useSettings()
+  const dispatch = useDispatch<AppDispatch>()
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Only asked once there's an actual score to lose (the pip row itself uses the same gate, see
   // OnboardingOverlay) — the very first round's back button still exits immediately, since there's
@@ -223,16 +227,17 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // controlsVisible prop, below).
   const controlsVisible = state.phase === 'onboarding' || (state.phase === 'roundOver' && showResultDialog) || matchOver
 
-  // Mirrors state.phase === 'playing' up to useGameSettings.tsx's own useEdgeGestureGuard call
-  // rather than calling that hook directly here: it stays mounted once at the provider (same as
-  // every other cross-cutting settings concern in this app), and this is just the one signal it
-  // has no other way to read. Reset to false on unmount too, so leaving this screen mid-round by
+  // Mirrors state.phase === 'playing' into liveplay.activelyPlaying for Providers.tsx's
+  // EdgeGuardBridge rather than calling useEdgeGestureGuard directly here: it stays mounted once for
+  // the app's lifetime, and this is just the one signal it has no other way to read. Reset to false on unmount too, so leaving this screen mid-round by
   // any path (not just the in-app back button) can't leave Edge Guard stuck on — GameRound only
   // mounts for the life of one match, matching this effect's own scope exactly.
   useEffect(() => {
-    setIsActivelyPlaying(state.phase === 'playing')
-    return () => setIsActivelyPlaying(false)
-  }, [state.phase, setIsActivelyPlaying])
+    dispatch(liveplayActions.setActivelyPlaying(state.phase === 'playing'))
+    return () => {
+      dispatch(liveplayActions.setActivelyPlaying(false))
+    }
+  }, [state.phase, dispatch])
 
   // No toast may stay on screen during live play — only between rounds or at match end. Vs CPU
   // unlock toasts fire at round over and last 7s, so a quick Rematch would otherwise carry them
@@ -309,8 +314,8 @@ interface MatchOverlaysProps {
   // Opens the settings dialog — this lives here (not just onSettingsDismiss) because the chip
   // button that triggers it is now rendered here too, see the leftSlot/rightSlot chips below.
   onSettingsOpen: () => void
-  userSettings: GameSettings
-  setUserSettings: (update: Partial<GameSettings>) => void
+  userSettings: Settings
+  setUserSettings: (update: Partial<Settings>) => void
   confirmVisible: boolean
   cancelBack: () => void
   humanPlayers: Player[]
@@ -473,11 +478,11 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
 }
 
 export default function GameScreen() {
-  // Locked in once at mount from /lobby's own handoff (see useGameSettings.tsx's
-  // commitRoundSettings) — not read reactively off context, so a settings-dialog edit made mid-
+  // Locked in once at mount from /lobby's own handoff (liveplay.activeRoundSettings, see
+  // liveplaySlice.ts), not read reactively off the store, so a settings-dialog edit made mid-
   // round (which only ever touches the *editable* settings, not this snapshot) can't change a
   // round already underway out from under it.
-  const { activeRoundSettings } = useGameSettings()
+  const activeRoundSettings = useSelector((state: RootState) => state.liveplay.activeRoundSettings)
   const [settings] = useState(activeRoundSettings)
 
   useEffect(() => {
@@ -594,7 +599,7 @@ export default function GameScreen() {
   // gutter (gutterWidth above) on anything wider than MAX_BOARD_CONTENT_WIDTH, so that outline
   // always sits somewhere a player can actually see and reach AND the arena never stretches into an
   // unplayably wide, short rectangle on a maximized desktop-web window; extendIntoSafeArea (a
-  // per-round lobby setting — see GameSettings' own comment) opts into bleeding the board all the
+  // per-round lobby setting — see Settings' own comment) opts into bleeding the board all the
   // way to the physical screen edge instead, ignoring both the safe area and the gutter and trading
   // that margin for more play space.
   // This container's own bounds (the style below) are fully live, same as insets/gutterWidth

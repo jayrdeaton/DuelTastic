@@ -47,7 +47,7 @@ export interface GameBoardProps {
   // still and then snapping a whole cell forward. Passed as the raw rate, not the tier, so this
   // component stays as decoupled from the tier enum as gameEngine.ts's own tickGame already is.
   trailSpeedRate: number
-  // Per-round GameSettings.wrapEdges — see that field's own comment. Hides Walls below entirely:
+  // Per-round Settings.wrapEdges — see that field's own comment. Hides Walls below entirely:
   // the boundary outline promises "this edge is fatal," which stops being true once wrap is on.
   wrapEdges: boolean
 }

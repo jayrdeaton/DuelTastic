@@ -60,9 +60,9 @@ function profileViews(stats: StatsState): Record<string, StatsState> {
   return Object.fromEntries(Object.entries(stats.profiles).map(([profileId, bucket]) => [profileId, getProfileStatsView(bucket)]))
 }
 
-// Single source of truth for local stats/achievements, mounted once in _layout.tsx — same
-// single-Provider rationale as useGameSettings.tsx (expo-router keeps prior screens mounted, so a
-// per-screen AsyncStorage-backed copy could go stale or clobber a concurrent update).
+// Single source of truth for local stats/achievements, mounted once in _layout.tsx (expo-router
+// keeps prior screens mounted, so a per-screen AsyncStorage-backed copy could go stale or clobber
+// a concurrent update).
 //
 // Loading, validation, the self-healing unlock backfill and both AsyncStorage writes now all live
 // in @tastic/achievements' useAchievements — what stays here is the LightCycles-specific part: the
