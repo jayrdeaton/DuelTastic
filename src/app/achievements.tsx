@@ -5,7 +5,7 @@ import { AchievementCatalogSection, ActivityStatSection, BaseStatsScreen, StatRo
 import { ProfileChip, ProfilePicker } from '@tastic/profile'
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { ActivityIndicator, Icon, Text } from 'react-native-paper'
+import { Icon, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ACHIEVEMENT_CATALOG } from '@/constants/achievements'
@@ -85,7 +85,7 @@ export default function AchievementsScreen() {
   // corresponds to once FakeLandscapeView below visually rotates the content.
   const rotation = useRotation()
   const insets = rotateInsets(useSafeAreaInsets(), rotation)
-  const { stats, unlockedAchievements, loaded, resetAll } = useGameStats()
+  const { stats, unlockedAchievements, resetAll } = useGameStats()
   const { profiles } = useProfiles()
   // Same ProfilePicker used to select a profile per-seat in the lobby (see @tastic/hud's
   // PlayerSetupPanel, wired up in lobby.tsx) — reused here as-is rather than a bespoke picker, with
@@ -120,23 +120,6 @@ export default function AchievementsScreen() {
   const sortedColors = useMemo(() => Object.entries(statsView.colors).sort(([, a], [, b]) => b.played - a.played), [statsView.colors])
   // Cross-profile comparison — only meaningful for "All Profiles" (see its own gated render below).
   const rankings = useMemo(() => getProfileRankings(profiles, stats.profiles), [profiles, stats.profiles])
-
-  // Every computation above already reads cleanly off useAchievements' own zeroed defaultStats
-  // while still loading, so nothing above needs to change — but rendering the real sections over
-  // that zeroed data would flash "0 games played" for a beat on every launch. onReset is withheld
-  // here too: resetting stats that haven't actually been read back from storage yet has nothing
-  // real to confirm against.
-  if (!loaded) {
-    return (
-      <FakeLandscapeView style={styles.rotatable}>
-        <BaseStatsScreen onBack={safeBack} insets={insets} rotation={rotation}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator color={themeColors.primary} />
-          </View>
-        </BaseStatsScreen>
-      </FakeLandscapeView>
-    )
-  }
 
   return (
     <FakeLandscapeView style={styles.rotatable}>
@@ -214,11 +197,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48
   },
   rotatable: {
     flex: 1

@@ -2,13 +2,10 @@ import { mapUnlocksBySeat, useAchievements } from '@tastic/achievements'
 import { createContext, ReactNode, useCallback, useContext, useMemo } from 'react'
 
 import { ACHIEVEMENT_CATALOG } from '@/constants/achievements'
+import { achievementsActions } from '@/redux/achievementsSlice'
+import type { RootState } from '@/redux/store'
 import { AchievementDefinition, CpuDifficulty, GameMode, Player, RoundOutcome, StatsState, UnlockedAchievementsState } from '@/types'
 import { applyRoundOutcome, getProfileStatsView } from '@/utils/statsEngine'
-import { DEFAULT_STATS, isValidStats } from '@/utils/statsValidation'
-
-// Produces 'lightcycles.stats' and 'lightcycles.achievements' — byte-identical to the two keys this
-// app has always written, so an existing install's stored blobs load unchanged after this port.
-const STORAGE_NAMESPACE = 'lightcycles'
 
 interface RecordRoundOutcomeContext {
   gameMode: GameMode
@@ -30,10 +27,6 @@ export interface RecordRoundOutcomeResult {
 interface GameStatsContextValue {
   stats: StatsState
   unlockedAchievements: UnlockedAchievementsState
-  // False until the stored blobs have been read (or failed to read) — see @tastic/achievements' own
-  // useAchievements doc: lets achievements.tsx hold off rendering "0 games played" over real,
-  // still-loading data.
-  loaded: boolean
   // Updates both stats and achievement-unlock state in one call, persisting each, and returns
   // whatever newly unlocked this round (empty lists if nothing did) so the caller can surface a
   // toast — see RecordRoundOutcomeResult above.
@@ -60,23 +53,19 @@ function profileViews(stats: StatsState): Record<string, StatsState> {
   return Object.fromEntries(Object.entries(stats.profiles).map(([profileId, bucket]) => [profileId, getProfileStatsView(bucket)]))
 }
 
-// Single source of truth for local stats/achievements, mounted once in _layout.tsx (expo-router
-// keeps prior screens mounted, so a per-screen AsyncStorage-backed copy could go stale or clobber
-// a concurrent update).
+// Single source of truth for local stats/achievements (the store's `achievements` slice, see
+// redux/achievementsSlice.ts), mounted once in _layout.tsx so useAchievements' mount-time unlock
+// re-sweep runs once and every screen shares the same callbacks.
 //
-// Loading, validation, the self-healing unlock backfill and both AsyncStorage writes now all live
-// in @tastic/achievements' useAchievements — what stays here is the LightCycles-specific part: the
+// Validation, storage and the self-healing unlock backfill all live in @tastic/achievements
+// (createAchievementsSlice + useAchievements); what stays here is the LightCycles-specific part: the
 // stats shape, its funnel (applyRoundOutcome), and the seat-vs-profile-id translation below.
 export function GameStatsProvider({ children }: Props) {
-  const { stats, unlockedAchievements, loaded, recordOutcome, resetAll, removeProfile } = useAchievements<StatsState>({
-    namespace: STORAGE_NAMESPACE,
+  const { stats, unlockedAchievements, recordOutcome, resetAll, removeProfile } = useAchievements<StatsState, RootState>({
     catalog: ACHIEVEMENT_CATALOG,
-    defaultStats: DEFAULT_STATS,
-    isValidStats,
-    profileViews,
-    // `profiles ?? {}` is the entire "migration" a blob stored before that field existed needs —
-    // see isValidStats, which already treats an absent `profiles` key as valid.
-    migrateStats: (stored) => ({ ...stored, profiles: stored.profiles ?? {} })
+    select: (state) => state.achievements,
+    actions: achievementsActions,
+    profileViews
   })
 
   const recordRoundOutcome = useCallback(
@@ -106,7 +95,7 @@ export function GameStatsProvider({ children }: Props) {
     [removeProfile]
   )
 
-  const value = useMemo(() => ({ stats, unlockedAchievements, loaded, recordRoundOutcome, resetAll, removeProfileStats }), [stats, unlockedAchievements, loaded, recordRoundOutcome, resetAll, removeProfileStats])
+  const value = useMemo(() => ({ stats, unlockedAchievements, recordRoundOutcome, resetAll, removeProfileStats }), [stats, unlockedAchievements, recordRoundOutcome, resetAll, removeProfileStats])
 
   return <GameStatsContext.Provider value={value}>{children}</GameStatsContext.Provider>
 }

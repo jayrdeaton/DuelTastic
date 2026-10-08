@@ -27,8 +27,8 @@ const slice = createGuideSlice({ currentVersion: GUIDE_VERSION })
 //   lightcycles.sound, lightcycles.vibrate: components/Feedback.tsx
 //
 // None of them may be written by today's build before PersistGate opens (the migrate would then take a
-// fresh install for a returning player). Today, lightcycles.settings/.stats/.achievements are still
-// written, but only by providers mounted inside PersistGate (see _layout.tsx and Providers.tsx).
+// fresh install for a returning player). Today's build writes none of them at all: settings, stats and
+// achievements have lived in the Redux store since 2026-10-07.
 export const LEGACY_STORAGE_KEYS: readonly string[] = ['lightcycles.achievements', 'lightcycles.appearance', 'lightcycles.cpuColor', 'lightcycles.playerColors', 'lightcycles.profiles', 'lightcycles.settings', 'lightcycles.sound', 'lightcycles.stats', 'lightcycles.vibrate']
 
 export const guideActions = slice.actions
