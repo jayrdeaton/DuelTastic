@@ -50,11 +50,11 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      {/* Reads correctly no matter which way the phone is actually being held — see
-      @tastic/split-screen's FakeLandscapeView. SettingsDialog stays outside it (a centered
-      Portal-rendered modal isn't affected by a local transform on an ancestor) but still gets the
-      same live `rotation` passed directly, rotating its own content in place instead. No explicit
-      orientationMode/p1OnRight/upsideDown here — this screen never needs the raw triple for
+      {/* Everything below reads correctly no matter which way the phone is actually being held:
+      see @tastic/core's FakeLandscapeView. SettingsDialog stays outside it: it renders through a
+      Portal over the whole screen, and BaseSettingsDialog lays itself out in its own frame turned
+      by the `rotation` passed below (see @tastic/hud's RotatedFrame). No explicit
+      orientationMode/p1OnRight/upsideDown here: this screen never needs the raw triple for
       anything else, so FakeLandscapeView's own ambient useOrientationState() read (the same
       shared source `rotation` above already comes from) is exactly equivalent. */}
       <FakeLandscapeView style={styles.rotatable}>

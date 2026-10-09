@@ -9,7 +9,9 @@ import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet,
 // derived live from the device's own physical tilt (see useOrientationState), not a stored
 // setting. safeAreaInsetsPx defaults to all-zero — see GameRound's own comment on GameRoundProps
 // for why the caller is what decides whether it's actually the device's real insets or zeroed out.
-export function useGameState(width: number, height: number, settings: Settings, colors: Record<Player, string>, orientationMode: OrientationMode, p1OnRight: boolean, safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 }) {
+// paused (Settings, the quit confirmation or the Paused dialog is open, see GameRound) halts the tick
+// loop below without leaving 'playing'.
+export function useGameState(width: number, height: number, settings: Settings, colors: Record<Player, string>, orientationMode: OrientationMode, p1OnRight: boolean, safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number } = { top: 0, right: 0, bottom: 0, left: 0 }, paused: boolean = false) {
   const cellPx = GRID_CELL_PX[settings.gridSizeTier]
 
   const [state, setState] = useState(() => createInitialGameState(width, height, orientationMode, colors, cellPx, p1OnRight, settings.arenaVariant, safeAreaInsetsPx))
@@ -37,21 +39,28 @@ export function useGameState(width: number, height: number, settings: Settings, 
   }, [width, height, orientationMode, colors, cellPx, p1OnRight, settings.arenaVariant, safeAreaInsetsPx])
 
   // ─── Tick loop ──────────────────────────────────────────────────────────
-  // Runs only while 'playing' (the effect's own [state.phase] dependency tears it down the
-  // instant tickGame transitions to 'roundOver', same shape as BoxHockey's useGameState physics
-  // loop). elapsedRef tracks round time outside React state so the ramp's own interval math (see
-  // computeTickIntervalMs) can run synchronously inside the rAF callback, ahead of whatever the
-  // next setState batch resolves to.
+  // Runs only while 'playing' and not paused (the effect's own [state.phase, paused] dependencies
+  // tear it down the instant tickGame transitions to 'roundOver' or a dialog opens, same shape as
+  // BoxHockey's useGameState physics loop; resuming restarts it with a fresh lastTickRef, so the
+  // paused time never lands as one long tick). elapsedRef tracks round time outside React state so
+  // the ramp's own interval math (see computeTickIntervalMs) can run synchronously inside the rAF
+  // callback, ahead of whatever the next setState batch resolves to.
   const rafRef = useRef<number | null>(null)
   const lastTickRef = useRef<number | null>(null)
   const elapsedRef = useRef(0)
 
+  // Round time (the speed ramp's clock) starts over with each round's countdown, not each time the
+  // loop below restarts - a pause tears that loop down and back up mid-round, and resuming must not
+  // drop the ramp back to its base speed.
   useEffect(() => {
-    if (state.phase !== 'playing') return
+    if (state.phase === 'onboarding') elapsedRef.current = 0
+  }, [state.phase])
+
+  useEffect(() => {
+    if (state.phase !== 'playing' || paused) return
 
     let active = true
     lastTickRef.current = null
-    elapsedRef.current = 0
     const baseIntervalMs = scaleMsForCellPx(SPEED_TIER_INTERVAL_MS[settings.speedTier], cellPx)
     const decrementMs = scaleMsForCellPx(SPEED_RAMP_DECREMENT_MS, cellPx)
     const minIntervalMs = scaleMsForCellPx(SPEED_RAMP_MIN_INTERVAL_MS, cellPx)
@@ -112,7 +121,7 @@ export function useGameState(width: number, height: number, settings: Settings, 
         rafRef.current = null
       }
     }
-  }, [state.phase, settings.speedTier, settings.speedRampEnabled, settings.gameMode, settings.cpuDifficulty, settings.trailSpeedTier, settings.enabledPowerups, settings.wrapEdges, cellPx])
+  }, [state.phase, paused, settings.speedTier, settings.speedRampEnabled, settings.gameMode, settings.cpuDifficulty, settings.trailSpeedTier, settings.enabledPowerups, settings.wrapEdges, cellPx])
 
   return { state, turn, activate, beginPlaying, rematch, tickIntervalMs, cellPx }
 }

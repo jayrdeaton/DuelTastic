@@ -1,6 +1,7 @@
 import { defaultColors, getThirdColor, useAutoPaperTheme, useThemeSettings } from '@rific/auto-paper'
 import { FakeLandscapeView, getViewRotation, rotateInsets, useIsTouchPrimaryDevice, useOrientationState } from '@tastic/core'
 import { CornerActionButtons, getColorPopoverId, getCpuDifficultyPopoverId, getInlineColorPickerContentSize, getLabeledDropdownContentHeight, LABELED_DROPDOWN_POPOVER_WIDTH, MenuOption, PlayerSetupPanel, PressAwayOverlay, ReadyButton, SectionedDropdown, SharedActionBand, usePopoverHost, useZoneClampedAlign } from '@tastic/hud'
+import { assignSeatScheme } from '@tastic/input'
 import type { Profile as BaseProfile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
@@ -284,34 +285,33 @@ export default function LobbyScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastSelected[1], lastSelected[2], p1Profile?.color, p2Profile?.color, p2IsHuman])
 
-  // Same swap-on-conflict shape as the color handlers above — but unlike color, this one *does*
-  // keep syncing back to a currently-selected profile's own saved key scheme for as long as it
-  // stays selected: key scheme has no "freely repaint it for one match" use case the way a cycle's
-  // color does, so there's no override/favorite distinction worth drawing here. The live
-  // SectionedDropdown never actually reaches the swap case on its own — the other seat's current
-  // scheme stays in its own option list (so the gauge shows the right position) but renders
-  // disabled via takenValue (see this file's own p2KeySchemePicker below), so tapping it is a
-  // no-op — but a profile's
-  // saved key scheme (see handleP1ProfileSelect/handleP2ProfileSelect below) pre-fills by calling
-  // this directly, bypassing that disabled state entirely, so a real collision is reachable there
-  // and needs the swap treatment too. Declared above handleP1ProfileSelect/handleP2ProfileSelect
-  // (rather than after, next to the other seat-color handlers) purely so those can close over these
-  // without a temporal-dead-zone reference.
+  // Same swap-on-conflict shape as the color handlers above (@tastic/input's assignSeatScheme), but
+  // unlike color, this one *does* keep syncing back to a currently-selected profile's own saved key
+  // scheme for as long as it stays selected: key scheme has no "freely repaint it for one match" use
+  // case the way a cycle's color does, so there's no override/favorite distinction worth drawing
+  // here. The live SectionedDropdown never actually reaches the swap case on its own — the other
+  // seat's current scheme stays in its own option list (so the gauge shows the right position) but
+  // renders disabled via takenValue (see this file's own p2KeySchemePicker below), so tapping it is
+  // a no-op — but a profile's saved key scheme (see handleP1ProfileSelect/handleP2ProfileSelect
+  // below) pre-fills by calling this directly, bypassing that disabled state entirely, so a real
+  // collision is reachable there and needs the swap treatment too. Declared above
+  // handleP1ProfileSelect/handleP2ProfileSelect (rather than after, next to the other seat-color
+  // handlers) purely so those can close over these without a temporal-dead-zone reference.
   const handleP1KeySchemeChange = useCallback(
     (scheme: KeyScheme) => {
-      const nextP2 = scheme === settings.keyScheme[2] ? settings.keyScheme[1] : settings.keyScheme[2]
-      setSettings({ keyScheme: { 1: scheme, 2: nextP2 } })
+      const keyScheme = assignSeatScheme(settings.keyScheme, 1, scheme)
+      setSettings({ keyScheme })
       if (lastSelected[1]) updateProfile(lastSelected[1], { keyScheme: scheme })
-      if (nextP2 !== settings.keyScheme[2] && lastSelected[2]) updateProfile(lastSelected[2], { keyScheme: nextP2 })
+      if (keyScheme[2] !== settings.keyScheme[2] && lastSelected[2]) updateProfile(lastSelected[2], { keyScheme: keyScheme[2] })
     },
     [setSettings, settings.keyScheme, lastSelected, updateProfile]
   )
   const handleP2KeySchemeChange = useCallback(
     (scheme: KeyScheme) => {
-      const nextP1 = scheme === settings.keyScheme[1] ? settings.keyScheme[2] : settings.keyScheme[1]
-      setSettings({ keyScheme: { 1: nextP1, 2: scheme } })
+      const keyScheme = assignSeatScheme(settings.keyScheme, 2, scheme)
+      setSettings({ keyScheme })
       if (lastSelected[2]) updateProfile(lastSelected[2], { keyScheme: scheme })
-      if (nextP1 !== settings.keyScheme[1] && lastSelected[1]) updateProfile(lastSelected[1], { keyScheme: nextP1 })
+      if (keyScheme[1] !== settings.keyScheme[1] && lastSelected[1]) updateProfile(lastSelected[1], { keyScheme: keyScheme[1] })
     },
     [setSettings, settings.keyScheme, lastSelected, updateProfile]
   )

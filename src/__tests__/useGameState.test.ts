@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native'
 
+import { SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_TIER_INTERVAL_MS } from '@/constants/game'
 import { useGameState } from '@/hooks/useGameState'
 import { Settings } from '@/types'
 
@@ -170,5 +171,86 @@ describe('useGameState', () => {
 
     // No further ticks fire once the effect's own [state.phase] dependency tears the loop down.
     expect(result.current.state.players[1].trail.length).toBe(trailLengthAtEnd)
+  })
+
+  // F085: a Settings, Quit Match? or Paused dialog (see game.tsx's `paused`) halts the loop without
+  // leaving 'playing', and closing it picks the round back up where it stopped.
+  it('halts the tick loop while paused and resumes it afterward', async () => {
+    const { result, rerender } = await renderHook(({ paused }: { paused: boolean }) => useGameState(2000, 2000, SETTINGS, COLORS, ORIENTATION, P1_ON_RIGHT, undefined, paused), { initialProps: { paused: false } })
+
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    await rerender({ paused: true })
+    const trailLengthAtPause = result.current.state.players[1].trail.length
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000)
+    })
+    expect(result.current.state.phase).toBe('playing')
+    expect(result.current.state.players[1].trail.length).toBe(trailLengthAtPause)
+
+    await rerender({ paused: false })
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    expect(result.current.state.players[1].trail.length).toBeGreaterThan(trailLengthAtPause)
+  })
+
+  // The ramp's clock used to reset every time the loop effect started, which a pause now does mid-round.
+  describe('speed ramp clock', () => {
+    // Tall enough that neither cycle reaches a wall or the other before the ramp's first step.
+    const RAMP_SETTINGS: Settings = { ...SETTINGS, speedRampEnabled: true }
+    const BASE_INTERVAL_MS = SPEED_TIER_INTERVAL_MS.fast
+    const RAMPED_INTERVAL_MS = SPEED_TIER_INTERVAL_MS.fast - SPEED_RAMP_DECREMENT_MS
+
+    async function rampedRound() {
+      const rendered = await renderHook(({ paused }: { paused: boolean }) => useGameState(2000, 8000, RAMP_SETTINGS, COLORS, ORIENTATION, P1_ON_RIGHT, undefined, paused), { initialProps: { paused: false } })
+      await act(async () => {
+        rendered.result.current.beginPlaying()
+      })
+      await act(async () => {
+        jest.advanceTimersByTime(SPEED_RAMP_INTERVAL_MS + 1000)
+      })
+      expect(rendered.result.current.state.phase).toBe('playing')
+      expect(rendered.result.current.tickIntervalMs).toBe(RAMPED_INTERVAL_MS)
+      return rendered
+    }
+
+    it('keeps the ramped speed across a pause instead of dropping back to the base speed', async () => {
+      const { result, rerender } = await rampedRound()
+
+      await rerender({ paused: true })
+      await act(async () => {
+        jest.advanceTimersByTime(2000)
+      })
+      await rerender({ paused: false })
+      await act(async () => {
+        jest.advanceTimersByTime(200)
+      })
+
+      expect(result.current.state.phase).toBe('playing')
+      expect(result.current.tickIntervalMs).toBe(RAMPED_INTERVAL_MS)
+    })
+
+    it('starts the ramp over with the next round', async () => {
+      const { result } = await rampedRound()
+
+      await act(async () => {
+        result.current.rematch()
+      })
+      expect(result.current.state.phase).toBe('onboarding')
+      await act(async () => {
+        result.current.beginPlaying()
+      })
+      await act(async () => {
+        jest.advanceTimersByTime(200)
+      })
+
+      expect(result.current.tickIntervalMs).toBe(BASE_INTERVAL_MS)
+    })
   })
 })

@@ -11,10 +11,10 @@ export interface SettingsDialogProps {
   onDismiss: () => void
   settings: Settings
   setSettings: (update: Partial<Settings>) => void
-  // Live physical-hold rotation (see @tastic/core's getViewRotation) — this is a centered,
-  // app-wide modal with no per-player zone to match (unlike OnboardingOverlay/RoundOverDialog), so
-  // it just rotates its own content in place; defaults to 0 for call sites that don't have a live
-  // orientation signal handy (there's nothing else for it to stay consistent with).
+  // Live physical-hold rotation (see @tastic/core's useRotation). BaseSettingsDialog lays the sheet
+  // out in its own frame turned by this (see @tastic/hud's RotatedFrame), so it reads right-side-up
+  // and fits the short edge however the phone is held. Defaults to 0 for a call site that doesn't
+  // track one.
   rotation?: ViewRotation
   // Shows the "How to play" row that replays the intro. Off by default: the in-game (/game) dialog
   // leaves it out, since opening a full-screen guide over a live match (settings there already

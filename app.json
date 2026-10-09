@@ -41,11 +41,7 @@
       }
     },
     "android": {
-      "package": "com.infinitetoken.lightcycles",
-      "permissions": [
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
+      "package": "com.infinitetoken.lightcycles"
     },
     "web": {
       "bundler": "metro",
@@ -78,7 +74,7 @@
       ],
       "expo-asset",
       "@tastic/edge-guard",
-      "./plugins/withPortraitOnlyIpad"
+      "@tastic/core"
     ],
     "extra": {
       "router": {},
