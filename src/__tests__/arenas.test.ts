@@ -23,14 +23,14 @@ describe('buildArenaObstacles', () => {
   })
 
   describe("'portals' variant", () => {
-    it('never produces obstacles — portal geometry lives on buildArenaPortals instead', () => {
+    it('never produces obstacles - portal geometry lives on buildArenaPortals instead', () => {
       expect(buildArenaObstacles('portals', { cols: 40, rows: 80 }, 'faceToFace', true)).toEqual([])
       expect(buildArenaObstacles('portals', { cols: 1, rows: 1 }, 'faceToFace', true)).toEqual([])
     })
   })
 
   describe("'underpass' variant", () => {
-    it('never produces obstacles — tunnel geometry lives on buildArenaTunnels instead', () => {
+    it('never produces obstacles - tunnel geometry lives on buildArenaTunnels instead', () => {
       expect(buildArenaObstacles('underpass', { cols: 40, rows: 80 }, 'faceToFace', true)).toEqual([])
       expect(buildArenaObstacles('underpass', { cols: 1, rows: 1 }, 'faceToFace', true)).toEqual([])
     })
@@ -71,7 +71,7 @@ describe('buildArenaObstacles', () => {
     }
   }
 
-  describe.each(combos)('$variant — $tier tier, $phone.label phone, mode=$mode, p1OnRight=$p1OnRight', ({ tier, phone, mode, p1OnRight, variant }) => {
+  describe.each(combos)('$variant - $tier tier, $phone.label phone, mode=$mode, p1OnRight=$p1OnRight', ({ tier, phone, mode, p1OnRight, variant }) => {
     const grid = computeGridSize(phone.width, phone.height, GRID_CELL_PX[tier])
     const obstacles = buildArenaObstacles(variant, grid, mode, p1OnRight)
     const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
@@ -79,7 +79,7 @@ describe('buildArenaObstacles', () => {
     const occupied = new Set(obstacles.map(cellKey))
     const clearance = variant === 'pillars' ? PILLAR_SPAWN_CLEARANCE_CELLS : GAUNTLET_SPAWN_CLEARANCE_CELLS
 
-    it('never fully partitions the board — a path always exists between the two real spawn heads', () => {
+    it('never fully partitions the board - a path always exists between the two real spawn heads', () => {
       const distance = distanceToNearestTarget(p1Head, grid, occupied, new Set([cellKey(p2Head)]))
       expect(distance).not.toBeNull()
     })
@@ -95,9 +95,9 @@ describe('buildArenaObstacles', () => {
 
   // ─── Symmetry (pillars) ─────────────────────────────────────────────────────────────────────
   // Hand-computed fixtures, sized to comfortably clear PILLAR_MIN_ALONG_LENGTH/PILLAR_MIN_CROSS_LENGTH
-  // plus every pip's own clearance from spawn — same "exact coordinate" style as grid.test.ts's
+  // plus every pip's own clearance from spawn - same "exact coordinate" style as grid.test.ts's
   // startingStateFor tests. The shipped generator is a quincunx: one center pip plus a near/far
-  // mirrored pair of corner pips, each pip a PILLAR_BLOCK_RADIUS_CELLS=1 (3x3) block — 5 pips * 9
+  // mirrored pair of corner pips, each pip a PILLAR_BLOCK_RADIUS_CELLS=1 (3x3) block - 5 pips * 9
   // cells = 45 obstacle cells when every pip clears spawn (as it does at this fixture size).
   describe('pillar symmetry', () => {
     it('produces a center pip plus two mirrored corner-pip pairs, centered on the board, in faceToFace mode', () => {
@@ -132,7 +132,7 @@ describe('buildArenaObstacles', () => {
     })
 
     it('produces a center pip plus two mirrored corner-pip pairs, centered on the board, in sideBySide mode', () => {
-      // grid.cols=50, grid.rows=24 -> alongLength (cols)=50, crossLength (rows)=24 — the sideBySide
+      // grid.cols=50, grid.rows=24 -> alongLength (cols)=50, crossLength (rows)=24 - the sideBySide
       // mirror of the fixture above, with p1OnRight flipped and mode swapped.
       const grid = { cols: 50, rows: 24 }
       const obstacles = buildArenaObstacles('pillars', grid, 'sideBySide', false)
@@ -164,7 +164,7 @@ describe('buildArenaObstacles', () => {
   // ─── Gauntlet wall symmetry ─────────────────────────────────────────────────────────────────
   // Regression coverage for a real bug: buildGauntlet used to accept/reject each candidate wall
   // independently against spawn clearance, so a spawn sitting just inside one wall's clearance zone
-  // could drop ONLY that wall while its mirror survived — leaving a single wall deep in one player's
+  // could drop ONLY that wall while its mirror survived - leaving a single wall deep in one player's
   // territory and letting that player reach it far sooner than the other on a straight run. Fixed by
   // validating each mirrored group of walls atomically, the same "never partially" rule
   // buildPillars' isGroupClear already enforces.
@@ -177,12 +177,12 @@ describe('buildArenaObstacles', () => {
     it('never leaves a single, lopsided wall on the real small-tier phone grid that used to trigger the bug', () => {
       // computeGridSize(390, 844, GRID_CELL_PX.small) in sideBySide mode: the real-device combo
       // that used to produce one wall at along=25 while its mirrored candidate at along=53 was
-      // dropped for sitting 5 cells from p1's spawn — just inside the 6-cell clearance.
+      // dropped for sitting 5 cells from p1's spawn - just inside the 6-cell clearance.
       const grid = { cols: 78, rows: 168 }
       const obstacles = buildArenaObstacles('gauntlet', grid, 'sideBySide', true)
       const positions = wallAlongPositions(obstacles, 'sideBySide')
       // The mirror axis is the real spawn heads' own sum (see buildGauntlet's axisSum), not
-      // Math.floor(grid.cols / 2) — the two aren't always equal (see "keeps each player equally
+      // Math.floor(grid.cols / 2) - the two aren't always equal (see "keeps each player equally
       // many ticks..." below), and for this particular grid they differ by one.
       const p1 = startingStateFor(1, grid, 'sideBySide', true)
       const p2 = startingStateFor(2, grid, 'sideBySide', true)
@@ -288,7 +288,7 @@ describe('buildArenaObstacles', () => {
 // ─── Portals ────────────────────────────────────────────────────────────────
 // Kept as its own top-level describe block, separate from the pillars/gauntlet reachability/
 // clearance matrix above, since a portal's own reachability invariant is structurally guaranteed
-// (it only ever ADDS connectivity — see the dedicated check below) rather than something the
+// (it only ever ADDS connectivity - see the dedicated check below) rather than something the
 // generator could actually fail the way a pillar/gauntlet placement can; folding it into that
 // combos matrix would dilute a matrix that's meaningful precisely because pillars/gauntlet can.
 describe('buildArenaPortals', () => {
@@ -321,13 +321,13 @@ describe('buildArenaPortals', () => {
         expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(PORTAL_SPAWN_CLEARANCE_CELLS)
       }
       // The load-bearing invariant GameBoard.tsx's own isAdjacent relies on to tell a portal jump
-      // apart from an ordinary step (see grid.ts's own comment) — checked here, not just assumed.
+      // apart from an ordinary step (see grid.ts's own comment) - checked here, not just assumed.
       expect(Math.abs(a.x - b.x) + Math.abs(a.y - b.y)).toBeGreaterThanOrEqual(PORTAL_MIN_PAIR_DISTANCE_CELLS)
       expect(isAdjacent(a, b)).toBe(false)
     }
   })
 
-  // Hand-computed fixtures, same "exact coordinate" style as the pillar symmetry tests above —
+  // Hand-computed fixtures, same "exact coordinate" style as the pillar symmetry tests above -
   // playing-card layout: one portal near each corner, linked catty-corner across the center.
   it('links each corner catty-corner across the center, in faceToFace mode', () => {
     const grid = { cols: 40, rows: 80 }
@@ -345,7 +345,7 @@ describe('buildArenaPortals', () => {
     ])
   })
 
-  it('never fully partitions the board — a portal only ever adds connectivity, it never blocks any', () => {
+  it('never fully partitions the board - a portal only ever adds connectivity, it never blocks any', () => {
     const grid = { cols: 40, rows: 80 }
     const obstacles = buildArenaObstacles('portals', grid, 'faceToFace', true)
     const p1Head = startingStateFor(1, grid, 'faceToFace', true).head
@@ -364,7 +364,7 @@ describe('buildArenaPortals', () => {
 
 // ─── Underpass ──────────────────────────────────────────────────────────────
 // Same "kept separate from the pillars/gauntlet reachability/clearance matrix" reasoning as
-// buildArenaPortals above — a tunnel's own reachability invariant is structurally guaranteed (it
+// buildArenaPortals above - a tunnel's own reachability invariant is structurally guaranteed (it
 // never marks a cell as an obstacle, see buildArenaObstacles' own 'underpass' branch), not
 // something the generator could actually fail.
 describe('buildArenaTunnels', () => {
@@ -431,7 +431,7 @@ describe('buildArenaTunnels', () => {
     ])
   })
 
-  it('never fully partitions the board — a tunnel never marks a cell as an obstacle', () => {
+  it('never fully partitions the board - a tunnel never marks a cell as an obstacle', () => {
     const grid = { cols: 40, rows: 80 }
     const obstacles = buildArenaObstacles('underpass', grid, 'faceToFace', true)
     const p1Head = startingStateFor(1, grid, 'faceToFace', true).head

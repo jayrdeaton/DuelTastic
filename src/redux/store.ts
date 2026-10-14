@@ -35,10 +35,10 @@ const appSoundReducer = (state: SoundSettings = initialSoundSettings, action: { 
 // blue/red identity is pinned exactly instead of drifting with whatever hue math a harmony offset
 // would produce. Primary/secondary ARE player 1/player 2's own default colors (DEFAULT_P1_COLOR/
 // DEFAULT_P2_COLOR, see constants/game.ts) rather than independently-chosen hexes, so the app theme
-// and the lobby's own default guest colors can never drift apart — mirrors Snake's own store.ts
+// and the lobby's own default guest colors can never drift apart - mirrors Snake's own store.ts
 // (SNAKE_COLORS there). Tertiary is still derived, not picked, via getThirdColor: the hue maximally
 // distant from both primary and secondary (see @rific/auto-paper's README "Explicit triad" section).
-// appearance is also overridden — 'dark', not createThemeReducer's own 'system' default — matching
+// appearance is also overridden - 'dark', not createThemeReducer's own 'system' default - matching
 // this app's own long-standing cold-boot fallback (see _layout.tsx's SystemUI.setBackgroundColorAsync
 // comment, which the old AsyncStorage-based Theme.tsx also hardcoded); still freely changeable
 // afterward via SettingsDialog's AutoAppearancePicker, same as before.
@@ -55,19 +55,19 @@ const rootReducer = combineReducers({
   sound: appSoundReducer,
   // The shared App Group roster (see @tastic/profile's resolveInitialProfiles/
   // useSharedProfilesSync, wired in hooks/useProfiles.tsx) is layered on top of this as a separate
-  // sync target — this slice persisting normally via redux-persist, same as every other key here,
+  // sync target - this slice persisting normally via redux-persist, same as every other key here,
   // is what gives it local-fallback behavior for the platforms/builds where the shared store isn't
   // available, with no separate hand-rolled AsyncStorage path needed for that case.
   profiles: profilesReducer,
   profileSelection,
-  // keyScheme — this app's one genuine per-profile extension field (see profileExtensionsSlice's
-  // own doc) — deliberately kept out of the shared `profiles` slice above; always local.
+  // keyScheme - this app's one genuine per-profile extension field (see profileExtensionsSlice's
+  // own doc) - deliberately kept out of the shared `profiles` slice above; always local.
   profileExtensions,
   // lobby.tsx's own dedicated guest/CPU/profile-override seat-color memory (lastGuestColor/
-  // lastCpuColor/profileOverride) — separate from `theme` above (a live snapshot only) — see
+  // lastCpuColor/profileOverride) - separate from `theme` above (a live snapshot only) - see
   // seatColorsSlice.ts's own doc.
   seatColors,
-  // Which version of the how-to-play flow this player has finished or skipped — its own key rather
+  // Which version of the how-to-play flow this player has finished or skipped - its own key rather
   // than a Settings field, so it survives 'Reset stats'/'Reset match settings'. See guideSlice.ts's
   // own doc.
   guide,
@@ -87,7 +87,7 @@ export const persistConfig = {
   // redux-persist defaults `timeout` to 5000ms: a failsafe setTimeout scheduled on every PERSIST
   // dispatch to force-resolve rehydrate if storage never responds. It's never cleared once
   // rehydrate resolves normally (only guarded by an internal `_sealed` flag), so it sits as a
-  // pending timer for up to 5s after every store creation — under Jest that's a real open handle
+  // pending timer for up to 5s after every store creation - under Jest that's a real open handle
   // ("A worker process has failed to exit gracefully"), confirmed via `jest --detectOpenHandles`
   // pointing straight at persistReducer.js's setTimeout. Disabling it (falsy timeout skips the
   // setTimeout call entirely) is redux-persist's own documented way to opt out; AsyncStorage reads

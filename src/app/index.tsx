@@ -15,16 +15,16 @@ import { GameMode } from '@/types'
 export default function HomeScreen() {
   const { settings, setSettings } = useSettings()
   // Follows the device's current physical tilt (see @tastic/core's useOrientationState, which
-  // useRotation reads internally) — Lock Orientation (see SettingsDialog) is the opt-in for pinning
+  // useRotation reads internally) - Lock Orientation (see SettingsDialog) is the opt-in for pinning
   // it, applied app-wide by _layout.tsx's AppOrientationProvider (nothing is passed in here). No
   // P1/P2 concept on this screen at all, but the rotation angle itself still needs the real
-  // p1OnRight reading (which direction the device was actually turned) to pick the correct sign —
+  // p1OnRight reading (which direction the device was actually turned) to pick the correct sign -
   // see @tastic/split-screen's FakeLandscapeView/@tastic/core's getViewRotation.
   const rotation = useRotation()
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   // First launch only (and once per session): opens the how-to-play cards over this screen. Called
-  // here and nowhere else so it can never fire over a live match or a two-seat lobby — Home is the one
+  // here and nowhere else so it can never fire over a live match or a two-seat lobby - Home is the one
   // screen with a single reader, before any seating. See GuideHost / @tastic/hud/guide.
   useAutoShowGuide()
   const { colors, dark } = useAutoPaperTheme()
@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const bg = dark ? '#000000' : '#FFFFFF'
   const fg = dark ? '#FFFFFF' : '#000000'
 
-  // Folds in what the old /mode-select screen's chooseMode() did — that screen only ever picked
+  // Folds in what the old /mode-select screen's chooseMode() did - that screen only ever picked
   // gameMode, so its whole job now fits on two buttons here instead of a separate hop.
   const chooseMode = useCallback(
     (gameMode: GameMode) => {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1
   },
-  // Owns the flex-centering layout `container` used to apply directly — now one level deeper,
+  // Owns the flex-centering layout `container` used to apply directly - now one level deeper,
   // since everything visible sits inside FakeLandscapeView, which needs a real (not shrink-wrapped)
   // full-bleed box to size its own absolutely-positioned children (the trophy/settings buttons)
   // against correctly.

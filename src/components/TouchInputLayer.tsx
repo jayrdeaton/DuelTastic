@@ -12,24 +12,24 @@ import { resolveTurnIntent, TAP_MAX_DISTANCE } from '@/utils/turnIntent'
 
 export interface TouchInputLayerProps {
   orientationMode: OrientationMode
-  // Only meaningful when orientationMode === 'sideBySide' — see GameBoard.tsx's identical prop.
+  // Only meaningful when orientationMode === 'sideBySide' - see GameBoard.tsx's identical prop.
   p1OnRight: boolean
   // [1, 2] for pass-and-play (the usual two-zone split below); [1] or [2] for vs-CPU, where the
-  // single human gets the whole board as their input area — see the solo branch below.
+  // single human gets the whole board as their input area - see the solo branch below.
   humanPlayers: Player[]
   enabled: boolean
   onTurn: (player: Player, direction: Direction) => void
-  // Fires the player's held powerup — see makePlayerGesture's own Gesture.Tap below, a dedicated
+  // Fires the player's held powerup - see makePlayerGesture's own Gesture.Tap below, a dedicated
   // recognizer for "was this a tap" rather than one inferred from the Pan's own drag state.
   onActivate: (player: Player) => void
-  // Whether Hack currently has this player's steering inverted — applied here, at the single
+  // Whether Hack currently has this player's steering inverted - applied here, at the single
   // JS-thread chokepoint every recognized turn already flows through (handleTurn), not inside the
   // UI-thread gesture worklet itself.
   controlInverted: Record<Player, boolean>
-  // Web-only (see TouchInputLayer.web.tsx) — kept on the shared prop shape but unused here, same as
+  // Web-only (see TouchInputLayer.web.tsx) - kept on the shared prop shape but unused here, same as
   // this file's own asymmetric use of humanPlayers relative to the web version.
   keyScheme: Record<Player, KeyScheme>
-  // Each player's current heading, straight from game state — used to gate turn feedback
+  // Each player's current heading, straight from game state - used to gate turn feedback
   // (sound/haptic) on isEffectiveTurn, so continuing straight or reversing 180° (both of which
   // applyTurnIntent silently no-ops in gameEngine.ts) doesn't fire feedback for a turn that never
   // actually happens.
@@ -37,14 +37,14 @@ export interface TouchInputLayerProps {
 }
 
 // Two independent single-finger Pan gestures, each on its OWN View (sized/positioned to its own
-// half — see p1ZoneStyle/p2ZoneStyle below) rather than one shared View split via `hitSlop`. A
+// half - see p1ZoneStyle/p2ZoneStyle below) rather than one shared View split via `hitSlop`. A
 // single view hosting two hitSlop-zoned recognizers looks equivalent on paper (RNGH hit-tests each recognizer's own
 // region against a touch's start coordinate either way), but only actually holds up when the two
-// touches start at distinct moments — two fingers landing in the same native touch-event batch
+// touches start at distinct moments - two fingers landing in the same native touch-event batch
 // (a genuine simultaneous two-player swipe, not two swipes a few frames apart) raced on which
 // recognizer claimed which pointer, and lost one or both turns entirely. Two separate native
 // views/recognizers have nothing left to race: each one only ever sees the pointer that landed on
-// it. The canvas underneath still stays one undivided render — only touch handling is zoned.
+// it. The canvas underneath still stays one undivided render - only touch handling is zoned.
 export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlayers, enabled, onTurn, onActivate, controlInverted, currentDirections }: TouchInputLayerProps) {
   const solo = humanPlayers.length === 1
 
@@ -53,17 +53,17 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
   const { selection } = useVibration()
 
   // Everything handleTurn/handleActivate need, kept in a ref rather than closed over directly, so
-  // those two callbacks — and therefore makePlayerGesture and the Gesture objects it builds below
-  // — can stay referentially stable across renders. currentDirections in particular is a fresh
+  // those two callbacks - and therefore makePlayerGesture and the Gesture objects it builds below
+  // - can stay referentially stable across renders. currentDirections in particular is a fresh
   // object every single game tick (see game.tsx), so closing over it directly meant rebuilding
   // every Gesture.Pan()/Gesture.Tap() several times a second during play: RNGH tears down and
   // re-attaches its native recognizer on every new gesture object handed to GestureDetector, and a
   // touch that starts (or is mid-drag) exactly while that re-attach is happening loses its
-  // recognizer state — no onStart, no onUpdate, nothing, for either finger. Reproduced directly:
+  // recognizer state - no onStart, no onUpdate, nothing, for either finger. Reproduced directly:
   // logging inside onStart showed it firing reliably for isolated single swipes but silently
   // skipping on others with no code change in between, and dropping out almost every time under a
   // genuine two-finger simultaneous swipe (twice the exposure to the same race). None of this ref
-  // plumbing is itself observable — it only exists to keep the gesture objects from being rebuilt
+  // plumbing is itself observable - it only exists to keep the gesture objects from being rebuilt
   // on a timer that has nothing to do with the player's actual touch.
   const latestRef = useRef({ onTurn, onActivate, controlInverted, currentDirections, playTurn, playActivate, selection })
   useEffect(() => {
@@ -106,8 +106,8 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
   // after a long drag. Firing onTurn is gated on the direction actually changing from the last
   // one recognized in this touch, so holding a straight line doesn't repeat the same dispatch
   // every MIN_SWIPE_DISTANCE px. That alone doesn't stop feedback for a swipe along the player's
-  // current heading or its exact reverse — direction here still differs from lastDirection.value
-  // (null) the first time either is swiped in a touch — so handleTurn separately gates its own
+  // current heading or its exact reverse - direction here still differs from lastDirection.value
+  // (null) the first time either is swiped in a touch - so handleTurn separately gates its own
   // sound/haptic on isEffectiveTurn against the player's actual current heading.
   const makePlayerGesture = useCallback(
     (player: Player, base: SharedValue<{ x: number; y: number }>, lastDirection: SharedValue<Direction | null>) => {
@@ -115,7 +115,7 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
         .maxPointers(1)
         .minDistance(0)
         // Empty, but required: Gesture.Simultaneous(pan, tap) below silently never recognizes
-        // either gesture — no onStart, no onUpdate, nothing — when neither has an explicit
+        // either gesture - no onStart, no onUpdate, nothing - when neither has an explicit
         // hitSlop() call. A bare Pan alone (no Tap composed in) works fine without it; it's
         // specifically the Simultaneous+Tap combination that needs it. Reproduced against RNGH
         // 2.32.0. Both gestures need it, matching each other.
@@ -140,10 +140,10 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
           }
         })
 
-      // A dedicated, purpose-built recognizer for "was this a tap" — TAP_MAX_DISTANCE, kept below
+      // A dedicated, purpose-built recognizer for "was this a tap" - TAP_MAX_DISTANCE, kept below
       // MIN_SWIPE_DISTANCE, is what RNGH itself uses to decide the gesture failed once a finger
       // drifts too far, rather than this file re-deriving "no swipe direction was ever recognized"
-      // from the Pan's own state (the previous approach — occasionally left a genuine but slightly
+      // from the Pan's own state (the previous approach - occasionally left a genuine but slightly
       // wobbly tap unrecognized, since human touches are rarely perfectly stationary). Runs
       // simultaneously with the Pan (see the Gesture.Simultaneous below) on the same zoned view;
       // `success` is false if the gesture failed (drifted too far, or was cancelled), so only a
@@ -170,14 +170,14 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
       <GestureDetector gesture={soloGesture!}>
         {/* collapsable={false}: without a prop that makes it stand out, RN's view-flattening
         optimization merges this plain View into its parent, and GestureDetector's ref then attaches
-        to nothing — the gesture silently never receives a single touch. */}
+        to nothing - the gesture silently never receives a single touch. */}
         <View collapsable={false} style={StyleSheet.absoluteFill} />
       </GestureDetector>
     )
   }
 
   // Percentage-based (not measured pixel) rects, unlike the old hitSlop approach, so no
-  // onLayout/size plumbing is needed just to zone these two views. Which player owns which side —
+  // onLayout/size plumbing is needed just to zone these two views. Which player owns which side -
   // see zoneSideFor's own comment.
   const zoneStyles = { top: styles.zoneTop, bottom: styles.zoneBottom, left: styles.zoneLeft, right: styles.zoneRight }
   const p1ZoneStyle = zoneStyles[zoneSideFor(1, orientationMode, p1OnRight)]

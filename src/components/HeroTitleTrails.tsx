@@ -12,12 +12,12 @@ export interface HeroTitleTrailsProps {
   p2Color: string
   active: boolean
   // Delays the trail's own clock to start exactly when it becomes visible (AnimatedHeroTitle fades
-  // this whole layer in well after mount). Without this, the clock — and the "grows from nothing"
-  // first lap below — would run its course invisibly before anyone ever sees it start.
+  // this whole layer in well after mount). Without this, the clock - and the "grows from nothing"
+  // first lap below - would run its course invisibly before anyone ever sees it start.
   startDelayMs: number
 }
 
-// Flat, un-blurred stroke — matches PlayerTrail's own trail rendering in GameBoard.tsx exactly,
+// Flat, un-blurred stroke - matches PlayerTrail's own trail rendering in GameBoard.tsx exactly,
 // rather than inventing a separate glowing look for the title.
 const TRAIL_STROKE_WIDTH = 3
 const HEAD_RADIUS = 5
@@ -26,33 +26,33 @@ const HEAD_RING_WIDTH = 1.5
 // round-over dead trail, rather than full brightness sitting still.
 const STATIC_TRAIL_OPACITY = 0.6
 // Trail length is a fraction of the SHORTER word's own perimeter, then shared as one base absolute
-// px length by both words — not a fraction applied independently to each word's own perimeter,
+// px length by both words - not a fraction applied independently to each word's own perimeter,
 // which is what let "Cycles" (the longer loop) carry a longer trail in absolute px, reaching
 // further past the shared corner and into "Light"'s territory. Measured against the actual
-// rendered boxes at render time (see rectPerimeter below) rather than a guessed px constant — a
+// rendered boxes at render time (see rectPerimeter below) rather than a guessed px constant - a
 // guessed value silently stops matching reality if the font/copy ever changes, with no error to
 // catch it.
 const TRAIL_LENGTH_FRACTION = 0.44
-// Cycles' own trail is nudged a hair past that shared base — small enough to still read as "the
+// Cycles' own trail is nudged a hair past that shared base - small enough to still read as "the
 // same length" at a glance, unlike TRAIL_LENGTH_FRACTION applied per-word above, which is the
 // disproportionate version this is deliberately not doing.
 const CYCLES_TRAIL_LENGTH_BONUS_FRACTION = 0.28
 // Both words share one lap duration rather than one px/sec speed, so their revolutions stay in
-// sync — "Cycles" has a longer perimeter than "Light", so it moves faster to cover it in the same
+// sync - "Cycles" has a longer perimeter than "Light", so it moves faster to cover it in the same
 // time instead of drifting in and out of phase with a shared px/sec pace.
 const LAP_DURATION_MS = 3200
 
-// Built by hand (moveTo/lineTo), sharp 90° corners — GameBoard.tsx's own trails are grid-based
+// Built by hand (moveTo/lineTo), sharp 90° corners - GameBoard.tsx's own trails are grid-based
 // with sharp turns (only strokeCap/strokeJoin='round' softens the stroke itself at each joint,
 // proportional to stroke width, not a deliberately-arced path), so this loop should turn the same
 // way rather than sweeping through a wide rounded corner. Also gives an exact, guaranteed start
 // point and initial direction rather than relying on addRRect's own convention: both words start
 // at their own top-left corner, "Light" heading right (clockwise) and "Cycles" heading down
-// (counter-clockwise) — a deliberate, matched pair of starting moves, not just "opposite windings"
+// (counter-clockwise) - a deliberate, matched pair of starting moves, not just "opposite windings"
 // wherever that happens to land.
 function wordPath(box: WordBox, clockwise: boolean) {
   // "Light" is clockwise with its seam on the right; "Cycles" is counter-clockwise with its seam
-  // on the left (see HeroTitleTrails below) — so the margin goes on the opposite horizontal side
+  // on the left (see HeroTitleTrails below) - so the margin goes on the opposite horizontal side
   // from whichever one that is, leaving the seam-facing edge untouched.
   const marginLeft = clockwise ? TRAIL_TEXT_MARGIN_OUTER : 0
   const marginRight = clockwise ? 0 : TRAIL_TEXT_MARGIN_OUTER
@@ -79,26 +79,26 @@ function wordPath(box: WordBox, clockwise: boolean) {
 
 // Exact perimeter of the same shape wordPath() draws (closed-form, no Skia needed): a plain
 // rectangle, sharp corners. Takes the already-margin-expanded width/height (see wordTrailSize
-// below), not the raw text box — the loop wordPath() actually draws is bigger than the measured
+// below), not the raw text box - the loop wordPath() actually draws is bigger than the measured
 // text by the TRAIL_TEXT_MARGIN_* constants.
 function rectPerimeter(width: number, height: number) {
   return 2 * (width + height)
 }
 
 // wordPath always adds TRAIL_TEXT_MARGIN_OUTER once to width (whichever single horizontal side
-// isn't the seam) and TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM to height — same total
+// isn't the seam) and TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM to height - same total
 // expansion regardless of which word.
 function wordTrailSize(box: WordBox) {
   return { width: box.width + TRAIL_TEXT_MARGIN_OUTER, height: box.height + TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM }
 }
 
 function WordTrail({ box, color, clockwise, active, trailLengthPx, startDelayMs }: { box: WordBox; color: string; clockwise: boolean; active: boolean; trailLengthPx: number; startDelayMs: number }) {
-  // Keyed on box's own fields, not its identity — onLayout hands back a fresh object every fire
+  // Keyed on box's own fields, not its identity - onLayout hands back a fresh object every fire
   // even when the measured values haven't actually changed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const path = useMemo(() => wordPath(box, clockwise), [box.x, box.y, box.width, box.height, clockwise])
 
-  // Measured once per path rebuild, not per frame — only t (below) drives per-frame motion.
+  // Measured once per path rebuild, not per frame - only t (below) drives per-frame motion.
   const { contour, length } = useMemo(() => {
     const c = Skia.ContourMeasureIter(path, true, 1).next()
     return { contour: c, length: c ? c.length() : 0 }
@@ -108,7 +108,7 @@ function WordTrail({ box, color, clockwise, active, trailLengthPx, startDelayMs 
 
   const t = useSharedValue(0)
   // False for the very first lap only: piece B (below) is the "wrapped" tail that reads as trail
-  // history from just before the loop's own start point — real history once the head has actually
+  // history from just before the loop's own start point - real history once the head has actually
   // been all the way around, but on the very first lap there IS no such history yet, so it must
   // stay suppressed or the trail would appear to already have a full-length tail the instant it
   // mounts, before the head has moved at all. Flips true forever the first time t wraps 1 -> 0.
@@ -123,7 +123,7 @@ function WordTrail({ box, color, clockwise, active, trailLengthPx, startDelayMs 
   }, [active])
 
   // hasLapped is mutated only here (never inside the effect above) so it's reset the same way it's
-  // set — reactively, off (t, active) — rather than splitting its two write sites across an effect
+  // set - reactively, off (t, active) - rather than splitting its two write sites across an effect
   // and a reaction, which is what trips react-hooks/immutability's cross-effect-mutation check.
   useAnimatedReaction(
     () => ({ t: t.value, active }),
@@ -136,12 +136,12 @@ function WordTrail({ box, color, clockwise, active, trailLengthPx, startDelayMs 
     }
   )
 
-  // The trailing segment as two [start, end] fraction windows on the same base path — two pieces
+  // The trailing segment as two [start, end] fraction windows on the same base path - two pieces
   // rather than one so the segment can straddle the 0/1 seam without negative fractions. Whichever
   // piece isn't needed collapses to a zero-length [0,0] window instead of swapping paths in/out.
   // Piece A alone (0 -> t) is what makes the very first lap grow in from nothing: at t=0 it's
   // zero-length, and it grows linearly up to segmentFraction before piece A's own window starts
-  // sliding — "no trail, then it grows to length, then follows at that distance," in one formula.
+  // sliding - "no trail, then it grows to length, then follows at that distance," in one formula.
   const startA = useDerivedValue(() => (t.value >= segmentFraction ? t.value - segmentFraction : 0))
   const endA = useDerivedValue(() => t.value)
   const startB = useDerivedValue(() => (hasLapped.value && t.value < segmentFraction ? 1 - (segmentFraction - t.value) : 0))
@@ -163,7 +163,7 @@ function WordTrail({ box, color, clockwise, active, trailLengthPx, startDelayMs 
       <Path path={path} start={startB} end={endB} style='stroke' strokeWidth={TRAIL_STROKE_WIDTH} strokeCap='round' strokeJoin='round' color={color} />
 
       <Circle c={headPos} r={HEAD_RADIUS} color={color} />
-      {/* Always white, not getContrastColor(color) — that picks black for light colors like
+      {/* Always white, not getContrastColor(color) - that picks black for light colors like
       yellow, which blends into the dark hero background instead of standing out against it. */}
       <Circle c={headPos} r={HEAD_RADIUS} style='stroke' strokeWidth={HEAD_RING_WIDTH} color='#ffffff' />
     </>

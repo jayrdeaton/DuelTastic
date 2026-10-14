@@ -129,7 +129,7 @@ describe('evaluateUnlockedIdsForProfile', () => {
 
   it('never includes a scope:"device" achievement (flawless_debut), regardless of the profile bucket', () => {
     // getProfileStatsView forces firstGameResult: null on the synthesized view, so this would
-    // already fail flawless_debut's own predicate — this test guards the scope filter itself, not
+    // already fail flawless_debut's own predicate - this test guards the scope filter itself, not
     // just that particular predicate's behavior, in case a future device-scoped achievement doesn't
     // happen to read a null-defaulted field.
     const unlocked = evaluateUnlockedIdsForProfile(profileStats({ vsCpu: { ...DEFAULT_PROFILE_STATS.vsCpu, played: 999, wins: 999 } }))

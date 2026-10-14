@@ -18,11 +18,11 @@ export interface SettingsDialogProps {
   rotation?: ViewRotation
   // Shows the "How to play" row that replays the intro. Off by default: the in-game (/game) dialog
   // leaves it out, since opening a full-screen guide over a live match (settings there already
-  // pauses play) is disruptive — Home and the lobby, where nothing is running, turn it on.
+  // pauses play) is disruptive - Home and the lobby, where nothing is running, turn it on.
   showHowToPlay?: boolean
 }
 
-// Thin adapter over @tastic/hud's shared settings shell — LightCycles' own Settings (lock
+// Thin adapter over @tastic/hud's shared settings shell - LightCycles' own Settings (lock
 // orientation, edge guard) is the only thing that varies here; everything else (sound, haptics,
 // appearance, update checking) is identical across every app using BaseSettingsDialog and lives
 // entirely inside that package now. Keeps this file's own external props unchanged so none of its

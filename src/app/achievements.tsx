@@ -26,9 +26,9 @@ interface ColorStatRowProps {
   fgMuted: string
 }
 
-// One row per color ever played, most-played first — the actual per-color win/loss/draw
+// One row per color ever played, most-played first - the actual per-color win/loss/draw
 // breakdown, not just a single derived "favorite"/"best" highlight. Structurally similar to
-// @tastic/hud's own StatRow (label/value either side) but with a leading color swatch — stays
+// @tastic/hud's own StatRow (label/value either side) but with a leading color swatch - stays
 // LightCycles-local since "a color swatch is the row's own identity" isn't a general stats concept
 // the shared package should carry an opinion on.
 function ColorStatRow({ hex, colorStats, isFavorite, isBest, fg, fgMuted }: ColorStatRowProps) {
@@ -56,7 +56,7 @@ interface ProfileRankingRowProps {
   fgMuted: string
 }
 
-// One row per saved profile, structurally matching ColorStatRow — a ProfileChip (the profile's own
+// One row per saved profile, structurally matching ColorStatRow - a ProfileChip (the profile's own
 // saved color and tag, not a live seat color/icon) + name in place of a hex swatch/label.
 function ProfileRankingRow({ ranking, fg, fgMuted }: ProfileRankingRowProps) {
   const { profile, wins, losses, draws, played } = ranking
@@ -79,7 +79,7 @@ function ProfileRankingRow({ ranking, fg, fgMuted }: ProfileRankingRowProps) {
 export default function AchievementsScreen() {
   const { dark, colors: themeColors } = useAutoPaperTheme()
   // Unlike index.tsx/lobby.tsx/game.tsx, this screen previously had no orientation handling at
-  // all — it always rendered right-side-up regardless of how the phone was actually being held,
+  // all - it always rendered right-side-up regardless of how the phone was actually being held,
   // the one screen in the app that didn't rotate along with everywhere else. rotateInsets remaps
   // the device's own raw (never-rotated) safe-area reading onto whichever edge it actually
   // corresponds to once FakeLandscapeView below visually rotates the content.
@@ -88,13 +88,13 @@ export default function AchievementsScreen() {
   const { stats, unlockedAchievements, resetAll } = useGameStats()
   const { profiles } = useProfiles()
   // Same ProfilePicker used to select a profile per-seat in the lobby (see @tastic/hud's
-  // PlayerSetupPanel, wired up in lobby.tsx) — reused here as-is rather than a bespoke picker, with
+  // PlayerSetupPanel, wired up in lobby.tsx) - reused here as-is rather than a bespoke picker, with
   // its null-selection row relabeled to "All Profiles" instead of the lobby's "Player" (see
   // ProfilePicker's own nullLabel/nullIcon props).
   // Needs its own host since this screen has no other popover on it to share one with.
   const profilePickerHost = usePopoverHost()
   // Only needed here for ColorStatRow/ProfileRankingRow below, which stay LightCycles-local (see
-  // their own doc comments) — @tastic/hud's own BaseStatsScreen/StatRow/StatSection/AchievementRow
+  // their own doc comments) - @tastic/hud's own BaseStatsScreen/StatRow/StatSection/AchievementRow
   // all derive this identical dark-mode formula internally now, so nothing else in this file needs
   // to compute or thread it through anymore.
   const fg = dark ? '#FFFFFF' : '#000000'
@@ -102,23 +102,23 @@ export default function AchievementsScreen() {
 
   // null = "All Profiles" (device-wide, today's original view). Self-heals to null on its own if the
   // selected profile gets deleted from another still-mounted screen (see expo-router's keep-prior-
-  // screens-mounted behavior) — effectiveProfileId below just stops matching any entry in `profiles`.
+  // screens-mounted behavior) - effectiveProfileId below just stops matching any entry in `profiles`.
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const effectiveProfileId = selectedProfileId && profiles.some((p) => p.id === selectedProfileId) ? selectedProfileId : null
   const profileBucket = effectiveProfileId ? (stats.profiles[effectiveProfileId] ?? DEFAULT_PROFILE_STATS) : null
   // The exact same StatsState-shaped object every stat helper/achievement predicate below already
-  // knows how to read — statsView === stats for "All Profiles", so every section that swaps `stats`
+  // knows how to read - statsView === stats for "All Profiles", so every section that swaps `stats`
   // for `statsView` collapses back to today's untouched behavior in that case.
   const statsView = profileBucket ? getProfileStatsView(profileBucket) : stats
 
-  // getOverallTotals is device-wide only (see its own caveat comment in statsEngine.ts) — a selected
+  // getOverallTotals is device-wide only (see its own caveat comment in statsEngine.ts) - a selected
   // profile routes through getProfileOverallTotals instead, never through statsView here.
   const overall = useMemo(() => (profileBucket ? getProfileOverallTotals(profileBucket) : getOverallTotals(stats)), [stats, profileBucket])
   const favoriteColor = useMemo(() => getFavoriteColor(statsView), [statsView])
   const bestColor = useMemo(() => getBestPerformingColor(statsView), [statsView])
   // Most-played first, so the favorite color (if any) naturally leads the list.
   const sortedColors = useMemo(() => Object.entries(statsView.colors).sort(([, a], [, b]) => b.played - a.played), [statsView.colors])
-  // Cross-profile comparison — only meaningful for "All Profiles" (see its own gated render below).
+  // Cross-profile comparison - only meaningful for "All Profiles" (see its own gated render below).
   const rankings = useMemo(() => getProfileRankings(profiles, stats.profiles), [profiles, stats.profiles])
 
   return (
@@ -140,7 +140,7 @@ export default function AchievementsScreen() {
         </StatSection>
 
         {/* All Profiles keeps today's original seat-framing (whoever sat where, regardless of
-      profile) — a selected profile switches to that profile's own personal record instead
+      profile) - a selected profile switches to that profile's own personal record instead
       (p1Wins+p2Wins is always THIS profile's own win count, see types/index.ts's ProfileStats doc
       comment), matching how every other section already frames things personally once a profile
       is selected. */}
@@ -170,7 +170,7 @@ export default function AchievementsScreen() {
           </StatSection>
         )}
 
-        {/* A leaderboard comparing every profile — inherently a cross-profile question, so it only
+        {/* A leaderboard comparing every profile - inherently a cross-profile question, so it only
       makes sense on "All Profiles"; once you've drilled into one profile's own tab it's answering
       a different question than the one you just asked. */}
         {effectiveProfileId === null && rankings.length > 0 && (

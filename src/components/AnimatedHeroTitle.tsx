@@ -10,8 +10,8 @@ import HeroTitleTrailsHost from './HeroTitleTrailsHost'
 
 export interface AnimatedHeroTitleProps {
   color: string
-  // The live theme's primary/secondary — whatever the players actually picked (see Theme.tsx),
-  // not a fixed pair — so "Light"'s trail always matches player 1's real color and "Cycles"'
+  // The live theme's primary/secondary - whatever the players actually picked (see Theme.tsx),
+  // not a fixed pair - so "Light"'s trail always matches player 1's real color and "Cycles"'
   // always matches player 2's, the same way the two mode buttons below already do.
   p1Color: string
   p2Color: string
@@ -22,24 +22,24 @@ const WORD_CYCLES = 'Cycles'
 const TOTAL_LETTERS = WORD_LIGHT.length + WORD_CYCLES.length
 
 // Trails start looping the instant they mount (see HeroTitleTrails) but stay hidden behind this
-// shared fade until the letters are most of the way settled — one "power on" beat once the wordmark
+// shared fade until the letters are most of the way settled - one "power on" beat once the wordmark
 // has mostly landed, rather than motion competing with letters still flying in.
 const TOTAL_STAGGER_MS = getStaggeredWordDuration(TOTAL_LETTERS)
 const TRAIL_FADE_DELAY_MS = Math.round(TOTAL_STAGGER_MS * 0.7)
 const TRAIL_FADE_DURATION_MS = 280
 
-// "Cycles" sits lower than "Light" and the two words touch with no horizontal gap — a real
+// "Cycles" sits lower than "Light" and the two words touch with no horizontal gap - a real
 // (layout, not transform) offset so onLayout's measured box stays truthful and the trail loops
 // actually land where the letters are.
 //
 // Both words share the same 44px line height, and TRAIL_TEXT_MARGIN_TOP/_BOTTOM (from
-// heroTitleGeometry.ts) add themselves to each word's trail loop — with HeroTitleTrails' loop
+// heroTitleGeometry.ts) add themselves to each word's trail loop - with HeroTitleTrails' loop
 // corners sharp (no radius, matching the real game's own grid-based trails), each word's straight
 // vertical trail edge spans the loop's FULL padded height (44 + TOP + BOTTOM) with nothing carved
 // off the ends, so that full height sits dead center on the shared horizontal seam. An offset of
 // exactly that padded height makes Light's trail edge and Cycles' trail edge touch at a single
 // point (a true kiss, zero gap); px above it is real clearance, px below it is deliberate overlap.
-// +1 here leaves the two loops' edges a hairline apart at that point, rather than overlapping —
+// +1 here leaves the two loops' edges a hairline apart at that point, rather than overlapping -
 // combined with HeroTitleTrails' own 3px stroke width this reads as the two strokes passing by
 // each other without ever touching: a true near-miss, not the graze a negative value (or a literal
 // 0 kiss) produces.

@@ -7,7 +7,7 @@ import { CpuDifficulty, Direction, GameState, GridCell, GridSize, Player, Player
 import { countReachableCells, distanceToNearestTarget } from './floodFill'
 import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, stepsFor } from './gameEngine'
 
-// The CPU always plays player 2 — see index.tsx/game.tsx, which fix the human at player 1 (and
+// The CPU always plays player 2 - see index.tsx/game.tsx, which fix the human at player 1 (and
 // suppress the face-to-face flip entirely) whenever gameMode is 'vsCpu'.
 export const CPU_PLAYER: Player = 2
 
@@ -17,7 +17,7 @@ export interface ChooseCpuDirectionParams {
   occupied: ReadonlySet<string>
   difficulty: CpuDifficulty
   random?: () => number
-  // How many cells THIS player itself advances this tick (see gameEngine.ts's stepsFor) — a
+  // How many cells THIS player itself advances this tick (see gameEngine.ts's stepsFor) - a
   // boosted CPU needs its own safety lookahead to walk the same number of cells ahead, or a
   // direction that's only safe for 1 cell but crashes on the 2nd (while boosted) would misscore as
   // safe. Defaults to 1 (today's behavior) for every existing call site/test.
@@ -25,14 +25,14 @@ export interface ChooseCpuDirectionParams {
   // Powerup awareness, both optional/defaulted so existing call sites/tests are unaffected.
   pickups?: PowerupPickup[]
   heldPowerup?: PowerupType | null
-  // Portal-aware pathing (see gameEngine.ts's buildPortalLookup) — optional/defaulted so existing
+  // Portal-aware pathing (see gameEngine.ts's buildPortalLookup) - optional/defaulted so existing
   // call sites/tests (predating portals) are unaffected.
   portals?: ReadonlyMap<string, GridCell>
-  // Tunnel-aware pathing (see gameEngine.ts's buildTunnelCellSet/buildTunnelOccupiedSet) — both
+  // Tunnel-aware pathing (see gameEngine.ts's buildTunnelCellSet/buildTunnelOccupiedSet) - both
   // optional/defaulted so existing call sites/tests (predating tunnels) are unaffected.
   tunnelCellSet?: ReadonlySet<string>
   tunnelOccupied?: ReadonlySet<string>
-  // The round's true Settings.wrapEdges — optional/defaulted (false) so existing call
+  // The round's true Settings.wrapEdges - optional/defaulted (false) so existing call
   // sites/tests are unaffected. This is the ground truth, not a per-difficulty decision: whether
   // it's actually USED is gated to 'hard' further down (see this function's own wrapAware local),
   // same "truth flows in, the difficulty-indexed logic decides how much of it to use" shape
@@ -44,14 +44,14 @@ export interface ChooseCpuDirectionParams {
 // occupied for the next step's own check (mirroring gameEngine.ts's tickGame sub-step semantics),
 // then flood-fills from wherever that lands. Unsafe (space -1, cell null) if any of those steps
 // would be out of bounds or already occupied. `portals` defaults to empty so every existing call
-// site/test stays byte-identical — a step landing on a portal cell redirects to its paired exit
+// site/test stays byte-identical - a step landing on a portal cell redirects to its paired exit
 // first, the same shape tickGame's own movement resolution uses, so the CPU's own lookahead can
 // never disagree with what actually happens to it on a real portal crossing. `tunnelCellSet`/
-// `tunnelOccupied` both default to empty for the same reason — a step landing on a tunnel cell is
+// `tunnelOccupied` both default to empty for the same reason - a step landing on a tunnel cell is
 // checked against `tunnelOccupied` instead of `occupied`, mirroring tickGame's own `isBlocked`;
 // without this the CPU would see every tunnel cell as unconditionally empty and could walk straight
 // into a live tunnel-trail hazard it has zero visibility into. `wrapEdges` defaults to false for the
-// same byte-identical-by-default reason — see this file's own ChooseCpuDirectionParams.wrapEdges
+// same byte-identical-by-default reason - see this file's own ChooseCpuDirectionParams.wrapEdges
 // comment for why this takes the raw ground truth rather than doing its own difficulty gating.
 function candidateSafety(head: GridCell, direction: Direction, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, cap: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), tunnelOccupied: ReadonlySet<string> = new Set(), wrapEdges: boolean = false): { space: number; cell: GridCell | null } {
   let cell = head
@@ -74,7 +74,7 @@ function candidateSafety(head: GridCell, direction: Direction, grid: GridSize, o
   return { space: countReachableCells(cell, grid, working, cap, portals, tunnelCellSet, tunnelWorking, wrapEdges), cell }
 }
 
-// True only when every legal (non-180°) direction is unsafe within the player's own lookahead —
+// True only when every legal (non-180°) direction is unsafe within the player's own lookahead -
 // used to decide when a held Shield is worth popping preemptively (see shouldCpuActivate) rather
 // than accepting a move that's about to crash anyway.
 function isCornered(player: PlayerState, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), tunnelOccupied: ReadonlySet<string> = new Set(), wrapEdges: boolean = false): boolean {
@@ -83,26 +83,26 @@ function isCornered(player: PlayerState, grid: GridSize, occupied: ReadonlySet<s
   return candidates.every((direction) => candidateSafety(head, direction, grid, occupied, ownSteps, CPU_FLOOD_FILL_CAP, portals, tunnelCellSet, tunnelOccupied, wrapEdges).space < 0)
 }
 
-// Scores each legal turn (i.e. not a 180° reversal — same rule the reducer enforces for human
+// Scores each legal turn (i.e. not a 180° reversal - same rule the reducer enforces for human
 // input, see gameEngine.ts) by how much open space it leads toward, via a flood fill from the
 // resulting cell. That's what keeps the bot from boxing itself in the way a purely-greedy "avoid
-// only the very next cell" bot would — a direction whose first step is safe but only opens onto a
+// only the very next cell" bot would - a direction whose first step is safe but only opens onto a
 // small pocket still scores low. Difficulty modulates how faithfully the bot follows that score,
-// not how fast it reacts (see useGameState.ts) — 'hard' always takes the best-scoring move,
+// not how fast it reacts (see useGameState.ts) - 'hard' always takes the best-scoring move,
 // 'normal'/'easy' sometimes settle for a worse one.
 //
 // Powerup-seeking (difficulty-gated via CPU_POWERUP_AWARENESS) only ever breaks a tie among
-// directions that already score within `seekTieToleranceCells` of the best — it can never pull the
+// directions that already score within `seekTieToleranceCells` of the best - it can never pull the
 // bot toward a pickup at the cost of a genuinely safer option, which is what keeps existing
 // survival behavior stable with powerups on.
 export function chooseCpuDirection({ player, grid, occupied, difficulty, random = Math.random, ownSteps = 1, pickups = [], heldPowerup = null, portals = new Map(), tunnelCellSet = new Set(), tunnelOccupied = new Set(), wrapEdges = false }: ChooseCpuDirectionParams): Direction {
   const head = player.trail[player.trail.length - 1]
   const candidates = ALL_DIRECTIONS.filter((direction) => !isOppositeDirection(direction, player.direction))
 
-  // Deliberately gated to 'hard' only, not a blanket read of the raw setting — easy/normal keep
+  // Deliberately gated to 'hard' only, not a blanket read of the raw setting - easy/normal keep
   // treating the edge as a wall even when it isn't, which reads as in-character weakness for those
   // tiers (see lobby.tsx's CPU_DIFFICULTY_OPTIONS: Drone/Bot aren't supposed to be sharp) rather
-  // than an unfinished feature, while MCP — this game's own "final boss" — is expected to actually
+  // than an unfinished feature, while MCP - this game's own "final boss" - is expected to actually
   // know the board.
   const wrapAware = wrapEdges && difficulty === 'hard'
 
@@ -111,7 +111,7 @@ export function chooseCpuDirection({ player, grid, occupied, difficulty, random 
   const maxSpace = scored[0].space
   const tiedForBest = scored.filter((s) => s.space === maxSpace)
   // Prefers continuing straight over an equally-good turn, purely so the bot doesn't zigzag
-  // through symmetric open space for no reason — ties on open-space score are common early in a
+  // through symmetric open space for no reason - ties on open-space score are common early in a
   // round, when nothing has carved up the grid yet.
   let best = (tiedForBest.find((s) => s.direction === player.direction) ?? tiedForBest[0]).direction
 
@@ -137,7 +137,7 @@ export function chooseCpuDirection({ player, grid, occupied, difficulty, random 
   }
 
   // 'easy': half the time, ignore the score entirely and take any move that at least survives
-  // this step — weak, but not so weak it feels broken by driving straight into a wall on purpose.
+  // this step - weak, but not so weak it feels broken by driving straight into a wall on purpose.
   const safeOptions = scored.filter((s) => s.space >= 0)
   if (safeOptions.length > 0 && random() < CPU_EASY_RANDOM_CHANCE) {
     const index = Math.min(safeOptions.length - 1, Math.floor(random() * safeOptions.length))
@@ -146,7 +146,7 @@ export function chooseCpuDirection({ player, grid, occupied, difficulty, random 
   return best
 }
 
-// Whether the CPU "notices" it's currently Hack'd and steers to compensate this tick — difficulty
+// Whether the CPU "notices" it's currently Hack'd and steers to compensate this tick - difficulty
 // gates how often, not whether it's even capable of it (see CPU_HACK_COMPENSATION_CHANCE's own
 // comment: this is a decision-quality knob, same as every other difficulty-gated choice here, not
 // a reaction-speed one). Chances of exactly 0 or 1 skip the random() call entirely, so 'easy'/'hard'
@@ -158,30 +158,30 @@ function shouldCompensateForHack(difficulty: CpuDifficulty, random: () => number
   return random() < chance
 }
 
-// Queues the CPU's chosen turn the same way a human input source would (see turnIntent.ts) —
+// Queues the CPU's chosen turn the same way a human input source would (see turnIntent.ts) -
 // applyTurnIntent still owns the actual reversal/no-op/phase/alive guards, so the bot can't bypass
 // those rules just by going through a different call site than human input does.
 //
-// chooseCpuDirection always reasons about the true best direction, uninverted — it has no idea
+// chooseCpuDirection always reasons about the true best direction, uninverted - it has no idea
 // whether it's currently Hack'd. Left uncorrected, blindly applying Hack's flip on top of that
 // choice (the same way a human's own swipe gets flipped) reliably steers the CPU into a wall
-// whenever the actual best escape happens to be lateral — a free kill, not an earned one. So
+// whenever the actual best escape happens to be lateral - a free kill, not an earned one. So
 // whether the CPU compensates is decided first (see shouldCompensateForHack): if it does, the flip
-// is skipped entirely (the two inversions — its own deliberate counter-steer and the automatic one
-// applyControlInversion would otherwise apply — would just cancel out, so there's nothing to
+// is skipped entirely (the two inversions - its own deliberate counter-steer and the automatic one
+// applyControlInversion would otherwise apply - would just cancel out, so there's nothing to
 // actually invert); if it doesn't "notice," the flip lands exactly as it would against unaware
 // human input.
 //
 // `occupied` defaults to a fresh build from `state.players`, same reasoning as tickGame's own
-// default in gameEngine.ts — useGameState.ts builds one set per tick and passes it to both this
+// default in gameEngine.ts - useGameState.ts builds one set per tick and passes it to both this
 // and the tickGame call that follows, instead of each rebuilding it independently. `portals`
-// trails `random` — existing call sites/tests pass `random` positionally, and a param inserted
+// trails `random` - existing call sites/tests pass `random` positionally, and a param inserted
 // before it would silently reinterpret those calls rather than fail loudly. The tunnel hazard set
-// isn't a param at all (unlike `occupied`) — it's scoped to CPU_PLAYER specifically (see
+// isn't a param at all (unlike `occupied`) - it's scoped to CPU_PLAYER specifically (see
 // buildTunnelOccupiedSet's own `excludePlayer` comment: the CPU's own underground trail is never a
 // hazard to itself, only the human's is), so it's derived fresh below rather than accepted as a
 // generic caller-supplied set the way `occupied` is. `wrapEdges` trails `portals` for the same
-// existing-call-site-safety reason and, like `occupied`/`portals`, is the raw per-round truth —
+// existing-call-site-safety reason and, like `occupied`/`portals`, is the raw per-round truth -
 // useGameState.ts passes settings.wrapEdges straight through with no difficulty pre-gating; see
 // chooseCpuDirection's own wrapAware local for where that gate actually lives.
 export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, buildTunnelCellSet(state.tunnels)), random?: () => number, portals: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false): GameState {
@@ -198,7 +198,7 @@ export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupi
   return applyTurnIntent(state, CPU_PLAYER, direction)
 }
 
-// Decides whether the CPU should activate its held powerup this tick — a difficulty-gated
+// Decides whether the CPU should activate its held powerup this tick - a difficulty-gated
 // heuristic layer (see CPU_POWERUP_AWARENESS) on top of the same flood-fill space assessment
 // chooseCpuDirection already uses, not a separate lookahead system. Each branch reasons only about
 // its own held type; there's no "pick the best of several held items" question since the
@@ -210,7 +210,7 @@ export function shouldCpuActivate(state: GameState, difficulty: CpuDifficulty, o
 
   const tunnelCellSet = buildTunnelCellSet(state.tunnels)
   const awareness = CPU_POWERUP_AWARENESS[difficulty]
-  // Same hard-only gate as chooseCpuDirection's own wrapAware — see that comment. Applied to BOTH
+  // Same hard-only gate as chooseCpuDirection's own wrapAware - see that comment. Applied to BOTH
   // players' space assessments below, not just the CPU's own: an edge-unaware read of the human's
   // space could misjudge them as cornered near a wrapped edge when they're not, which would be just
   // as wrong a reason to fire an offensive powerup as misjudging the CPU's own escape route would be.
@@ -221,7 +221,7 @@ export function shouldCpuActivate(state: GameState, difficulty: CpuDifficulty, o
   const cpuHead = cpu.trail[cpu.trail.length - 1]
   const humanHead = human.trail[human.trail.length - 1]
   // Each player's own space/cornering assessment needs the tunnel hazard scoped to THEM (see
-  // buildTunnelOccupiedSet's own `excludePlayer` comment) — the CPU's lookahead can't treat its
+  // buildTunnelOccupiedSet's own `excludePlayer` comment) - the CPU's lookahead can't treat its
   // own underground trail as a threat any more than tickGame's real collision check does.
   const tunnelOccupiedForCpu = buildTunnelOccupiedSet(state.players, tunnelCellSet, CPU_PLAYER)
   const tunnelOccupiedForHuman = buildTunnelOccupiedSet(state.players, tunnelCellSet, humanPlayer)
@@ -240,7 +240,7 @@ export function shouldCpuActivate(state: GameState, difficulty: CpuDifficulty, o
   return false
 }
 
-// Delegates to the exact same applyActivation a human's tap goes through — CPU-awareness is
+// Delegates to the exact same applyActivation a human's tap goes through - CPU-awareness is
 // purely a decision layer on top (see shouldCpuActivate), mirroring how applyCpuTurn above
 // delegates to applyTurnIntent.
 export function applyCpuActivation(state: GameState, difficulty: CpuDifficulty, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, buildTunnelCellSet(state.tunnels)), random?: () => number, portals: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false): GameState {

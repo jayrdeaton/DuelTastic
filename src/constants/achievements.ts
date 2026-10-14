@@ -7,7 +7,7 @@ import { getColorsWithAtLeastOneWin, getMaxSingleColorWins, getOverallTotals } f
 // alongside the catalog itself, rather than reaching into the package for one of the two.
 export { ACHIEVEMENT_TIER_COLORS } from '@tastic/achievements'
 
-// Total colors in @rific/auto-paper's ColorPicker `defaultColors` swatch grid — hardcoded rather
+// Total colors in @rific/auto-paper's ColorPicker `defaultColors` swatch grid - hardcoded rather
 // than imported, matching constants/game.ts's own precedent (DEFAULT_P1_COLOR/DEFAULT_P2_COLOR are
 // hardcoded hex literals with a cross-reference comment) so this stays a dependency-light,
 // Jest-safe constants file rather than importing a large multi-export UI package for one number.
@@ -18,7 +18,7 @@ const CPU_DIFFICULTY_LABEL: Record<CpuDifficulty, string> = { easy: 'Easy', norm
 
 // Not a tieredFamily: the three tiers here are three DIFFERENT predicates (one per difficulty),
 // not one value measured against three thresholds, and "progress toward beating Hard once" isn't a
-// meaningful fraction — so these are hand-written and deliberately carry no `progress`.
+// meaningful fraction - so these are hand-written and deliberately carry no `progress`.
 function beatCpuFamily(): AchievementDefinition[] {
   const titles: Record<CpuDifficulty, string> = { easy: 'Rookie Slayer', normal: 'Worthy Opponent', hard: 'Giant Slayer' }
   return (['easy', 'normal', 'hard'] as CpuDifficulty[]).map((difficulty) => ({
@@ -32,7 +32,7 @@ function beatCpuFamily(): AchievementDefinition[] {
 }
 
 export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
-  // First-game one-offs lead the list — they're the achievements a new player unlocks soonest, so
+  // First-game one-offs lead the list - they're the achievements a new player unlocks soonest, so
   // they shouldn't be buried under a dozen tiered entries that take much longer to clear.
   {
     id: 'first_game_played',
@@ -45,9 +45,9 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
   {
     id: 'first_ever_win',
     title: 'First Victory',
-    // Deliberately distinct from Beginner's Luck's copy below — this one's earnable any game,
+    // Deliberately distinct from Beginner's Luck's copy below - this one's earnable any game,
     // any time, not just the very first, so it shouldn't read as the same achievement.
-    description: 'Win a game — any game, any time.',
+    description: 'Win any game, any time.',
     // Bronze, not silver: this clears almost as fast as First Cycle for most players (a near-50%
     // shot every game), so it shouldn't share a tier with achievements that take real effort.
     tier: 'bronze',
@@ -62,7 +62,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     icon: 'star-circle',
     // The one true global exception (see types/index.ts's AchievementDefinition scope doc): reads
     // firstGameResult, a one-time device-wide flag set from seat 1's perspective on the very first
-    // round ever recorded, with no profile identity at all — always evaluated against the real
+    // round ever recorded, with no profile identity at all - always evaluated against the real
     // device StatsState regardless of which profile tab is selected on the achievements screen.
     scope: 'device',
     isUnlocked: (stats) => stats.firstGameResult === 'win'

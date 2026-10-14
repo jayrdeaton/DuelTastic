@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native'
 import { RoundOutcome } from '@/types'
 
 export interface RoundHistoryPipsProps {
-  // Oldest first — same order the score was actually built in, so the row reads left-to-right as
+  // Oldest first - same order the score was actually built in, so the row reads left-to-right as
   // a timeline rather than a shuffled tally.
   roundHistory: RoundOutcome[]
   p1Color: string
@@ -12,7 +12,7 @@ export interface RoundHistoryPipsProps {
 
 const DRAW_PIP_COLOR = '#9E9E9E'
 
-// One dot per round played this match/streak, colored by who took it — shared between
+// One dot per round played this match/streak, colored by who took it - shared between
 // OnboardingOverlay (over the board, between rounds) and game.tsx's quit-confirmation dialog (the
 // actual stakes of walking away), so "the score so far" always reads as the same row of dots
 // rather than two different representations of the same data.

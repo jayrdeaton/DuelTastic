@@ -7,7 +7,7 @@ import { Icon } from 'react-native-paper'
 // what's here only makes sense for this game. Plain Views and one Icon: no Skia, so it costs nothing to
 // mount over the Home screen.
 
-// Player 2's trail running into player 1's — the whole "don't touch a trail" rule in one picture.
+// Player 2's trail running into player 1's - the whole "don't touch a trail" rule in one picture.
 // Seat colors come from the live theme (primary = P1, secondary = P2), so it always matches the
 // colors the players have actually picked.
 export function GuideTrailCrash() {

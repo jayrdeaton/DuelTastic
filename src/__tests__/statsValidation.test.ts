@@ -46,7 +46,7 @@ describe('isValidStats', () => {
     expect(isValidStats({ ...DEFAULT_STATS, colors: { '#2196f3': { played: 1, wins: '1', losses: 0, draws: 0 } } })).toBe(false)
   })
 
-  it('does not reject an unrecognized colors key — a stray entry is inert, not corrupt', () => {
+  it('does not reject an unrecognized colors key - a stray entry is inert, not corrupt', () => {
     expect(isValidStats({ ...DEFAULT_STATS, colors: { 'not-a-hex': { played: 1, wins: 0, losses: 1, draws: 0 } } })).toBe(true)
   })
 
@@ -77,7 +77,7 @@ describe('isValidStats', () => {
     expect(isValidStats({ ...DEFAULT_STATS, bestDayStreak: '2' })).toBe(false)
   })
 
-  it('accepts a stats object with no profiles field at all — a pre-profiles stored blob', () => {
+  it('accepts a stats object with no profiles field at all - a pre-profiles stored blob', () => {
     const { profiles: _profiles, ...withoutProfiles } = DEFAULT_STATS
     expect(isValidStats(withoutProfiles)).toBe(true)
   })
@@ -100,7 +100,7 @@ describe('isValidStats', () => {
   // Documents the accepted pre-ship migration gap (see statsValidation.ts's own comment on
   // isValidProfileStatsMap): a profiles entry stored under the old flat {played,wins,losses,draws}
   // shape, from before ProfileStats gained the full vsCpu/twoPlayer/colors/day-streak fields, fails
-  // this check — and per the all-or-nothing philosophy shared with isValidColorsMap, that fails the
+  // this check - and per the all-or-nothing philosophy shared with isValidColorsMap, that fails the
   // whole stats blob, not just the profiles field.
   it('rejects an old flat-shaped profiles entry', () => {
     expect(isValidStats({ ...DEFAULT_STATS, profiles: { 'profile-1': { played: 3, wins: 2, losses: 1, draws: 0 } } })).toBe(false)

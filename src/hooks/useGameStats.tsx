@@ -14,7 +14,7 @@ interface RecordRoundOutcomeContext {
   profileIds?: Partial<Record<Player, string>>
 }
 
-// Returned by recordRoundOutcome below — `device` is the device-wide/"All Profiles" newly-unlocked
+// Returned by recordRoundOutcome below - `device` is the device-wide/"All Profiles" newly-unlocked
 // list (bare-id keyed), `profiles` is a parallel per-seat breakdown of whatever that seat's OWN
 // saved profile newly unlocked this round (only seats present in context.profileIds ever get an
 // entry). Kept as two separate lists rather than one merged one because game.tsx's two toast paths
@@ -29,14 +29,14 @@ interface GameStatsContextValue {
   unlockedAchievements: UnlockedAchievementsState
   // Updates both stats and achievement-unlock state in one call, persisting each, and returns
   // whatever newly unlocked this round (empty lists if nothing did) so the caller can surface a
-  // toast — see RecordRoundOutcomeResult above.
+  // toast - see RecordRoundOutcomeResult above.
   recordRoundOutcome: (outcome: RoundOutcome, context: RecordRoundOutcomeContext) => RecordRoundOutcomeResult
-  // Wipes both stored keys back to defaults — irreversible, so the caller is expected to confirm
+  // Wipes both stored keys back to defaults - irreversible, so the caller is expected to confirm
   // with the player first (see achievements.tsx's reset confirmation dialog).
   resetAll: () => void
-  // Permanently drops one profile's stats entry and its unlock history — used when deleting a
+  // Permanently drops one profile's stats entry and its unlock history - used when deleting a
   // profile (see app/profiles.tsx), so a deleted profile doesn't leave orphaned data behind.
-  // Irreversible, same as resetAll — the caller is expected to confirm with the player first.
+  // Irreversible, same as resetAll - the caller is expected to confirm with the player first.
   removeProfileStats: (profileId: string) => void
 }
 
@@ -47,7 +47,7 @@ interface Props {
 }
 
 // Every profile bucket, synthesized into the full StatsState-shaped view its achievements are
-// evaluated against — this is what gives per-profile tracking full parity with the device-wide
+// evaluated against - this is what gives per-profile tracking full parity with the device-wide
 // pass, since the exact same predicates run over both (see statsEngine.ts's getProfileStatsView).
 function profileViews(stats: StatsState): Record<string, StatsState> {
   return Object.fromEntries(Object.entries(stats.profiles).map(([profileId, bucket]) => [profileId, getProfileStatsView(bucket)]))

@@ -14,7 +14,7 @@ const DAY_1 = new Date(2026, 7, 24, 10, 0)
 const DAY_1_LATER = new Date(2026, 7, 24, 20, 0)
 const DAY_2 = new Date(2026, 7, 25, 0, 1)
 const DAY_3 = new Date(2026, 7, 26, 9, 0)
-const DAY_5 = new Date(2026, 7, 28, 9, 0) // skips day 4 — breaks the streak
+const DAY_5 = new Date(2026, 7, 28, 9, 0) // skips day 4 - breaks the streak
 const JAN_31 = new Date(2027, 0, 31, 9, 0)
 const FEB_1 = new Date(2027, 1, 1, 9, 0) // consecutive across a month boundary
 
@@ -26,7 +26,7 @@ function twoPlayer(outcome: RoundOutcome, prev: StatsState = DEFAULT_STATS) {
   return applyRoundOutcome(prev, outcome, { gameMode: 'twoPlayer', cpuDifficulty: 'normal', colors: COLORS }, DAY_1)
 }
 
-describe('applyRoundOutcome — vsCpu mode', () => {
+describe('applyRoundOutcome - vsCpu mode', () => {
   it('records a human win', () => {
     const next = vsCpu(WIN_P1)
     expect(next.vsCpu).toMatchObject({ played: 1, wins: 1, losses: 0, draws: 0, currentWinStreak: 1, bestWinStreak: 1 })
@@ -74,7 +74,7 @@ describe('applyRoundOutcome — vsCpu mode', () => {
   })
 })
 
-describe('applyRoundOutcome — twoPlayer mode', () => {
+describe('applyRoundOutcome - twoPlayer mode', () => {
   it('records seat wins without touching vsCpu', () => {
     const next = twoPlayer(WIN_P1)
     expect(next.twoPlayer).toMatchObject({ played: 1, p1Wins: 1, p2Wins: 0, draws: 0 })
@@ -87,7 +87,7 @@ describe('applyRoundOutcome — twoPlayer mode', () => {
   })
 })
 
-describe('applyRoundOutcome — color tracking (both seats, both modes)', () => {
+describe('applyRoundOutcome - color tracking (both seats, both modes)', () => {
   it('attributes win/loss to each seat color on a vsCpu round', () => {
     const next = vsCpu(WIN_P1)
     expect(next.colors[P1_COLOR]).toEqual({ played: 1, wins: 1, losses: 0, draws: 0 })
@@ -113,7 +113,7 @@ describe('applyRoundOutcome — color tracking (both seats, both modes)', () => 
   })
 })
 
-describe('applyRoundOutcome — profile tracking', () => {
+describe('applyRoundOutcome - profile tracking', () => {
   function withProfiles(outcome: RoundOutcome, profileIds: Partial<Record<1 | 2, string>>, prev: StatsState = DEFAULT_STATS) {
     return applyRoundOutcome(prev, outcome, { gameMode: 'twoPlayer', cpuDifficulty: 'normal', colors: COLORS, profileIds }, DAY_1)
   }
@@ -149,7 +149,7 @@ describe('applyRoundOutcome — profile tracking', () => {
   it('vsCpu mode only ever bumps seat 1 profile, never a phantom CPU-seat entry', () => {
     const next = vsCpu(WIN_P1, DEFAULT_STATS, 'normal')
     // vsCpu(...) helper never passes profileIds, so this also covers the "absent" no-op case above
-    // for vsCpu specifically — asserting it here too since CPU-seat leakage is the actual risk.
+    // for vsCpu specifically - asserting it here too since CPU-seat leakage is the actual risk.
     expect(next.profiles).toEqual({})
     const withProfile = applyRoundOutcome(DEFAULT_STATS, WIN_P1, { gameMode: 'vsCpu', cpuDifficulty: 'normal', colors: COLORS, profileIds: { 1: 'alice' } }, DAY_1)
     expect(Object.keys(withProfile.profiles)).toEqual(['alice'])
@@ -164,7 +164,7 @@ describe('applyRoundOutcome — profile tracking', () => {
 
   it("p1Wins/p2Wins reflect a profile's OWN wins regardless of which seat they occupied that round", () => {
     let stats = applyRoundOutcome(DEFAULT_STATS, WIN_P1, { gameMode: 'twoPlayer', cpuDifficulty: 'normal', colors: COLORS, profileIds: { 1: 'alice' } }, DAY_1)
-    // Alice moves to seat 2 for the next round and wins from there — still her own win total.
+    // Alice moves to seat 2 for the next round and wins from there - still her own win total.
     stats = applyRoundOutcome(stats, WIN_P2, { gameMode: 'twoPlayer', cpuDifficulty: 'normal', colors: COLORS, profileIds: { 2: 'alice' } }, DAY_1)
     expect(stats.profiles.alice.twoPlayer).toEqual({ played: 2, p1Wins: 1, p2Wins: 1, draws: 0 })
   })
@@ -200,14 +200,14 @@ describe('getProfileStatsView / getProfileOverallTotals', () => {
 
   it('getProfileOverallTotals derives a correct losses count even when wins and losses differ (unlike getOverallTotals, which only works device-wide)', () => {
     // 10 played, 6 wins, 1 draw -> 3 losses. getOverallTotals' own mirroring-wins-into-losses
-    // formula would incorrectly report 6 losses here — this is exactly the trap its own caveat
+    // formula would incorrectly report 6 losses here - this is exactly the trap its own caveat
     // comment warns about.
     const bucket = profileStatsWithTwoPlayerRecord(10, 6, 1)
     expect(getProfileOverallTotals(bucket)).toEqual({ played: 10, wins: 6, losses: 3, draws: 1 })
   })
 })
 
-describe('applyRoundOutcome — distinctDaysPlayed', () => {
+describe('applyRoundOutcome - distinctDaysPlayed', () => {
   it('increments on the first round ever', () => {
     const next = applyRoundOutcome(DEFAULT_STATS, WIN_P1, { gameMode: 'vsCpu', cpuDifficulty: 'normal', colors: COLORS }, DAY_1)
     expect(next.distinctDaysPlayed).toBe(1)
@@ -227,7 +227,7 @@ describe('applyRoundOutcome — distinctDaysPlayed', () => {
   })
 })
 
-describe('applyRoundOutcome — day streak', () => {
+describe('applyRoundOutcome - day streak', () => {
   function playOn(date: Date, prev: StatsState = DEFAULT_STATS) {
     return applyRoundOutcome(prev, WIN_P1, { gameMode: 'vsCpu', cpuDifficulty: 'normal', colors: COLORS }, date)
   }
@@ -256,7 +256,7 @@ describe('applyRoundOutcome — day streak', () => {
     let stats = playOn(DAY_1)
     stats = playOn(DAY_2, stats)
     stats = playOn(DAY_3, stats)
-    stats = playOn(DAY_5, stats) // skips DAY_4 — breaks the streak
+    stats = playOn(DAY_5, stats) // skips DAY_4 - breaks the streak
     expect(stats.currentDayStreak).toBe(1)
     expect(stats.bestDayStreak).toBe(3)
   })
@@ -268,7 +268,7 @@ describe('applyRoundOutcome — day streak', () => {
   })
 })
 
-describe('applyRoundOutcome — firstGameResult', () => {
+describe('applyRoundOutcome - firstGameResult', () => {
   it('is set from the very first round played, from seat 1s perspective', () => {
     expect(vsCpu(WIN_P1).firstGameResult).toBe('win')
     expect(vsCpu(DRAW).firstGameResult).toBe('draw')

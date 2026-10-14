@@ -20,19 +20,19 @@ interface Props {
 export function Theme({ children }: Props) {
   // Redux-backed now (redux/store.ts's `theme` key, @rific/auto-paper's own createThemeReducer,
   // seeded with this app's own DEFAULT_P1_COLOR/DEFAULT_P2_COLOR and 'dark' appearance) rather than
-  // a local AsyncStorage read — PersistGate (see components/Providers.tsx) already blocks the whole
+  // a local AsyncStorage read - PersistGate (see components/Providers.tsx) already blocks the whole
   // app from rendering until redux-persist has rehydrated, so `settings` here is already the real
   // persisted value (or the seeded default above) from this component's very first render, with no
   // async load state of its own to track anymore.
   const settings = useSelector((state: RootState) => state.theme, shallowEqual)
   const dispatch = useDispatch<AppDispatch>()
 
-  // A one-shot callback, not a boolean, so there's nothing for useSplashReady to watch — PersistGate
+  // A one-shot callback, not a boolean, so there's nothing for useSplashReady to watch - PersistGate
   // already resolved `settings` by the time Theme mounts (see above), but that's necessary, not
   // sufficient: AutoPaperProvider itself renders null internally until it's actually computed a
   // theme object from that settings value, a separate, later step from Theme just mounting with
-  // valid settings in hand. Marking this gate ready unconditionally at mount — as this file used to,
-  // unlike every sibling app's own Theme.tsx — could let the splash screen lift while
+  // valid settings in hand. Marking this gate ready unconditionally at mount - as this file used to,
+  // unlike every sibling app's own Theme.tsx - could let the splash screen lift while
   // AutoPaperProvider was still rendering null underneath it. This instead marks the 'theme' gate
   // (see src/utils/splashGate.ts) only once AutoPaperProvider itself reports a real theme.
   const onReady = useCallback(() => markSplashReady('theme'), [])
@@ -41,11 +41,11 @@ export function Theme({ children }: Props) {
   // straight to Redux on every change, matching Snake's own Theme.tsx. This used to deliberately
   // persist only `appearance`, never `color`: it fired on every live theme change regardless of
   // *why* the color changed, which meant a profile-seat's clash-swap or manual recolor (a
-  // transient, per-match override — see lobby.tsx) silently overwrote the cold-boot color default
+  // transient, per-match override - see lobby.tsx) silently overwrote the cold-boot color default
   // with a color the profile itself never saved, and a CPU seat's color fought over the same slot
   // as a human guest's. That's no longer a concern now that lobby.tsx owns a *dedicated* "remember
   // this for next time" memory of its own (redux/seatColorsSlice.ts's lastGuestColor/lastCpuColor,
-  // written explicitly wherever a guest/CPU color actually changes) — this slice is now just a
+  // written explicitly wherever a guest/CPU color actually changes) - this slice is now just a
   // harmless, redundant boot-seed of whatever the live theme last was, exactly like Snake's own
   // `theme` slice.
   const onChange = useCallback((next: ThemeSettings) => dispatch(themeActions.initialize(next)), [dispatch])
@@ -54,12 +54,12 @@ export function Theme({ children }: Props) {
 
   return (
     // reanimated={Reanimated} is what makes Dialog's own animatedStyle prop do anything at all (see
-    // its source: `reanimated && animatedStyle ? <reanimated.View style={animatedStyle}>...` —
+    // its source: `reanimated && animatedStyle ? <reanimated.View style={animatedStyle}>...` -
     // without this injection, animatedStyle is silently a no-op on every Dialog in the app, not
     // just one of them). Metro doesn't rewrite a require()-in-try/catch into its module graph for
     // this package's ESM build, so the already-imported peer module has to be handed in explicitly
     // like this instead of @rific/auto-paper importing it directly.
-    // Applies MONO_FONT to every Paper typography variant app-wide — previously threaded through
+    // Applies MONO_FONT to every Paper typography variant app-wide - previously threaded through
     // fontFamily: MONO_FONT on nearly every individual Text/TextInput this app renders (achievements,
     // ProfileChip, ProfilePicker, ProfilesManager, LabeledDropdown, OnboardingOverlay); those explicit
     // overrides are now redundant (though harmless if any remain) since the theme itself supplies it.

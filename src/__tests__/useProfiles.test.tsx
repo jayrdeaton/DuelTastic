@@ -26,11 +26,11 @@ jest.mock('expo-modules-core', () => {
 })
 
 // `profiles`/`profileSelection`/`profileExtensions` all live in the real Redux `store` now (see
-// redux/store.ts) rather than per-component useState, so a real <ReduxProvider> is required — same
+// redux/store.ts) rather than per-component useState, so a real <ReduxProvider> is required - same
 // reasoning as _layout.test.tsx elsewhere in the fleet (see Snake's own version). Because `store` is
 // a module-level singleton, it does NOT reset itself between renderHook mounts the way the old
 // useState-backed provider did, so each test below resets the slices it depends on in beforeEach
-// instead of the old pattern of mounting a second provider to simulate an app relaunch — genuine
+// instead of the old pattern of mounting a second provider to simulate an app relaunch - genuine
 // cross-relaunch persistence is now redux-persist's own well-tested responsibility (see store.ts's
 // persistReducer, no blacklist), not something this file re-verifies.
 //
@@ -48,7 +48,7 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 // Waits out ProfilesProvider's own one-time mount effect (resolveInitialProfiles, see
-// useProfiles.tsx) before a test starts dispatching — otherwise that effect's own
+// useProfiles.tsx) before a test starts dispatching - otherwise that effect's own
 // setAll(<mount-time snapshot>) could resolve later and clobber a write the test made in between.
 async function mountProfiles() {
   const rendered = await renderHook(() => useProfiles(), { wrapper })
@@ -146,7 +146,7 @@ describe('useProfiles', () => {
     const updated = result.current.profiles.find((p) => p.id === created.id)
     expect(updated?.keyScheme).toBe('arrows')
     expect(updated?.name).toBe('Ada')
-    // keyScheme is local-only — @tastic/profile's own `profiles` slice (the shared/base roster)
+    // keyScheme is local-only - @tastic/profile's own `profiles` slice (the shared/base roster)
     // must never see it.
     expect(store.getState().profiles.find((p) => p.id === created.id)).not.toHaveProperty('keyScheme')
   })
@@ -171,14 +171,14 @@ describe('useProfiles', () => {
     expect(result.current.profiles.map((p) => p.id)).not.toContain(created.id)
     // Regression coverage for the stale-closure bug class separate Redux slices rule out (see
     // profileExtensionsSlice's own doc): deleting a profile must clean up its keyScheme extension
-    // too, not just the base roster entry — otherwise a future profile reusing the same id would
+    // too, not just the base roster entry - otherwise a future profile reusing the same id would
     // silently resurrect a deleted keyScheme.
     expect(store.getState().profileExtensions[created.id]).toBeUndefined()
   })
 
   it('falls back to the default keyScheme for a profile with no local extension entry', async () => {
-    // Simulates a profile that arrived via the shared App Group roster — from a sibling app, or
-    // another install of this one — that has never had a keyScheme set locally on THIS device.
+    // Simulates a profile that arrived via the shared App Group roster - from a sibling app, or
+    // another install of this one - that has never had a keyScheme set locally on THIS device.
     // profilesActions.setAll bypasses createProfile entirely, so no profileExtensions entry exists.
     const seeded = { color: '#10B981', createdAt: 1, id: 'shared-only-profile', name: 'Grace', tag: 'GH', updatedAt: 1 }
     store.dispatch(profilesActions.setAll([seeded]))

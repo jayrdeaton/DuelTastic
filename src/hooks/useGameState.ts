@@ -5,9 +5,9 @@ import { Direction, OrientationMode, Player, Settings } from '@/types'
 import { applyCpuActivation, applyCpuTurn } from '@/utils/cpuAi'
 import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/utils/gameEngine'
 
-// orientationMode/p1OnRight are passed separately rather than read off `settings` — they're
+// orientationMode/p1OnRight are passed separately rather than read off `settings` - they're
 // derived live from the device's own physical tilt (see useOrientationState), not a stored
-// setting. safeAreaInsetsPx defaults to all-zero — see GameRound's own comment on GameRoundProps
+// setting. safeAreaInsetsPx defaults to all-zero - see GameRound's own comment on GameRoundProps
 // for why the caller is what decides whether it's actually the device's real insets or zeroed out.
 // paused (Settings, the quit confirmation or the Paused dialog is open, see GameRound) halts the tick
 // loop below without leaving 'playing'.
@@ -15,7 +15,7 @@ export function useGameState(width: number, height: number, settings: Settings, 
   const cellPx = GRID_CELL_PX[settings.gridSizeTier]
 
   const [state, setState] = useState(() => createInitialGameState(width, height, orientationMode, colors, cellPx, p1OnRight, settings.arenaVariant, safeAreaInsetsPx))
-  // The interval the *last* tick actually advanced by — exposed so the board can animate each
+  // The interval the *last* tick actually advanced by - exposed so the board can animate each
   // player's head gliding into its new cell over exactly that duration (see GameBoard.tsx) instead
   // of snapping, which is what made a low-ish tick rate read as choppy even though the underlying
   // step rate was unchanged. Seeded from the base tier (scaled to the active cell size) so the very
@@ -74,7 +74,7 @@ export function useGameState(width: number, height: number, settings: Settings, 
 
       if (dt >= intervalMs) {
         lastTickRef.current = timestamp
-        // Capped before accumulating into round time — see MAX_TICK_DT_MS's own comment. The
+        // Capped before accumulating into round time - see MAX_TICK_DT_MS's own comment. The
         // *trigger* check above still uses the real dt (so a tick fires immediately once a stall
         // resumes); only how much of it counts toward the ramp is bounded.
         elapsedRef.current += Math.min(dt, MAX_TICK_DT_MS)
@@ -83,21 +83,21 @@ export function useGameState(width: number, height: number, settings: Settings, 
         const enabledPowerups = settings.enabledPowerups
         setState((s) => {
           if (settings.gameMode !== 'vsCpu') return tickGame(s, undefined, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
-          // Built once and reused for both — see buildOccupiedSet's own comment on why this is
+          // Built once and reused for both - see buildOccupiedSet's own comment on why this is
           // always safe, not just an optimization that happens to hold today. The CPU decides its
           // turn for THIS tick immediately before it's applied, same cadence a human's queued
           // swipe would land at, so the bot's move and the tick that consumes it commit together.
-          // Activation is decided first, ahead of the turn — a Prune activation can shrink a
+          // Activation is decided first, ahead of the turn - a Prune activation can shrink a
           // trail, so `occupied` is rebuilt fresh afterward rather than reused stale from before
           // it. `obstacles`/`tunnels` never change mid-round (see GameState's own comment), so
           // every rebuild here threads the same `s`/`afterActivation` state's own fields through
-          // unchanged — `tunnelCellSet` in particular is genuinely round-constant, not just
+          // unchanged - `tunnelCellSet` in particular is genuinely round-constant, not just
           // per-tick-constant, so it's computed once up front rather than per rebuild. Unlike
-          // `occupied`, the tunnel hazard set is never built here at all — it's player-scoped (see
+          // `occupied`, the tunnel hazard set is never built here at all - it's player-scoped (see
           // buildTunnelOccupiedSet's own `excludePlayer` comment), so tickGame/applyCpuTurn/
           // applyCpuActivation each derive their own view from `state.players` internally rather
           // than sharing one merged set the way `occupied` is shared. `portalLookup` is NOT
-          // threaded explicitly the same way either — every callee below already defaults it from
+          // threaded explicitly the same way either - every callee below already defaults it from
           // `state.portals` on its own, and a portal pair costs nothing to rebuild (see
           // buildPortalLookup's own comment), so there's no benefit to doing it here that would
           // offset the extra positional-arg noise of passing it through explicitly.

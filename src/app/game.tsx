@@ -34,26 +34,26 @@ import { AchievementDefinition, Direction, GameMode, GamePhase, OrientationMode,
 import { humanPlayersFor } from '@/utils/gameParams'
 import { safeBack } from '@/utils/navigation'
 
-// A stable, referentially-constant all-zero insets object — see safeAreaInsetsPx's own comment
+// A stable, referentially-constant all-zero insets object - see safeAreaInsetsPx's own comment
 // below for why the board passes this instead of the device's real insets whenever it isn't
 // actually bleeding under them.
 const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 }
 
 interface GameRoundProps {
-  // The board's one-time DESIGN measurement (see GameScreen's boardSize.design) — read once, at
+  // The board's one-time DESIGN measurement (see GameScreen's boardSize.design) - read once, at
   // mount, via GameRound's own lazy useState below, same treatment as orientationMode/p1OnRight
   // right below. This is what the grid itself is built from (see useGameState) and never changes
   // again for the life of the match: the actual cols/rows a round plays out on can't change without
   // invalidating every trail cell already laid down in that coordinate space, so a side shouldn't
-  // swap out from under a player mid-round just because the phone got bumped or picked up — freezing
+  // swap out from under a player mid-round just because the phone got bumped or picked up - freezing
   // at mount is a gameplay-fairness guard, not a workaround for OS rotation (the app is
   // portrait-locked at the OS level, so there's no real rotation to fight in the first place). The
-  // floating dialogs (OnboardingOverlay, RoundOverDialog, ...) are a different story — see
+  // floating dialogs (OnboardingOverlay, RoundOverDialog, ...) are a different story - see
   // MatchOverlays, rendered as this component's own sibling specifically so their live rotation
   // tracking can never cascade a re-render into the board/touch subtree below.
   width: number
   height: number
-  // The SAME container's current LIVE measurement (see GameScreen's boardSize.live) — unlike
+  // The SAME container's current LIVE measurement (see GameScreen's boardSize.live) - unlike
   // width/height above, these are deliberately NOT frozen into local state: they flow straight
   // through on every render so the live transform:scale below (see this component's own comment
   // next to it) can track the window resizing/gutter changing in real time, without the frozen grid
@@ -61,7 +61,7 @@ interface GameRoundProps {
   liveWidth: number
   liveHeight: number
   // The device's real safe-area insets in px, but ONLY when this round is actually bleeding under
-  // them (extendIntoSafeArea — see GameScreen's own boardArea style) — GameScreen passes all-zero
+  // them (extendIntoSafeArea - see GameScreen's own boardArea style) - GameScreen passes all-zero
   // otherwise, since the board's own pixel container already stops short of the inset in that case
   // and there's nothing left for a pickup to need to avoid. Frozen at mount same as width/height
   // above, and fed straight through to useGameState so a pickup never spawns somewhere a notch/
@@ -70,37 +70,37 @@ interface GameRoundProps {
   safeAreaInsetsPx: { top: number; right: number; bottom: number; left: number }
   settings: Settings
   colors: Record<Player, string>
-  // Seat -> saved profile name, only for seats that had one selected at lobby handoff — see
+  // Seat -> saved profile name, only for seats that had one selected at lobby handoff - see
   // GameScreen's own profileSnapshot comment for why this is frozen once, not read live.
   profileNames: Partial<Record<Player, string>>
-  // Seat -> saved profile — threaded alongside profileNames purely so MatchOverDialog can mark each
+  // Seat -> saved profile - threaded alongside profileNames purely so MatchOverDialog can mark each
   // achievement row with whichever seat actually earned it (its ProfileChip), once both seats can
   // unlock in the same match (two-player).
   seatProfiles: Partial<Record<Player, Profile>>
   // Seat -> whatever newly unlocked on the MOST RECENT round recorded, for that seat's own rotated
-  // card — that seat's own profile's unlocks, plus any device-wide achievement broadcast into BOTH
+  // card - that seat's own profile's unlocks, plus any device-wide achievement broadcast into BOTH
   // seats (a device-wide unlock has no single owner, but each seat still needs to see it facing
-  // them the same as a profile-scoped one — see GameScreen's own handleRoundOutcome). Overwritten
+  // them the same as a profile-scoped one - see GameScreen's own handleRoundOutcome). Overwritten
   // every round, even to {}, so a quiet round always clears out the previous one's badge before
-  // RoundOverDialog/MatchOverDialog next reads it. Two-player mode only — vsCpu routes every unlock
+  // RoundOverDialog/MatchOverDialog next reads it. Two-player mode only - vsCpu routes every unlock
   // (device or profile) through its own single toast instead, via @rific/toaster.
   profileUnlockToast: Partial<Record<Player, AchievementDefinition[]>>
-  // Always 'faceToFace' — see GameScreen's own comment on why the board never uses 'sideBySide'.
+  // Always 'faceToFace' - see GameScreen's own comment on why the board never uses 'sideBySide'.
   orientationMode: OrientationMode
-  // Meaningless alongside a permanently-'faceToFace' orientationMode — see GameScreen's own comment.
+  // Meaningless alongside a permanently-'faceToFace' orientationMode - see GameScreen's own comment.
   p1OnRight: boolean
   // Owned by GameScreen, not this component, so it survives whatever GameRound itself does across
-  // rotations — see onRoundOutcome.
+  // rotations - see onRoundOutcome.
   roundHistory: RoundOutcome[]
   // Reports a just-finished round upward instead of GameRound tracking its own roundHistory.
   onRoundOutcome: (outcome: RoundOutcome) => void
 }
 
 // Split out from GameScreen so useGameState's lazy initial state (see useGameState.ts) is always
-// built from a real, already-measured board size — mounting it before the board area's onLayout
+// built from a real, already-measured board size - mounting it before the board area's onLayout
 // ever fires would lock the grid to a throwaway placeholder size forever, since that initializer
 // only ever runs once per mount. Mounted exactly once for the life of a match (see GameScreen,
-// which measures the board area once and never revisits it) — width/height/orientationMode/
+// which measures the board area once and never revisits it) - width/height/orientationMode/
 // p1OnRight below are all frozen at that single mount via lazy useState (redundant with
 // GameScreen's own freeze of the values it passes down, but cheap insurance against this
 // component ever receiving something other than a stable value), so a later rotation never tears
@@ -113,7 +113,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const [p1OnRight] = useState(p1OnRightAtMount)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Only asked once there's an actual score to lose (the pip row itself uses the same gate, see
-  // OnboardingOverlay) — the very first round's back button still exits immediately, since there's
+  // OnboardingOverlay) - the very first round's back button still exits immediately, since there's
   // nothing yet for a confirmation to protect.
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => roundHistory.length > 0, safeBack)
   // Leaving the app mid-match (home, app switch, a phone call, Control Center) latches a pause that
@@ -123,7 +123,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const paused = settingsOpen || confirmVisible || backgroundPaused
   const { state, turn, activate, beginPlaying, rematch, tickIntervalMs, cellPx } = useGameState(width, height, settings, colors, orientationMode, p1OnRight, safeAreaInsetsPx, paused)
 
-  // Live, not frozen (see liveWidth/liveHeight's own doc on GameRoundProps) — recomputed every
+  // Live, not frozen (see liveWidth/liveHeight's own doc on GameRoundProps) - recomputed every
   // render as the window resizes/gutter changes, so the board+touch subtree below visibly tracks
   // it. Math.min, not independent X/Y scale, so a live aspect ratio that's drifted from the design
   // one (a much shorter or narrower window than the round actually started in) still scales the
@@ -132,7 +132,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // unit, rather than re-deriving cols/rows/cellPx from the live size, is what actually makes this
   // safe: TouchInputLayer's own zones are already percentage-of-parent/pan-translation based, not
   // absolute-pixel (see that file's own doc), so scaling both the canvas and the touch zones
-  // together by the exact same factor can never let them disagree about where anything is — unlike
+  // together by the exact same factor can never let them disagree about where anything is - unlike
   // the "freeze only the grid, leave the container live" approach width/height's own comment above
   // describes as tried and rejected, which let the two resize independently instead.
   const boardScale = Math.min(liveWidth / width, liveHeight / height)
@@ -140,11 +140,11 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const humanPlayers = useMemo(() => humanPlayersFor(settings), [settings])
   const controlInverted = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.control !== null, 2: state.players[2].effects.control !== null }), [state.players])
   // Fed to TouchInputLayer so it can gate turn feedback (sound/haptic) on a swipe that would
-  // actually turn the player — see isEffectiveTurn.
+  // actually turn the player - see isEffectiveTurn.
   const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: state.players[1].direction, 2: state.players[2].direction }), [state.players])
 
   // The persisted, cross-round defaults (not this round's already-locked-in `settings` prop above)
-  // — matches every other screen's settings button, which always edits "next time," never the
+  // - matches every other screen's settings button, which always edits "next time," never the
   // round already underway.
   const { settings: userSettings, setSettings: setUserSettings } = useSettings()
   const dispatch = useDispatch<AppDispatch>()
@@ -156,7 +156,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   }, [vibration])
 
   // Crash fires the instant the round ends (matching the board freezing on that same frame);
-  // win/draw fire later, alongside the result dialog itself — see the two effects below.
+  // win/draw fire later, alongside the result dialog itself - see the two effects below.
   const playCrash = useGameSound(require('../../assets/sounds/crash.wav'))
   const playWin = useGameSound(require('../../assets/sounds/win.wav'))
   const playDraw = useGameSound(require('../../assets/sounds/draw.wav'))
@@ -165,7 +165,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     soundRef.current = { playCrash, playWin, playDraw }
   }, [playCrash, playWin, playDraw])
 
-  // roundHistory itself lives in GameScreen now (see GameRoundProps) — this just reports a
+  // roundHistory itself lives in GameScreen now (see GameRoundProps) - this just reports a
   // just-finished round upward, once, on the same phase transition the vibration/sound below
   // already watches for.
   const prevPhaseRef = useRef(state.phase)
@@ -178,28 +178,28 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     prevPhaseRef.current = state.phase
   }, [state.phase, state.outcome, onRoundOutcome])
 
-  // The board itself reacts to state.phase immediately — each crashed player's own PlayerTrail
+  // The board itself reacts to state.phase immediately - each crashed player's own PlayerTrail
   // (see GameBoard.tsx) starts its explosion-then-wipe death sequence the instant it sees its own
-  // `alive` flip false — only the dialog waits, so there's a beat to actually watch that sequence
+  // `alive` flip false - only the dialog waits, so there's a beat to actually watch that sequence
   // play out before it's covered up. Resets whenever a fresh round leaves 'roundOver' (rematch),
   // not just on mount.
   const [showResultDialog, setShowResultDialog] = useState(false)
-  // Which humans have pressed Rematch on the round-over dialog this round (see RoundOverDialog) —
+  // Which humans have pressed Rematch on the round-over dialog this round (see RoundOverDialog) -
   // reset alongside showResultDialog below, so a fresh round-over never opens with a stale
   // "already ready" state left over from the last one.
   const [rematchReady, setRematchReady] = useState<Record<Player, boolean>>({ 1: false, 2: false })
   useEffect(() => {
     if (state.phase !== 'roundOver') return
-    // Whoever actually crashed this round (both, on a draw) — the dialog waits for the SLOWER of
+    // Whoever actually crashed this round (both, on a draw) - the dialog waits for the SLOWER of
     // their death sequences to finish, not the first, so it can never cover up a still-wiping
     // trail. Reads state.players once here, at the instant phase became 'roundOver'; that's safe
-    // (not stale) because a dead player's own trail never changes again for the rest of the round —
+    // (not stale) because a dead player's own trail never changes again for the rest of the round -
     // see deathAnimationDurationMs's own comment on why both this effect and GameBoard.tsx can each
     // independently compute this same number with no risk of disagreeing.
     const deadPlayers = ([1, 2] as Player[]).filter((p) => !state.players[p].alive)
     const animMs = deadPlayers.length > 0 ? Math.max(...deadPlayers.map((p) => deathAnimationDurationMs(state.players[p].trail.length).totalMs)) : 0
     const timer = setTimeout(() => setShowResultDialog(true), animMs + ROUND_OVER_DIALOG_HOLD_MS)
-    // Runs when phase next changes away from 'roundOver' (rematch) or on unmount — resetting here,
+    // Runs when phase next changes away from 'roundOver' (rematch) or on unmount - resetting here,
     // not synchronously in the effect body above, is what a fresh 'roundOver' next round needs to
     // find false again instead of skipping straight past its own delay.
     return () => {
@@ -207,13 +207,13 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
       setShowResultDialog(false)
       setRematchReady({ 1: false, 2: false })
     }
-    // Deliberately still keyed only on [state.phase], same as before this change — see this
+    // Deliberately still keyed only on [state.phase], same as before this change - see this
     // effect's own comment above on why re-running on every state.players update would be
     // redundant, not more correct.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase])
 
-  // The victory/draw jingle, timed to land with the dialog reveal rather than the crash itself —
+  // The victory/draw jingle, timed to land with the dialog reveal rather than the crash itself -
   // the crash sound (above) already covers that earlier beat.
   useEffect(() => {
     if (!showResultDialog || !state.outcome) return
@@ -221,7 +221,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     else soundRef.current.playDraw()
   }, [showResultDialog, state.outcome])
 
-  // True once a Quit has been pressed by either player on the round-over dialog — terminal for
+  // True once a Quit has been pressed by either player on the round-over dialog - terminal for
   // this match (see MatchOverDialog): unlike Rematch, a single Quit ends it regardless of what the
   // other player wants, so this never gets reset back to false the way rematchReady does above.
   const [matchOver, setMatchOver] = useState(false)
@@ -235,7 +235,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // Mirrors live, unpaused play into liveplay.activelyPlaying for Providers.tsx's
   // EdgeGuardBridge rather than calling useEdgeGestureGuard directly here: it stays mounted once for
   // the app's lifetime, and this is just the one signal it has no other way to read. Reset to false on unmount too, so leaving this screen mid-round by
-  // any path (not just the in-app back button) can't leave Edge Guard stuck on — GameRound only
+  // any path (not just the in-app back button) can't leave Edge Guard stuck on - GameRound only
   // mounts for the life of one match, matching this effect's own scope exactly.
   useEffect(() => {
     dispatch(liveplayActions.setActivelyPlaying(state.phase === 'playing' && !paused))
@@ -244,7 +244,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     }
   }, [state.phase, paused, dispatch])
 
-  // No toast may stay on screen during live play — only between rounds or at match end. Vs CPU
+  // No toast may stay on screen during live play - only between rounds or at match end. Vs CPU
   // unlock toasts fire at round over and last 7s, so a quick Rematch would otherwise carry them
   // past the countdown into the next round.
   const { clear: clearToasts } = useToast()
@@ -252,7 +252,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     if (state.phase === 'playing') clearToasts()
   }, [state.phase, clearToasts])
 
-  // Fires the actual rematch once every human in this round has pressed Rematch — for vsCpu that's
+  // Fires the actual rematch once every human in this round has pressed Rematch - for vsCpu that's
   // just player 1 (see humanPlayers), so pressing it rematches immediately, matching the CPU always
   // "agreeing" instantly. Guarded on !matchOver so a Quit that lands the same tick a rematch was
   // already agreed to can't still sneak a rematch through underneath it.
@@ -264,7 +264,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const { colors: themeColors } = useAutoPaperTheme()
   // themeColors.outline on its own is already blended 45% toward player 1's own primary color (see
   // auto-paper's useComputedTheme.ts), which reads as "belongs to player 1" rather than a neutral
-  // board marker — per explicit user feedback. Blending it further with tertiary (the same neutral,
+  // board marker - per explicit user feedback. Blending it further with tertiary (the same neutral,
   // belongs-to-neither-player role pickups already render in) pulls obstacle/portal/tunnel geometry
   // back toward "inert board structure" instead.
   const obstacleColor = getBlendedColor(themeColors.tertiary, themeColors.outline, 0.5)
@@ -274,7 +274,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   return (
     <>
       {/* Fixed at the frozen design width/height (not liveWidth/liveHeight) and scaled as one rigid
-      unit via boardScale above — see that comment for why this, not resizing the pieces
+      unit via boardScale above - see that comment for why this, not resizing the pieces
       independently, is what keeps the canvas and the touch zones from ever disagreeing. transform's
       default origin (center) is exactly what keeps this centered inside boardArea's own live,
       already-centered bounds (see styles.boardArea's alignItems/justifyContent) as boardScale
@@ -284,7 +284,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
         <TouchInputLayer orientationMode={orientationMode} p1OnRight={p1OnRight} humanPlayers={humanPlayers} enabled={state.phase === 'playing' && !paused} onTurn={turn} onActivate={activate} controlInverted={controlInverted} currentDirections={currentDirections} keyScheme={settings.keyScheme} />
       </View>
 
-      {/* Deliberately OUTSIDE the scaled View above, unlike GameBoardHost/TouchInputLayer — a held
+      {/* Deliberately OUTSIDE the scaled View above, unlike GameBoardHost/TouchInputLayer - a held
       powerup's badge is UI chrome, not part of the rendered world, and needs to stay a legible,
       comfortably-tappable fixed size (see PowerupHud's own 12px corner insets) regardless of
       whatever size the board itself is currently scaled to. */}
@@ -292,13 +292,13 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
 
       {/* Every floating dialog lives in MatchOverlays instead of inline here, specifically so its
       own live rotation tracking (see that component's own doc) can never cascade a re-render into
-      the board/touch subtree above — a real, on-device jitter bug when this used to live-render
+      the board/touch subtree above - a real, on-device jitter bug when this used to live-render
       inline: rotating the phone re-rendered this whole component tree, board included, on every
       committed rotation change, even though nothing about the board's own frozen orientationMode/
       p1OnRight/state had actually changed. Also deliberately outside the scaled View above, same
-      reason as PowerupHud just above — a dialog shouldn't shrink just because the board did. */}
+      reason as PowerupHud just above - a dialog shouldn't shrink just because the board did. */}
       {/* The leftSlot/rightSlot chip buttons (back, settings) render inside MatchOverlays now,
-      not here — same reason as every other floating overlay: they need the live `rotation`
+      not here - same reason as every other floating overlay: they need the live `rotation`
       signal, and a hook call here (GameRound itself) would cascade a re-render into the board/
       touch subtree above on every tilt. See MatchOverlays' own doc for the full reasoning; the
       slot positioning/styling comments that used to live here now live there alongside the JSX. */}
@@ -309,14 +309,14 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
 
 interface MatchOverlaysProps {
   phase: GamePhase
-  // The board's own FROZEN orientationMode/p1OnRight (see GameRound) — used for these dialogs' OWN
+  // The board's own FROZEN orientationMode/p1OnRight (see GameRound) - used for these dialogs' OWN
   // internal zone-split logic, so a dialog's structural layout always matches the board's, never
   // the live physical tilt (which only drives each dialog's own `rotation` prop below).
   orientationMode: OrientationMode
   p1OnRight: boolean
   settingsOpen: boolean
   onSettingsDismiss: () => void
-  // Opens the settings dialog — this lives here (not just onSettingsDismiss) because the chip
+  // Opens the settings dialog - this lives here (not just onSettingsDismiss) because the chip
   // button that triggers it is now rendered here too, see the leftSlot/rightSlot chips below.
   onSettingsOpen: () => void
   userSettings: Settings
@@ -332,7 +332,7 @@ interface MatchOverlaysProps {
   onOnboardingComplete: () => void
   showResultDialog: boolean
   matchOver: boolean
-  // Same boolean GameRound derives for its own useEdgeGestureGuard call — passed down instead of
+  // Same boolean GameRound derives for its own useEdgeGestureGuard call - passed down instead of
   // recomputing the identical phase/showResultDialog/matchOver expression a second time here, so
   // the two can never drift out of sync with each other.
   controlsVisible: boolean
@@ -342,7 +342,7 @@ interface MatchOverlaysProps {
   onRequestRematch: (player: Player) => void
   onQuit: () => void
   onExit: () => void
-  // Only meaningful during the 'onboarding' phase — see the leftSlot chip below, which is this
+  // Only meaningful during the 'onboarding' phase - see the leftSlot chip below, which is this
   // component's own copy of GameRound's identical back button (moved here for the same reason as
   // everything else: it needs the same live rotation the countdown next to it already gets).
   onBackPress: () => void
@@ -352,35 +352,35 @@ interface MatchOverlaysProps {
 }
 
 // Every floating in-match dialog, as GameRound's own sibling rather than something it renders
-// inline — see GameRound's own comment on why: this is the one piece that needs LIVE rotation
+// inline - see GameRound's own comment on why: this is the one piece that needs LIVE rotation
 // tracking (nothing else in a match does), and calling useOrientationState() from a
 // genuinely separate component is what actually keeps that live tracking from cascading a
 // re-render into the board/touch subtree next to it. A parent re-rendering always re-renders its
-// own children too, board included, regardless of whether the board's own props actually changed —
+// own children too, board included, regardless of whether the board's own props actually changed -
 // sibling components don't share that fate, so isolating the live hook to its own subtree is a
 // structural fix, not just a memoization optimization that could regress if some future prop here
 // stopped being stable.
 //
 // Each dialog rotates its OWN content in place (a plain `rotation` prop, computed from the live
 // signal below) rather than being wrapped in a width/height-swapping FakeLandscapeView the way the
-// lobby's whole-screen layout is — these dialogs' own zones must stay exactly the shape
+// lobby's whole-screen layout is - these dialogs' own zones must stay exactly the shape
 // TouchInputLayer's matching (unrotated) hit zones already are, and swapping dimensions around the
 // whole overlay distorted a full-width/half-height zone into a narrow, tall sliver that no longer
 // lined up with where a player could actually touch. FakeLandscapeView is still the right tool for
-// genuinely-whole-screen content with no fixed shape to match — just not this.
+// genuinely-whole-screen content with no fixed shape to match - just not this.
 function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, userSettings, setUserSettings, confirmVisible, cancelBack, humanPlayers, colors, profileNames, seatProfiles, profileUnlockToast, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume }: MatchOverlaysProps) {
   // The ONE orientation read in this component, feeding both angles below. Lock Orientation freezes
   // it app-wide (see _layout.tsx's AppOrientationProvider), so while that's on, every overlay here
   // holds still together: fixed-zone and single-seat content alike, including a two-player fixed-zone
   // overlay that would otherwise follow a landscape/portrait change.
   const orientation = useOrientationState()
-  // getFixedZoneRotation, not getViewRotation directly — this board's own zones are frozen forever
+  // getFixedZoneRotation, not getViewRotation directly - this board's own zones are frozen forever
   // at 'faceToFace'/true (see GameRound), never reflowing no matter which way the device is spun
   // while flat, which is exactly the layout getFixedZoneRotation is for (see its own doc): a genuine
   // landscape hold still rotates everything, but a portrait "upside down" reading is ignored rather
   // than adding a spurious 180° flip on top of P2's own fixed one below (getOpposingZoneRotation).
   // Only ever fed to content that's genuinely split into two fixed physical zones (the two-player
-  // branch of OnboardingOverlay/RoundOverDialog, and the shared-neutral-zone chips below) — anything
+  // branch of OnboardingOverlay/RoundOverDialog, and the shared-neutral-zone chips below) - anything
   // with just ONE seat to address has no zone to protect from a spurious 180° flip, and wants
   // singleSeatRotation below instead.
   const rotation = getFixedZoneRotation(orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown)
@@ -390,13 +390,13 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
   // too, not be ignored.
   const singleSeatRotation = getViewRotation(orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown)
   const { dark } = useAutoPaperTheme()
-  // Same chip colors as GameRound's own board-level fg/bg — duplicated here rather than passed as
+  // Same chip colors as GameRound's own board-level fg/bg - duplicated here rather than passed as
   // props since this component already computes `dark` for the chips below, and these chips need
   // the identical rotation-in-place treatment as everything else in this component.
   const chipBg = dark ? '#000000' : '#FFFFFF'
   const chipFg = dark ? '#FFFFFF' : '#000000'
   const chipRotation = rotation % 360 !== 0 ? { transform: [{ rotate: `${rotation}deg` }] } : undefined
-  // Only meaningful in the useCornerLayout branch below — rotateInsets remaps the device's own
+  // Only meaningful in the useCornerLayout branch below - rotateInsets remaps the device's own
   // (physical-frame) safe-area insets onto whichever edge is actually visual-top/left/right once the
   // corner chips below are rotated+repositioned by singleSeatRotation, same as index.tsx's own
   // identical rotatedInsets. Unused (and harmless to compute) in the shared-neutral branch, which
@@ -404,7 +404,7 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
   const insets = useSafeAreaInsets()
   const cornerInsets = rotateInsets(insets, singleSeatRotation)
 
-  // The inverse of @tastic/split-screen's needsSharedNeutralZone — see its own doc for the full
+  // The inverse of @tastic/split-screen's needsSharedNeutralZone - see its own doc for the full
   // reasoning (and why it deliberately isn't keyed on Platform.OS). CornerActionButtons-style fixed
   // top corners are the right reachability answer everywhere EXCEPT the one case that function
   // flags: two-plus players held face-to-face, where the top of the screen always reads upside-down
@@ -428,14 +428,14 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
 
       {phase === 'roundOver' && showResultDialog && !matchOver && outcome && <RoundOverDialog orientationMode={orientationMode} p1OnRight={p1OnRight} rotation={humanPlayers.length === 1 ? singleSeatRotation : rotation} humanPlayers={humanPlayers} gameMode={gameMode} outcome={outcome} colors={colors} profileUnlocked={profileUnlockToast} rematchReady={rematchReady} onRequestRematch={onRequestRematch} onQuit={onQuit} />}
 
-      {/* Terminal — either player quitting from the dialog above ends the match outright, so this
+      {/* Terminal - either player quitting from the dialog above ends the match outright, so this
       replaces it rather than layering on top, and tallies every round played this streak (see
       roundHistory) rather than just the one that just finished. Always ONE centered card regardless
       of humanPlayers.length (see this dialog's own doc), so it always wants singleSeatRotation. */}
       {matchOver && <MatchOverDialog roundHistory={roundHistory} colors={colors} profileNames={profileNames} seatProfiles={seatProfiles} profileUnlocked={profileUnlockToast} gameMode={gameMode} onExit={onExit} rotation={singleSeatRotation} />}
 
       {/* Shared @tastic/hud ConfirmDialog (fleet convergence) in place of this app's own
-      hand-rolled overlay+card shell — trades this dialog's previous secondary-accent Quit button
+      hand-rolled overlay+card shell - trades this dialog's previous secondary-accent Quit button
       and MONO_FONT styling for the shared component's primary accent and default font, an
       approved, deliberate trade-off. The pip row (same component OnboardingOverlay itself uses) is
       kept as the dialog's message content, showing exactly what's at stake instead of a sentence
@@ -445,22 +445,22 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
       play stays frozen until Resume, so a match never restarts before the player is back and ready. */}
       <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={onResume} onCancel={safeBack} rotation={singleSeatRotation} />
 
-      {/* Back (onboarding only) + Settings chip buttons — moved here from GameRound for the
+      {/* Back (onboarding only) + Settings chip buttons - moved here from GameRound for the
       identical reason as every other floating overlay in this component: they need the live
       orientation signal above, and computing that from a hook called directly in GameRound (rather
       than this, its sibling) would cascade a re-render into the board/touch subtree on every tilt.
       Square glyphs in square chips, so rotating the whole button (not just its icon) never distorts
-      a hit box the way a non-square zone would — see this component's own doc on why dialogs rotate
+      a hit box the way a non-square zone would - see this component's own doc on why dialogs rotate
       only their inner content instead.
       useCornerLayout: no second seat's zone to stay neutral for (vsCpu, or 2P side-by-side, which
-      already gives each seat its own dedicated half — see needsSharedNeutralZone's own doc), so the
+      already gives each seat its own dedicated half - see needsSharedNeutralZone's own doc), so the
       whole chip pair is wrapped in FakeLandscapeView and actually MOVES to wherever "top" visually
       is right now (including a portrait upside-down hold, which chipRotation's fixed-zone rotation
       deliberately ignores), the same top-left/top-right corners index.tsx's own trophy/settings
-      buttons use — rather than just spinning in place while staying glued to the device's fixed
-      physical top edge. !useCornerLayout (2P face-to-face): unchanged — leftSlot/rightSlot on the
+      buttons use - rather than just spinning in place while staying glued to the device's fixed
+      physical top edge. !useCornerLayout (2P face-to-face): unchanged - leftSlot/rightSlot on the
       shared vertical midline, glyph-only chipRotation, exactly as before.
-      Also shown through matchOver (previously hidden then) — matches BoxHockey's/AirHockey's/Pong's
+      Also shown through matchOver (previously hidden then) - matches BoxHockey's/AirHockey's/Pong's
       identical always-visible back+settings chips, so there's a consistent way to back out (still
       gated behind onBackPress's own "Quit Match?" confirmation whenever roundHistory is non-empty)
       rather than only the MatchOverDialog's own exit button. */}
@@ -499,22 +499,22 @@ export default function GameScreen() {
   const [settings] = useState(activeRoundSettings)
 
   useEffect(() => {
-    // Reached directly — a refreshed page (web) or a deep link — rather than via /lobby's own
+    // Reached directly - a refreshed page (web) or a deep link - rather than via /lobby's own
     // "Ready" handoff, so there's no committed round to play. Same fallback safeBack uses for its
     // own no-history case.
     if (!settings) router.replace('/')
   }, [settings])
 
   // The board itself always uses the SAME split, regardless of how the phone is physically being
-  // held — 'faceToFace' (P1 near/bottom, P2 far/top, moving toward each other along the tall axis),
+  // held - 'faceToFace' (P1 near/bottom, P2 far/top, moving toward each other along the tall axis),
   // never 'sideBySide'. This isn't a frozen live reading, it's a fixed constant: the render surface
   // is permanently portrait-shaped (the app is portrait-locked at the OS level, and unlike the
-  // lobby, the board/touch layer is deliberately never wrapped in FakeLandscapeView — see
+  // lobby, the board/touch layer is deliberately never wrapped in FakeLandscapeView - see
   // MatchOverlays' own comment on why that'd risk breaking swipe-to-turn), so it can never actually
-  // become wide enough for a genuine left/right split to make sense — that would just carve the
+  // become wide enough for a genuine left/right split to make sense - that would just carve the
   // same tall, narrow canvas into two unplayably thin vertical strips. p1OnRight is meaningless
   // alongside a permanently-'faceToFace' mode (nothing reads it when orientationMode is
-  // 'faceToFace' — see wallPath, TouchInputLayer's zone split, PowerupHud's corner pick), so it's
+  // 'faceToFace' - see wallPath, TouchInputLayer's zone split, PowerupHud's corner pick), so it's
   // just a fixed placeholder. The floating dialogs/countdown still visually rotate to match
   // whichever way the phone is actually held (or stay put while Lock Orientation is on): see
   // MatchOverlays, which reads that shared signal independently and applies it on top of this same
@@ -529,11 +529,11 @@ export default function GameScreen() {
   const colors = useMemo<Record<Player, string>>(() => ({ 1: themeColors.primary, 2: themeColors.secondary }), [themeColors.primary, themeColors.secondary])
 
   // Resolved once at mount from whichever profile each seat had selected at lobby handoff, exactly
-  // like `settings` above (activeRoundSettings) — a mid-round profile change (there's no UI for one
+  // like `settings` above (activeRoundSettings) - a mid-round profile change (there's no UI for one
   // during a match, but a saved profile could still be edited/deleted from another still-mounted
   // screen under expo-router) shouldn't retroactively alter a round already underway.
   const { profiles: savedProfiles, lastSelected } = useProfiles()
-  // Seat 2's own lastSelected is deliberately ignored in vsCpu mode below — it's a single piece of
+  // Seat 2's own lastSelected is deliberately ignored in vsCpu mode below - it's a single piece of
   // state persisted across mode switches (useProfiles.tsx), so a profile picked for local two-player
   // seat 2 in an earlier session can otherwise still be sitting there once the player switches to
   // vsCpu, where seat 2 is the CPU and has no profile-selection UI at all (@tastic/hud's
@@ -554,25 +554,25 @@ export default function GameScreen() {
     if (p2) names[2] = p2.name
     return names
   })
-  // Same frozen-at-mount treatment as profileNames above — see MatchOverDialog's own achievement
+  // Same frozen-at-mount treatment as profileNames above - see MatchOverDialog's own achievement
   // rows, which mark each unlock with its seat's ProfileChip.
   const [seatProfiles] = useState<Partial<Record<Player, Profile>>>(() => ({
     1: savedProfiles.find((p) => p.id === lastSelected[1]),
     2: settings?.gameMode !== 'vsCpu' ? savedProfiles.find((p) => p.id === lastSelected[2]) : undefined
   }))
 
-  // Chronological record of each round's outcome this match, oldest first — lives here rather than
+  // Chronological record of each round's outcome this match, oldest first - lives here rather than
   // inside GameRound purely as the existing home for it; GameRound itself stays mounted for the
   // whole match regardless of rotation (see its own comment), so nothing here is actually at risk
   // of a mid-match reset.
   const [roundHistory, setRoundHistory] = useState<RoundOutcome[]>([])
   const { recordRoundOutcome } = useGameStats()
   // vsCpu-only: each unlocked achievement gets its own tier-colored, tier-iconed toast (see
-  // @rific/toaster's per-toast icon/color override) — there's only ever one human perspective to
+  // @rific/toaster's per-toast icon/color override) - there's only ever one human perspective to
   // address in that mode, so it never needs its own facing UI the way the two-player case does
   // (see profileUnlockToast just below).
   const { success: showAchievementToast } = useToast()
-  // Two-player only — seat -> that seat's own profile's newly-unlocked achievements this round,
+  // Two-player only - seat -> that seat's own profile's newly-unlocked achievements this round,
   // read by RoundOverDialog/MatchOverDialog to show a badge facing that player (see GameRoundProps'
   // own comment). Always overwritten every round, even to {}, since those dialogs stay on screen
   // far longer than a timer-based toast and can't rely on auto-dismiss to clear a stale badge.
@@ -580,7 +580,7 @@ export default function GameScreen() {
   const handleRoundOutcome = useCallback(
     (outcome: RoundOutcome) => {
       setRoundHistory((history) => [...history, outcome])
-      // settings is only null before the initial-mount redirect below (see the effect above) — by
+      // settings is only null before the initial-mount redirect below (see the effect above) - by
       // the time a round can actually finish and report an outcome here, GameRound (which requires
       // non-null settings as a prop) is already what's rendering it.
       if (!settings) return
@@ -588,7 +588,7 @@ export default function GameScreen() {
 
       if (settings.gameMode === 'vsCpu') {
         // Only seat 1 is ever human here, so its own profile-scoped unlocks (if any) join the same
-        // toasts the device-wide ones already use, rather than needing a separate facing UI —
+        // toasts the device-wide ones already use, rather than needing a separate facing UI -
         // there's no "other side" to distinguish it from.
         const merged = [...result.device, ...(result.profiles[1] ?? [])]
         const caption = profileNames[1] ? `${profileNames[1]} unlocked` : 'Achievement unlocked'
@@ -596,7 +596,7 @@ export default function GameScreen() {
         setProfileUnlockToast({})
       } else {
         // Device-wide achievements have no per-seat owner, but both seats are human here and each
-        // already gets its own rotated card (see RoundOverDialog/MatchOverDialog) — broadcasting
+        // already gets its own rotated card (see RoundOverDialog/MatchOverDialog) - broadcasting
         // into both seats' own profileUnlockToast entries is what actually faces P2 correctly,
         // rather than the shared, unrotated toast neither seat's zone actually belongs to.
         const broadcast = broadcastDeviceUnlocks([1, 2] as Player[], result.profiles, result.device)
@@ -606,31 +606,31 @@ export default function GameScreen() {
     [recordRoundOutcome, settings, colors, profileIds, profileNames, showAchievementToast]
   )
 
-  // The board area's edge IS the wall — running off it is a crash like any trail, and GameBoard
+  // The board area's edge IS the wall - running off it is a crash like any trail, and GameBoard
   // draws a thin two-color outline at the grid's actual pixel bounds to mark exactly where that
   // edge is. Bounded to exactly the safe area by default (the insets below) plus a @tastic/core
   // gutter (gutterWidth above) on anything wider than MAX_BOARD_CONTENT_WIDTH, so that outline
   // always sits somewhere a player can actually see and reach AND the arena never stretches into an
   // unplayably wide, short rectangle on a maximized desktop-web window; extendIntoSafeArea (a
-  // per-round lobby setting — see Settings' own comment) opts into bleeding the board all the
+  // per-round lobby setting - see Settings' own comment) opts into bleeding the board all the
   // way to the physical screen edge instead, ignoring both the safe area and the gutter and trading
   // that margin for more play space.
   // This container's own bounds (the style below) are fully live, same as insets/gutterWidth
-  // themselves — they track the window on every render, no freezing at all at this level.
-  // designSize below captures a frozen ONE-TIME measurement instead — what GameRound's actual
+  // themselves - they track the window on every render, no freezing at all at this level.
+  // designSize below captures a frozen ONE-TIME measurement instead - what GameRound's actual
   // grid/game state gets built from (see GameRoundProps' own comment on why THAT can never change
   // mid-round). GameRound also gets this container's current LIVE size (liveWidth/liveHeight,
   // computed further below, past the `if (!settings)` guard) and does the live-scaling itself (see
-  // its own boardScale comment) — resizing the window after a round has already started grows/
+  // its own boardScale comment) - resizing the window after a round has already started grows/
   // shrinks the board in place instead of doing nothing, without the frozen grid underneath ever
   // finding out anything changed. A previous version of this froze the CONTAINER too (matching the
-  // grid), on the theory that only a device rotation — already prevented by the orientation lock
-  // above — could ever invalidate a one-time measurement; that reasoning quietly stopped covering
+  // grid), on the theory that only a device rotation - already prevented by the orientation lock
+  // above - could ever invalidate a one-time measurement; that reasoning quietly stopped covering
   // the real world the moment gutterWidth made plain window resizing (always possible on web, no
   // rotation involved at all) something worth reacting to.
   const [designSize, setDesignSize] = useState<{ width: number; height: number } | null>(null)
   const onBoardLayout = useCallback((e: LayoutChangeEvent) => {
-    // Captured eagerly, not read off `e` inside the updater below — React can invoke a functional
+    // Captured eagerly, not read off `e` inside the updater below - React can invoke a functional
     // setState updater more than once (e.g. StrictMode's double-invoke), and by a second call
     // React Native's synthetic LayoutChangeEvent may already be pooled/recycled, leaving
     // e.nativeEvent null and crashing this on "Cannot read property 'layout' of null".
@@ -642,34 +642,34 @@ export default function GameScreen() {
 
   if (!settings) return null
 
-  // The container's LIVE content box, as plain numbers — the exact same arithmetic boardArea's own
+  // The container's LIVE content box, as plain numbers - the exact same arithmetic boardArea's own
   // style just below already expresses (insets+gutterWidth when not full-bleed, the raw window
   // otherwise), just computed directly from useWindowDimensions()/useSafeAreaInsets() rather than
   // measured via a second onBoardLayout firing. A second-measurement version (mirroring designSize
-  // above but never freezing) was tried first and doesn't hold up: onLayout — RN-Web's
-  // ResizeObserver under the hood — doesn't reliably re-fire on a bare window resize when
+  // above but never freezing) was tried first and doesn't hold up: onLayout - RN-Web's
+  // ResizeObserver under the hood - doesn't reliably re-fire on a bare window resize when
   // boardArea's own style is the referentially-stable styles.boardAreaFullBleed constant, confirmed
   // directly by comparing the two side by side: windowWidth/gutterWidth above tracked every resize
   // correctly the whole time, while that version's live measurement stayed stuck at whatever it had
-  // last fired with — reliably reproducible specifically in extendIntoSafeArea's full-bleed branch,
+  // last fired with - reliably reproducible specifically in extendIntoSafeArea's full-bleed branch,
   // where boardArea's own style object never changes, so nothing about its inline style ever gives
   // RN-Web a reason to re-measure. Computing it directly here sidesteps that reliability gap
   // entirely, at the cost of duplicating this one arithmetic expression rather than measuring it
   // once.
   const liveWidth = settings.extendIntoSafeArea ? windowWidth : windowWidth - insets.left - insets.right - 2 * gutterWidth
   const liveHeight = settings.extendIntoSafeArea ? windowHeight : windowHeight - insets.top - insets.bottom
-  // All-zero unless the board is actually bleeding under the real insets (extendIntoSafeArea) — see
+  // All-zero unless the board is actually bleeding under the real insets (extendIntoSafeArea) - see
   // GameRoundProps' own safeAreaInsetsPx comment for why: the non-full-bleed boardArea style below
   // already stops short of the inset on its own, so there's nothing left for a pickup to avoid.
   const safeAreaInsetsPx = settings.extendIntoSafeArea ? insets : ZERO_INSETS
 
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
-      {/* Per-screen override, not a global default — reverts to whatever _layout.tsx's own
+      {/* Per-screen override, not a global default - reverts to whatever _layout.tsx's own
       RotationAwareStatusBar says the instant this screen unmounts (navigating back to /lobby,
       which never renders its own StatusBar). Unconditional, matching BoxHockey/AirHockey: hidden
       for the whole time a match is in progress, regardless of whether the board itself is
-      bleeding under the safe area — full-screen immersion during actual play, not just when
+      bleeding under the safe area - full-screen immersion during actual play, not just when
       there'd otherwise be a visible clash. */}
       <StatusBar hidden />
       <View style={[styles.boardArea, settings.extendIntoSafeArea ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + gutterWidth, right: insets.right + gutterWidth }]} onLayout={onBoardLayout}>
@@ -681,22 +681,22 @@ export default function GameScreen() {
 
 const styles = StyleSheet.create({
   // alignItems/justifyContent center the design-resolution board (see GameRound's own boardScale
-  // comment) inside these live bounds — MatchOverlays/PowerupHud's own children are all
+  // comment) inside these live bounds - MatchOverlays/PowerupHud's own children are all
   // position:'absolute' internally (see their own styles), so centering this container has no
   // effect on them; only the board's normal-flow scaled View is actually being centered.
   boardArea: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'absolute' },
   boardAreaFullBleed: { bottom: 0, left: 0, right: 0, top: 0 },
   // Cancels IconButton's own built-in 6px margin (react-native-paper's default Surface spacing),
-  // same reasoning as BoxHockey's identical chipButton style — otherwise a visible gap opens up
+  // same reasoning as BoxHockey's identical chipButton style - otherwise a visible gap opens up
   // between the solid chip and its slot now that there's a background to see the edge of.
   chipButton: { margin: 0 },
-  // The useCornerLayout counterpart to leftSlot/rightSlot below — pinned near the top-left/top-right
+  // The useCornerLayout counterpart to leftSlot/rightSlot below - pinned near the top-left/top-right
   // corner instead of centered on the board's vertical midline, for whichever modes don't need a
   // neutral shared position (see useCornerLayout's own doc for which). No fixed top/left/right of
-  // its own (unlike leftSlot/rightSlot below) — both are rendered inside a FakeLandscapeView that
+  // its own (unlike leftSlot/rightSlot below) - both are rendered inside a FakeLandscapeView that
   // supplies rotation-aware insets inline, so they actually move to the correct physical corner
   // under a live tilt instead of just spinning a glyph in place at a fixed physical offset.
-  // box-none: this full-bleed wrapper only exists to give FakeLandscapeView something to rotate —
+  // box-none: this full-bleed wrapper only exists to give FakeLandscapeView something to rotate -
   // it must never itself swallow the board's own touches in the (mostly empty) space between the
   // two corner slots below.
   cornerChipsWrap: { pointerEvents: 'box-none' },
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   // midline regardless of its height, instead of pinning it a fixed distance from the top the way
   // cornerLeftSlot/cornerRightSlot above do for the other layout mode. A bare View here doesn't
   // claim any touch of its own, so it can span the full board height without stealing swipes from
-  // TouchInputLayer underneath — only the IconButton it wraps is actually touchable.
+  // TouchInputLayer underneath - only the IconButton it wraps is actually touchable.
   leftSlot: { bottom: 0, justifyContent: 'center', left: 4, position: 'absolute', top: 0 },
   rightSlot: { bottom: 0, justifyContent: 'center', position: 'absolute', right: 4, top: 0 },
   root: { flex: 1 }

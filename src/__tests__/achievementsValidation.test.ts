@@ -25,11 +25,11 @@ describe('isValidAchievements', () => {
     expect(isValidAchievements({ first_game_played: NaN })).toBe(false)
   })
 
-  it('does not reject an unrecognized achievement id — a stray entry is inert, not corrupt', () => {
+  it('does not reject an unrecognized achievement id - a stray entry is inert, not corrupt', () => {
     expect(isValidAchievements({ some_removed_achievement: 1700000000000 })).toBe(true)
   })
 
-  // See achievementEngine.ts's unlockedKey — a bare id is a device-wide/"All Profiles" unlock, a
+  // See achievementEngine.ts's unlockedKey - a bare id is a device-wide/"All Profiles" unlock, a
   // `profileId:achievementId` id is one profile's own unlock. This validator doesn't need to (and
   // doesn't) distinguish between the two formats.
   it('accepts a blob mixing bare-id and profileId:achievementId keys', () => {

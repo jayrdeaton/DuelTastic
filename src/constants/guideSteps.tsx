@@ -16,7 +16,7 @@ const KEY_CAPS: Record<KeyScheme, DirectionKeyLabels | undefined> = {
 interface GuideStepsInput {
   // A touch screen vs. a desktop browser: a phone steers by swiping, a desktop by key.
   touch: boolean
-  // Each seat's live key scheme (settings.keyScheme) — only read on desktop. Seats pick their own
+  // Each seat's live key scheme (settings.keyScheme) - only read on desktop. Seats pick their own
   // keys in the lobby, so a replayed guide has to name the real ones, not the defaults.
   keys: Record<Player, KeyScheme>
 }
@@ -27,7 +27,7 @@ interface GuideStepsInput {
 // What's here is what a first-time player cannot work out alone (none of it is printed anywhere in
 // the game): steering is absolute, not relative; walls and ANY trail are lethal, your own included;
 // the last cycle riding wins; and in two-player one phone is shared face to face. Copy rules (Jay,
-// 2026-09-24): Title Case titles, short bodies, and only say what's true in every mode — "your half"
+// 2026-09-24): Title Case titles, short bodies, and only say what's true in every mode - "your half"
 // is only true in two-player, so it lives on the two-player card, not the steering one. There's no
 // card explaining One Player vs Two Player: those buttons are right behind the dialog.
 export function getGuideSteps({ touch, keys }: GuideStepsInput): GuideStep[] {

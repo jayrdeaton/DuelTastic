@@ -75,7 +75,7 @@ describe('createInitialGameState safe-area margin', () => {
 
   it('marks the ceil(inset/cellPx) cells along each edge unsafe, and none of the interior', () => {
     // A 10x10 grid at cellPx=10: a 25px top inset and 15px left inset round up to 3 and 2 cells
-    // respectively (ceil(25/10)=3, ceil(15/10)=2) — anything less than a full cell of overlap still
+    // respectively (ceil(25/10)=3, ceil(15/10)=2) - anything less than a full cell of overlap still
     // counts as unsafe, since a pickup only partially clear of the notch/Dynamic Island/speaker
     // cutout is still partially hidden by it.
     const state = createInitialGameState(100, 100, 'faceToFace', { 1: '#3B82F6', 2: '#EF4444' }, 10, true, 'open', { top: 25, right: 0, bottom: 0, left: 15 })
@@ -164,7 +164,7 @@ describe('tickGame', () => {
     expect(next.players[1].trail.at(-1)).toEqual({ x: 2, y: 4 })
   })
 
-  it('crashes a player who steps off the edge of the grid — the other player wins', () => {
+  it('crashes a player who steps off the edge of the grid - the other player wins', () => {
     const state = makeState({
       players: {
         1: ps({ trail: [{ x: 0, y: 5 }], direction: 'left', color: '#3B82F6' }),
@@ -317,7 +317,7 @@ describe('tickGame', () => {
     expect(tickGame(state)).toBe(state)
   })
 
-  // Both players head 'up' in parallel, 5 columns apart — never cross or catch each other, so
+  // Both players head 'up' in parallel, 5 columns apart - never cross or catch each other, so
   // every tick below stays crash-free out to the tested tick count.
   function makeParallelState(): GameState {
     return makeState({
@@ -342,7 +342,7 @@ describe('tickGame', () => {
     for (let i = 0; i < 8; i++) {
       state = tickGame(state, undefined, 0.5)
     }
-    // 8 ticks at a 0.5 growth rate nominally trims on ticks 2, 4, 6, 8 — but the first two land
+    // 8 ticks at a 0.5 growth rate nominally trims on ticks 2, 4, 6, 8 - but the first two land
     // while the trail is still at/under MIN_TRAIL_LENGTH_BEFORE_TRIM (5) and get skipped (see the
     // grace-period test below), so only 2 of the 4 nominally-due trims actually apply: net length =
     // 1 (start) + 8 (appends) - 2 (trims actually applied) = 7.
@@ -352,7 +352,7 @@ describe('tickGame', () => {
 
   it('never trims below MIN_TRAIL_LENGTH_BEFORE_TRIM, regardless of how low trailSpeedRate is', () => {
     let state = makeParallelState()
-    // A rate this low would nominally trim on almost every tick — the trail should still just grow
+    // A rate this low would nominally trim on almost every tick - the trail should still just grow
     // like the untrimmed default (one cell per tick, no trims at all) until it clears the minimum.
     for (let i = 0; i < MIN_TRAIL_LENGTH_BEFORE_TRIM - 1; i++) {
       state = tickGame(state, undefined, 0.1)
@@ -392,7 +392,7 @@ describe('tickGame', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: { type: 'overdrive', multiplier: 2, expiresAtTick: 100 }, control: null, shield: null } }),
-          // Player 2's own trail leaves (4,5) occupied — clear of player 1's first step (3,5), but
+          // Player 2's own trail leaves (4,5) occupied - clear of player 1's first step (3,5), but
           // exactly where their second step lands.
           2: ps({
             trail: [
@@ -425,7 +425,7 @@ describe('tickGame', () => {
       })
       const next = tickGame(state)
       expect(next.players[1].trail).toEqual([{ x: 2, y: 5 }])
-      // `direction` stays pinned to the pre-freeze value — the player hasn't actually moved 'up'
+      // `direction` stays pinned to the pre-freeze value - the player hasn't actually moved 'up'
       // yet, so nothing has invalidated 'right' as the reference for the next opposite-turn check.
       expect(next.players[1].direction).toBe('right')
       expect(next.players[1].pendingDirection).toBe('up')
@@ -433,7 +433,7 @@ describe('tickGame', () => {
 
     it('resolves the queued direction into `direction` on the tick a frozen player actually unfreezes and steps', () => {
       // expiresAtTick 1 means the Stasis effect is still the active speed effect for computing this
-      // very tick's step count (0 steps, tick 0 -> 1) — it only actually clears via `expire()` at
+      // very tick's step count (0 steps, tick 0 -> 1) - it only actually clears via `expire()` at
       // the end of that same tick, so the player only starts moving normally on the tick after.
       const state = makeState({
         players: {
@@ -459,7 +459,7 @@ describe('tickGame', () => {
     // Regression test for a reported bug: travelling left, frozen by Stasis, swipe up then swipe
     // right (each individually legal against the direction at the moment of the swipe) used to
     // compound into a full 180° once both swipes had each been resolved into `direction` on their
-    // own frozen tick — so the player came out of Stasis still trailed to their right and
+    // own frozen tick - so the player came out of Stasis still trailed to their right and
     // immediately died stepping back into their own trail. The second turn intent must be rejected
     // as an opposite-direction reversal instead, exactly as it would be if the player were never
     // frozen at all.
@@ -484,13 +484,13 @@ describe('tickGame', () => {
       state = applyTurnIntent(state, 1, 'up')
       expect(state.players[1].pendingDirection).toBe('up')
 
-      // A frozen tick passes — still no movement, and (with the fix) `direction` stays 'left'.
+      // A frozen tick passes - still no movement, and (with the fix) `direction` stays 'left'.
       state = tickGame(state)
       expect(state.players[1].direction).toBe('left')
       expect(state.players[1].pendingDirection).toBe('up')
 
       // Second swipe while still frozen: 'right' IS opposite of the player's real direction
-      // ('left'), so it must be rejected — the earlier 'up' stays queued.
+      // ('left'), so it must be rejected - the earlier 'up' stays queued.
       state = applyTurnIntent(state, 1, 'right')
       expect(state.players[1].pendingDirection).toBe('up')
     })
@@ -514,7 +514,7 @@ describe('tickGame', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
-          // Player 1's next cell (3,5) is player 2's own CURRENT head — the edge case where the
+          // Player 1's next cell (3,5) is player 2's own CURRENT head - the edge case where the
           // break point is the trail owner's own last cell, which trimTrailAtCell must clamp so at
           // least that head cell survives.
           2: ps({
@@ -537,7 +537,7 @@ describe('tickGame', () => {
         { x: 2, y: 5 },
         { x: 3, y: 5 }
       ])
-      // Trimmed back to just its own head — trimTrailAtCell's clamp, since the break point here
+      // Trimmed back to just its own head - trimTrailAtCell's clamp, since the break point here
       // was player 2's own last trail cell.
       expect(next.players[2].trail).toEqual([
         { x: 3, y: 5 },
@@ -612,13 +612,13 @@ describe('tickGame', () => {
       const next = tickGame(state, undefined, 1, POWERUP_ALL_TYPES)
       expect(next.players[1].heldPowerup).toBe('overdrive')
       // The board dropping to 0 pickups immediately triggers the "always at least one" spawn (see
-      // its own describe block below) — asserting the original is gone, not that the board is
+      // its own describe block below) - asserting the original is gone, not that the board is
       // empty, since a replacement appearing right away is expected, not a bug.
       expect(next.pickups.some((pu) => pu.id === 'pu-test')).toBe(false)
     })
 
     it('collects a pickup by driving through any cell within its collection radius, not just its exact cell', () => {
-      // Player 1 steps to (3,5); the pickup sits one cell further out at (4,5) — outside an exact
+      // Player 1 steps to (3,5); the pickup sits one cell further out at (4,5) - outside an exact
       // match, but within POWERUP_COLLECT_RADIUS_CELLS of (3,5).
       const state = stateWithPickup({ x: 4, y: 5 })
       const next = tickGame(state, undefined, 1, POWERUP_ALL_TYPES)
@@ -639,7 +639,7 @@ describe('tickGame', () => {
       expect(next.pickups).toEqual([])
     })
 
-    // Like a single apple in Snake — exactly one pickup is ever on the board, and a replacement
+    // Like a single apple in Snake - exactly one pickup is ever on the board, and a replacement
     // never has to wait out an interval/cooldown once it's gone.
     describe('always keeps exactly one pickup on the board', () => {
       it("spawns the round's very first pickup on tick 1", () => {
@@ -659,7 +659,7 @@ describe('tickGame', () => {
 
       it('never spawns a second pickup while one is already on the board', () => {
         // (5,5) is off both players' paths this tick (player 1 steps to (3,5), player 2 to (0,1)),
-        // so the existing pickup is NOT collected — a second should still never appear alongside it.
+        // so the existing pickup is NOT collected - a second should still never appear alongside it.
         const state = stateWithPickup({ x: 5, y: 5 }, { tick: 1 })
         const next = tickGame(state, undefined, 1, POWERUP_ALL_TYPES, () => 0)
         expect(next.pickups).toHaveLength(1)
@@ -668,8 +668,8 @@ describe('tickGame', () => {
 
       it('never spawns somewhere its own collection radius would overlap a trail, even on an otherwise-empty cell (edges are fine)', () => {
         // A 3-cell wall down the middle of a small grid. Both players are frozen (Stasis'd) and
-        // contribute nothing to `occupied` themselves — it's passed in explicitly here, as exactly
-        // this wall — so there's no interference from anyone's own move this tick. (1,*) and (3,*)
+        // contribute nothing to `occupied` themselves - it's passed in explicitly here, as exactly
+        // this wall - so there's no interference from anyone's own move this tick. (1,*) and (3,*)
         // are individually empty but sit right beside the wall (within collection radius of it);
         // only the (0,*) column, a full cell away, has a genuinely clear collection footprint.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
@@ -692,8 +692,8 @@ describe('tickGame', () => {
 
       it('never spawns a pickup directly on a portal cell, even when it would otherwise be the only clear candidate', () => {
         // A 12-cell strip: player 1's 5-cell trail and player 2's single cell leave exactly two
-        // trail-clear gaps free of any collection-radius overlap — the two portal cells themselves
-        // (x=0 and x=8) — so without the portal exclusion, one of THOSE is exactly where this would
+        // trail-clear gaps free of any collection-radius overlap - the two portal cells themselves
+        // (x=0 and x=8) - so without the portal exclusion, one of THOSE is exactly where this would
         // spawn. Both frozen (Stasis) so `occupied` stays exactly this fixed layout all tick.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
         const state = makeState({
@@ -721,7 +721,7 @@ describe('tickGame', () => {
 
       it('never spawns a pickup on a cell inside state.unsafeCells (the device safe-area margin), even when it would otherwise be the only clear candidates', () => {
         // Same shape as the portal-exclusion test above: a 12-cell strip where the only trail-clear,
-        // collection-radius-clear gaps are x=0 and x=8 — here both are marked unsafe instead of
+        // collection-radius-clear gaps are x=0 and x=8 - here both are marked unsafe instead of
         // being portal cells, so without the exclusion one of them is exactly where this would spawn.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
         const state = makeState({
@@ -823,7 +823,7 @@ describe('tickGame', () => {
     const PORTAL_B = { x: 8, y: 2 }
     const PORTALS = [{ a: PORTAL_A, b: PORTAL_B }]
 
-    it("redirects a step onto a portal cell to its paired exit, continuing in the player's own direction — the entrance itself never appears in the trail", () => {
+    it("redirects a step onto a portal cell to its paired exit, continuing in the player's own direction - the entrance itself never appears in the trail", () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }),
@@ -863,7 +863,7 @@ describe('tickGame', () => {
       expect(next.players[2].alive).toBe(false)
     })
 
-    it('lets two players simultaneously enter opposite ends of the same portal without a head-on — they swap sides, not collide', () => {
+    it('lets two players simultaneously enter opposite ends of the same portal without a head-on - they swap sides, not collide', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }), // -> PORTAL_A -> redirected to PORTAL_B
@@ -918,7 +918,7 @@ describe('tickGame', () => {
   })
 
   describe('tunnels', () => {
-    // A 4-cell horizontal corridor along row y=5 — see arenas.ts's buildTunnel for the real
+    // A 4-cell horizontal corridor along row y=5 - see arenas.ts's buildTunnel for the real
     // generator; this fixture is hand-placed so the tests below can target specific interior/mouth
     // cells precisely.
     const TUNNEL = {
@@ -931,7 +931,7 @@ describe('tickGame', () => {
     }
     const TUNNELS = [TUNNEL]
 
-    it('traverses the corridor cell-by-cell like any open ground — entering it is never itself a crash', () => {
+    it('traverses the corridor cell-by-cell like any open ground - entering it is never itself a crash', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }),
@@ -974,11 +974,11 @@ describe('tickGame', () => {
       expect(next.players[1].alive).toBe(false)
     })
 
-    it('never crashes into its own earlier tunnel trail — looping back through a cell you yourself already crossed underground stays safe, unlike an opponent occupying that same cell', () => {
+    it('never crashes into its own earlier tunnel trail - looping back through a cell you yourself already crossed underground stays safe, unlike an opponent occupying that same cell', () => {
       const state = makeState({
         players: {
           // Already looped through the tunnel mouth (3,5) once (oldest trail cell), then up and
-          // around back to (3,6) — now turning 'up' to re-enter (3,5) a second time, from a
+          // around back to (3,6) - now turning 'up' to re-enter (3,5) a second time, from a
           // different direction than the first pass. A player's own underground trail should never
           // trap them the way the previous test's opponent trail does (see types/index.ts's own
           // Tunnel comment on the corridor's whole promise).
@@ -1004,7 +1004,7 @@ describe('tickGame', () => {
       expect(next.players[1].trail.at(-1)).toEqual({ x: 3, y: 5 })
     })
 
-    it('checks side (perpendicular) entry into an interior tunnel cell against the SAME underground occupancy — not exempt just because the approach angle is unusual', () => {
+    it('checks side (perpendicular) entry into an interior tunnel cell against the SAME underground occupancy - not exempt just because the approach angle is unusual', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 4, y: 4 }], direction: 'down', color: '#3B82F6' }), // approaches the tunnel from directly above, not through a mouth
@@ -1017,11 +1017,11 @@ describe('tickGame', () => {
       expect(next.players[1].alive).toBe(false)
     })
 
-    it('resurfaces immediately on a mid-tunnel turn — the very next step off tunnel geometry is checked against ordinary SURFACE occupancy', () => {
+    it('resurfaces immediately on a mid-tunnel turn - the very next step off tunnel geometry is checked against ordinary SURFACE occupancy', () => {
       const state = makeState({
         players: {
           // Already one step into the corridor (head at (4,5)); turns 'up' this tick, off tunnel
-          // geometry entirely, onto (4,4) — a plain surface cell player 2's own trail already
+          // geometry entirely, onto (4,4) - a plain surface cell player 2's own trail already
           // occupies. A buggy implementation that kept checking tunnel occupancy after leaving the
           // corridor would miss this collision entirely (tunnelOccupied never contains (4,4)).
           1: ps({
@@ -1159,7 +1159,7 @@ describe('applyActivation', () => {
 
   it('a same-axis activation replaces (does not stack with) an existing effect on the target, with a fresh timer', () => {
     // Player 2 is already under a long-lived Overclock (as if just hit earlier), and player 1 now
-    // lands a Stasis on them — both are opponent-targeted speed effects, so the fresh one wins.
+    // lands a Stasis on them - both are opponent-targeted speed effects, so the fresh one wins.
     const state = activationState('stasis', {
       tick: 20,
       players: {
@@ -1255,7 +1255,7 @@ describe('buildTunnelCellSet', () => {
 })
 
 describe('buildTunnelOccupiedSet', () => {
-  it('includes only the trail cells that are tunnel members — the exact complement of buildOccupiedSet’s own exclusion', () => {
+  it('includes only the trail cells that are tunnel members - the exact complement of buildOccupiedSet’s own exclusion', () => {
     const players = {
       1: ps({
         trail: [

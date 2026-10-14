@@ -4,7 +4,7 @@ import { SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_TIER_INTERVAL_MS
 import { useGameState } from '@/hooks/useGameState'
 import { Settings } from '@/types'
 
-// Deterministic, fake-timer-compatible rAF — jest-expo's own RN environment may already define
+// Deterministic, fake-timer-compatible rAF - jest-expo's own RN environment may already define
 // requestAnimationFrame through a scheduler that isn't guaranteed to advance with
 // jest.advanceTimersByTime, so this pins it explicitly for these tests regardless of that.
 function installFakeRaf() {
@@ -65,9 +65,9 @@ describe('useGameState', () => {
   })
 
   it('keeps a laggy trailSpeedTier shorter than the classic tier over the same run', async () => {
-    // A much bigger board than the other tests here use — this one needs enough runway that
+    // A much bigger board than the other tests here use - this one needs enough runway that
     // neither player reaches a wall (ending the round) before there's been time to both clear
-    // MIN_TRAIL_LENGTH_BEFORE_TRIM's grace period (gameEngine.ts — below that length every tier
+    // MIN_TRAIL_LENGTH_BEFORE_TRIM's grace period (gameEngine.ts - below that length every tier
     // just grows like 'off') and show a real difference afterward.
     const { result: classic } = await renderHook(() => useGameState(2000, 2000, SETTINGS, COLORS, ORIENTATION, P1_ON_RIGHT))
     const { result: fast } = await renderHook(() => useGameState(2000, 2000, { ...SETTINGS, trailSpeedTier: 'fast' }, COLORS, ORIENTATION, P1_ON_RIGHT))
@@ -88,20 +88,20 @@ describe('useGameState', () => {
 
   it('threads settings.arenaVariant through createInitialGameState into state.obstacles', async () => {
     // 'small' cellPx against a real-phone-sized board clears both PILLAR/GAUNTLET arena minimums
-    // (see arenas.test.ts) — 'medium' at the 200x200 board every other test here uses does not.
+    // (see arenas.test.ts) - 'medium' at the 200x200 board every other test here uses does not.
     const { result } = await renderHook(() => useGameState(390, 844, { ...SETTINGS, gridSizeTier: 'small', arenaVariant: 'pillars' }, COLORS, ORIENTATION, P1_ON_RIGHT))
     expect(result.current.state.obstacles.length).toBeGreaterThan(0)
   })
 
   it('threads settings.arenaVariant through createInitialGameState into state.portals', async () => {
-    // Same clears-the-minimums reasoning as the obstacles case above — see arenas.test.ts's own
+    // Same clears-the-minimums reasoning as the obstacles case above - see arenas.test.ts's own
     // PORTAL_MIN_ALONG_LENGTH/PORTAL_MIN_CROSS_LENGTH thresholds.
     const { result } = await renderHook(() => useGameState(390, 844, { ...SETTINGS, gridSizeTier: 'small', arenaVariant: 'portals' }, COLORS, ORIENTATION, P1_ON_RIGHT))
     expect(result.current.state.portals.length).toBeGreaterThan(0)
   })
 
   it('threads settings.arenaVariant through createInitialGameState into state.tunnels', async () => {
-    // Same clears-the-minimums reasoning as the obstacles/portals cases above — see arenas.test.ts's
+    // Same clears-the-minimums reasoning as the obstacles/portals cases above - see arenas.test.ts's
     // own TUNNEL_MIN_ALONG_LENGTH/TUNNEL_MIN_CROSS_LENGTH thresholds.
     const { result } = await renderHook(() => useGameState(390, 844, { ...SETTINGS, gridSizeTier: 'small', arenaVariant: 'underpass' }, COLORS, ORIENTATION, P1_ON_RIGHT))
     expect(result.current.state.tunnels.length).toBeGreaterThan(0)
@@ -118,7 +118,7 @@ describe('useGameState', () => {
       jest.advanceTimersByTime(1000)
     })
 
-    // Player 2 is CPU-controlled here (see cpuAi.ts) — its trail advancing at all, with no human
+    // Player 2 is CPU-controlled here (see cpuAi.ts) - its trail advancing at all, with no human
     // input source wired up in this test, proves applyCpuTurn's chosen direction was folded into
     // the same setState as the tick that consumed it (see useGameState.ts), not left pending for
     // an extra render.
@@ -136,7 +136,7 @@ describe('useGameState', () => {
     expect(small.current.tickIntervalMs / small.current.cellPx).toBeCloseTo(large.current.tickIntervalMs / large.current.cellPx)
   })
 
-  it('exposes an activate callback — a no-op (via applyActivation, see gameEngine.test.ts) while nothing is held', async () => {
+  it('exposes an activate callback - a no-op (via applyActivation, see gameEngine.test.ts) while nothing is held', async () => {
     const { result } = await renderHook(() => useGameState(200, 200, SETTINGS, COLORS, ORIENTATION, P1_ON_RIGHT))
 
     await act(async () => {
