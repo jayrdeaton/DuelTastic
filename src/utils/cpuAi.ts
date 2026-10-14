@@ -102,7 +102,7 @@ export function chooseCpuDirection({ player, grid, occupied, difficulty, random 
   // Deliberately gated to 'hard' only, not a blanket read of the raw setting - easy/normal keep
   // treating the edge as a wall even when it isn't, which reads as in-character weakness for those
   // tiers (see lobby.tsx's CPU_DIFFICULTY_OPTIONS: Drone/Bot aren't supposed to be sharp) rather
-  // than an unfinished feature, while MCP - this game's own "final boss" - is expected to actually
+  // than an unfinished feature, while Mainframe - this game's own "final boss" - is expected to actually
   // know the board.
   const wrapAware = wrapEdges && difficulty === 'hard'
 

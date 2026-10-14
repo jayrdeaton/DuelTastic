@@ -157,6 +157,11 @@ A first-run, replayable "how to play" flow, built on `@tastic/hud/guide` (a ligh
 - **Profile roster prune (F145):** `useProfiles.tsx` dispatches `profileSelectionActions.pruneToRoster(ids)` right after both `profilesActions.setAll` calls (the initial `resolveInitialProfiles` reconcile and `useSharedProfilesSync`'s `onRemoteChange`), so a seat never keeps pointing at a profile a sibling app deleted. Same text in all 5 multi-seat games. `game.tsx`'s mount-time `savedProfiles` filter stays as it is (it also gates vsCpu seat 2 and captures names). `profileExtensions` (keyScheme) is deliberately not pruned: one transient empty shared-store read would otherwise lose every player's scheme. Tested by `useProfiles.test.tsx`'s `describe('ProfilesProvider')` block, ported from AirHockey/Pong: its `expo-modules-core` mock stands in for the TasticProfile native module for the whole file, so the older `useProfiles` cases there run against an empty shared roster too. Needs the `@tastic/profile` release that adds `pruneToRoster`.
 - **Key schemes:** the lobby's handleP1KeySchemeChange/handleP2KeySchemeChange write through @tastic/input's assignSeatScheme (swap on conflict), then sync any swapped seat back to its selected profile. Needs the `@tastic/input` release that adds `assignSeatScheme`.
 
+## Mainframe label and achievement toasts (2026-10-14)
+
+- **Hard CPU label is "Mainframe"** (was "MCP", Tron's Master Control Program), so the shipped app carries no Tron reference (Jay's call, App Store launch). Display only: the persisted difficulty stays `'hard'`. Easy/Normal stay Drone/Bot.
+- **Toasts:** `handleRoundOutcome` now gets both modes' unlocks from `@tastic/achievements`' `broadcastDeviceUnlocks(humanPlayersFor(settings), result.profiles, result.device, profileIds)` (the 4-argument form, @tastic/achievements 0.5.0+). Vs CPU toasts `seatUnlocks[1]`; 2 Player feeds `profileUnlockToast`. The old Vs CPU merge `[...result.device, ...result.profiles[1]]` toasted a profile's first-round achievements twice and credited a profile with device totals another profile reached. Same change in Snake.
+
 ## Testing
 
 - Framework: Jest (`@infinitetoken/jest-config/expo`, `jest-expo` preset)

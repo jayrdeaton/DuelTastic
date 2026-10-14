@@ -585,22 +585,22 @@ export default function GameScreen() {
       // non-null settings as a prop) is already what's rendering it.
       if (!settings) return
       const result = recordRoundOutcome(outcome, { gameMode: settings.gameMode, cpuDifficulty: settings.cpuDifficulty, colors, profileIds })
+      // Each human seat's own unlocks plus the device-wide ones that are really that seat's (all of
+      // them for a guest, only scope: 'device' ones for a profile; see @tastic/achievements'
+      // broadcastDeviceUnlocks), same as Snake.
+      const seatUnlocks = broadcastDeviceUnlocks(humanPlayersFor(settings), result.profiles, result.device, profileIds)
 
       if (settings.gameMode === 'vsCpu') {
-        // Only seat 1 is ever human here, so its own profile-scoped unlocks (if any) join the same
-        // toasts the device-wide ones already use, rather than needing a separate facing UI -
-        // there's no "other side" to distinguish it from.
-        const merged = [...result.device, ...(result.profiles[1] ?? [])]
+        // Only seat 1 is ever human here, so its unlocks go through the shared toast rather than
+        // needing a separate facing UI - there's no "other side" to distinguish it from.
         const caption = profileNames[1] ? `${profileNames[1]} unlocked` : 'Achievement unlocked'
-        merged.forEach((achievement) => showAchievementToast(achievement.title, caption, undefined, { color: ACHIEVEMENT_TIER_COLORS[achievement.tier], icon: achievement.icon }))
+        ;(seatUnlocks[1] ?? []).forEach((achievement) => showAchievementToast(achievement.title, caption, undefined, { color: ACHIEVEMENT_TIER_COLORS[achievement.tier], icon: achievement.icon }))
         setProfileUnlockToast({})
       } else {
-        // Device-wide achievements have no per-seat owner, but both seats are human here and each
-        // already gets its own rotated card (see RoundOverDialog/MatchOverDialog) - broadcasting
-        // into both seats' own profileUnlockToast entries is what actually faces P2 correctly,
-        // rather than the shared, unrotated toast neither seat's zone actually belongs to.
-        const broadcast = broadcastDeviceUnlocks([1, 2] as Player[], result.profiles, result.device)
-        setProfileUnlockToast(broadcast)
+        // Both seats are human here and each already gets its own rotated card (see
+        // RoundOverDialog/MatchOverDialog), which is what actually faces P2 correctly, rather than
+        // the shared, unrotated toast neither seat's zone actually belongs to.
+        setProfileUnlockToast(seatUnlocks)
       }
     },
     [recordRoundOutcome, settings, colors, profileIds, profileNames, showAchievementToast]

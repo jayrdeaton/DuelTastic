@@ -8,7 +8,7 @@ LightCycles is a local multiplayer arcade game: each rider leaves a solid trail 
 
 ## Features
 
-- **Two modes:** pass-and-play two-player on a single device (players sit face to face, each steering in their own half of the screen), or one player against a CPU opponent with three difficulties (Drone, Bot, MCP).
+- **Two modes:** pass-and-play two-player on a single device (players sit face to face, each steering in their own half of the screen), or one player against a CPU opponent with three difficulties (Drone, Bot, Mainframe).
 - **Controls:** swipe to steer on touch devices; on desktop web each player picks WASD, the arrow keys, or IJKL, with conflicts swapped automatically.
 - **Six powerups:** Overdrive, Stasis, Shield, Prune, Hack, and Overclock, collected from a mystery pickup and fired with a tap. Each can be toggled per match, and all are off by default.
 - **Five arenas:** Open, Pillars, Gauntlet, Portals (paired teleporters), and Underpass (a tunnel riders can cross over and under). Layouts are generated to fit the board's actual size.

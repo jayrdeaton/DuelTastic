@@ -62,15 +62,16 @@ const SPEED_OPTIONS: { value: SpeedTier; label: string; icon: string }[] = [
   { value: 'fast', label: 'Fast', icon: 'rabbit' }
 ]
 
-// Tron-flavored escalation instead of a plain skill-level label, matching the same playful-tier
+// Computer-flavored escalation instead of a plain skill-level label, matching the same playful-tier
 // convention grid size's vehicles and speed's animals already use - "Drone" (a simple, disposable
-// program), "Bot" (a real opponent), "MCP" (Tron's own Master Control Program, the final-boss
-// antagonist) - rather than "AI" for the hardest tier, which reads oddly once every tier is already
-// an AI opponent by definition; MCP names *which* one, not just how hard.
+// program), "Bot" (a real opponent), "Mainframe" (the big machine running the grid, the final boss)
+// - rather than "AI" for the hardest tier, which reads oddly once every tier is already an AI
+// opponent by definition; Mainframe names *which* one, not just how hard. It replaced "MCP" (Tron's
+// Master Control Program) on 2026-10-14 to keep Tron references out of the shipped app.
 const CPU_DIFFICULTY_OPTIONS: { value: CpuDifficulty; label: string; icon: string }[] = [
   { value: 'easy', label: 'Drone', icon: 'emoticon-happy-outline' },
   { value: 'normal', label: 'Bot', icon: 'emoticon-neutral-outline' },
-  { value: 'hard', label: 'MCP', icon: 'emoticon-devil-outline' }
+  { value: 'hard', label: 'Mainframe', icon: 'emoticon-devil-outline' }
 ]
 
 // Off -> fast tail-chase, echoing the same playful-tier convention as the other rows (and, unlike
