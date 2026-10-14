@@ -1,5 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { Orbitron_700Bold, useFonts } from '@expo-google-fonts/orbitron'
+import Constants from 'expo-constants'
+import Head from 'expo-router/head'
 import { ReactNode } from 'react'
 
 import { SplashGate } from '@/utils/splashGate'
@@ -19,8 +21,14 @@ interface Props {
 export function Fonts({ children }: Props) {
   const [loaded] = useFonts({ Orbitron_700Bold, ...MaterialCommunityIcons.font })
   return (
-    <SplashGate gate='fonts' ready={loaded}>
-      {children}
-    </SplashGate>
+    <>
+      {/* The web tab title, outside the gate so the static export's HTML has it too (fonts never load there) */}
+      <Head>
+        <title>{Constants.expoConfig?.name}</title>
+      </Head>
+      <SplashGate gate='fonts' ready={loaded}>
+        {children}
+      </SplashGate>
+    </>
   )
 }

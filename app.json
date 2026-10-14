@@ -4,7 +4,7 @@
     "slug": "LightCycles",
     "version": "1.0.0",
     "scheme": "lightcycles",
-    "description": "A local multiplayer Tron/lightcycles game",
+    "description": "A local multiplayer cycle battle game",
     "orientation": "portrait",
     "platforms": [
       "ios",

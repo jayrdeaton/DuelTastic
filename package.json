@@ -2,7 +2,7 @@
   "name": "light-cycles",
   "version": "1.0.0",
   "private": true,
-  "description": "A local multiplayer Tron/lightcycles pass-and-play game",
+  "description": "A local multiplayer pass-and-play cycle battle game",
   "type": "commonjs",
   "main": "expo-router/entry",
   "scripts": {

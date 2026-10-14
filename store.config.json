@@ -1,0 +1,63 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "copyright": "2026 Jay Deaton",
+    "categories": [
+      [
+        "GAMES",
+        "GAMES_ACTION",
+        "GAMES_CASUAL"
+      ]
+    ],
+    "info": {
+      "en-US": {
+        "title": "LightCyclesTastic",
+        "subtitle": "Light Cycle Duels. No Ads.",
+        "description": "A fast arcade duel for two players on one phone, or one player against the CPU. Every rider leaves a solid trail behind them, and the last cycle still riding wins. No ads, no accounts.\n\n• Two players face to face, each steering in their own half of the screen\n• Play the CPU at three difficulties\n• Five arenas: Open, Pillars, Gauntlet, Portals, and Underpass\n• Six optional powerups, including Shield, Stasis, and Overdrive\n• Three grid sizes, three speeds, and Wrap Edges\n• Player profiles, stats, and 30 achievements\n• Plays offline\n\nPart of the Tastic family of games. Your player profiles are shared with the other Tastic games on your device.\n\nOpen source on GitHub: https://github.com/jayrdeaton/LightCycles",
+        "keywords": [
+          "trail",
+          "arcade",
+          "retro",
+          "two player",
+          "multiplayer",
+          "local",
+          "versus",
+          "neon",
+          "bike",
+          "pass and play",
+          "offline"
+        ],
+        "marketingUrl": "https://lightcycles.infinitetoken.com",
+        "supportUrl": "https://infinitetoken.com",
+        "privacyPolicyUrl": "https://lightcycles.infinitetoken.com/privacy"
+      }
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "gunsOrOtherWeapons": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "advertising": false,
+      "ageAssurance": false,
+      "gambling": false,
+      "healthOrWellnessTopics": false,
+      "lootBox": false,
+      "messagingAndChat": false,
+      "parentalControls": false,
+      "unrestrictedWebAccess": false,
+      "userGeneratedContent": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
+    }
+  }
+}
