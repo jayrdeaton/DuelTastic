@@ -114,8 +114,10 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Only asked once there's an actual score to lose (the pip row itself uses the same gate, see
   // OnboardingOverlay) - the very first round's back button still exits immediately, since there's
-  // nothing yet for a confirmation to protect.
-  const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => roundHistory.length > 0, safeBack)
+  // nothing yet for a confirmation to protect. Once the match is over its stats are already
+  // recorded and nothing is lost, so back exits at once, the same as the Match Over card's own
+  // button (audit F094). Between rounds of a streak (roundOver) it still asks.
+  const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => roundHistory.length > 0 && !matchOver, safeBack)
   // Leaving the app mid-match (home, app switch, a phone call, Control Center) latches a pause that
   // only the Paused dialog's Resume clears - see @tastic/core's useBackgroundPause. Skipped once the
   // match is over, or while a dialog already holds the pause by itself.
@@ -483,7 +485,7 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
       shared vertical midline, glyph-only chipRotation, exactly as before.
       Also shown through matchOver (previously hidden then) - matches BoxHockey's/AirHockey's/Pong's
       identical always-visible back+settings chips, so there's a consistent way to back out (still
-      gated behind onBackPress's own "Quit Match?" confirmation whenever roundHistory is non-empty)
+      gated behind onBackPress's own "Quit Match?" confirmation mid-match, once roundHistory is non-empty)
       rather than only the MatchOverDialog's own exit button. */}
       {controlsVisible &&
         (useCornerLayout ? (
@@ -608,8 +610,10 @@ export default function GameScreen() {
       const result = recordRoundOutcome(outcome, { gameMode: settings.gameMode, cpuDifficulty: settings.cpuDifficulty, colors, profileIds })
       // Each human seat's own unlocks plus the device-wide ones that are really that seat's (all of
       // them for a guest, only scope: 'device' ones for a profile; see @tastic/achievements'
-      // broadcastDeviceUnlocks), same as Snake.
-      const seatUnlocks = broadcastDeviceUnlocks(humanPlayersFor(settings), result.profiles, result.device, profileIds)
+      // broadcastDeviceUnlocks), same as Snake. In 2 Player the device-wide ones go to the round's
+      // winner only, both seats on a draw (audit F037).
+      const winners = settings.gameMode === 'twoPlayer' && outcome.type === 'win' ? [outcome.winner] : undefined
+      const seatUnlocks = broadcastDeviceUnlocks(humanPlayersFor(settings), result.profiles, result.device, profileIds, { winners })
 
       if (settings.gameMode === 'vsCpu') {
         // Only seat 1 is ever human here, so its unlocks go through the shared toast rather than
