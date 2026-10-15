@@ -19,14 +19,16 @@ interface Props {
 // happen in one place this way, same as Pong's own reference Fonts.tsx and the modern approach
 // _layout.tsx already uses for the 'settings'/'profiles' gates.
 export function Fonts({ children }: Props) {
-  const [loaded] = useFonts({ Orbitron_700Bold, ...MaterialCommunityIcons.font })
+  // A failed load counts as ready too: `loaded` stays false forever after an error, which would hold
+  // the splash up for good, so the app opens on the system fallback font instead.
+  const [loaded, error] = useFonts({ Orbitron_700Bold, ...MaterialCommunityIcons.font })
   return (
     <>
       {/* The web tab title, outside the gate so the static export's HTML has it too (fonts never load there) */}
       <Head>
         <title>{Constants.expoConfig?.name}</title>
       </Head>
-      <SplashGate gate='fonts' ready={loaded}>
+      <SplashGate gate='fonts' ready={loaded || !!error}>
         {children}
       </SplashGate>
     </>

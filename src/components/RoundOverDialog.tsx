@@ -1,6 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { Button } from '@rific/feedback-press'
 import { getOpposingZoneRotation, ViewRotation } from '@tastic/core'
+import { OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 
@@ -47,19 +48,13 @@ export interface RoundOverDialogProps {
 // (side-by-side, ordered by p1OnRight) split OnboardingOverlay already uses for its countdown -
 // so "YOU WIN!"/"YOU LOSE!" and each player's own Rematch/Quit always face the player they're for.
 export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, humanPlayers, gameMode, outcome, colors, profileUnlocked = {}, rematchReady, onRequestRematch, onQuit }: RoundOverDialogProps) {
-  const { colors: themeColors, dark } = useAutoPaperTheme()
-  const cardBg = dark ? '#111111' : '#F2F2F2'
-  const cardBorder = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
-  const fgMuted = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'
+  const { colors: themeColors } = useAutoPaperTheme()
+  const { fgMuted } = useOverlayCardColors()
   const onColors: Record<Player, string> = { 1: themeColors.onPrimary, 2: themeColors.onSecondary }
-  // Quit deliberately avoids themeColors.secondary - Rematch already renders in colors[player], the
-  // *viewing* player's own identity color, which for player 2 IS themeColors.secondary. Reusing it
-  // here made Rematch and Quit render as the exact same color on player 2's own dialog (fine for
-  // player 1, whose color is primary instead) - per explicit user feedback that the pair read as
-  // "too much of one color" rather than two distinct actions. A neutral gray reads correctly
-  // regardless of which player, or which theme-color slot, is looking at it.
-  const quitBg = dark ? '#2A2A2A' : '#E0E0E0'
-  const quitFg = dark ? '#FFFFFF' : '#000000'
+  // Quit is outlined, the fleet's secondary action (ConfirmDialog's Cancel), so it never reads as a
+  // second filled button beside Rematch, which fills with colors[player]: two filled buttons in one
+  // color on player 2's card read as "too much of one color" (Jay). It used to be a fixed gray fill,
+  // which stopped matching once the card took the theme's tinted surface.
 
   // Text/icon/color as seen from `player`'s own perspective - the only one of the three (win/lose/
   // draw) that's symmetric between the two players is the draw case.
@@ -77,8 +72,8 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
     const { text, icon, color } = perspective(player)
     const ready = rematchReady[player]
     return (
-      <View style={styles.overlay}>
-        <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }, rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}>
+      <OverlayBackdrop>
+        <OverlayCard style={rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }}>
           <Icon source={icon} size={64} color={color} />
           <Text variant='headlineLarge' style={[styles.overlayTitle, { color }]}>
             {text}
@@ -87,14 +82,14 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
           they're for, and that rotation is defined so the LAST item always lands nearest that
           player's own hands (see renderCard's identical ordering/comment) - so this order is what
           makes Rematch, not Quit, the easier reach. */}
-          <Button mode='contained' onPress={onQuit} style={styles.overlayButton} buttonColor={quitBg} textColor={quitFg}>
+          <Button mode='outlined' onPress={onQuit} style={styles.overlayButton}>
             Quit
           </Button>
           <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.overlayButton} buttonColor={colors[player]} textColor={onColors[player]}>
             {ready ? 'Waiting…' : 'Rematch'}
           </Button>
-        </View>
-      </View>
+        </OverlayCard>
+      </OverlayBackdrop>
     )
   }
 
@@ -114,7 +109,7 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
     const cardRotation = player === 2 ? getOpposingZoneRotation(rotation) : rotation
     const unlocked = profileUnlocked[player]
     return (
-      <View style={[styles.zoneCard, { backgroundColor: cardBg, borderColor: cardBorder }, cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }]}>
+      <OverlayCard style={[styles.zoneCard, cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }]}>
         <Icon source={icon} size={28} color={color} />
         <Text variant='headlineSmall' style={[styles.overlayTitle, { color }]}>
           {text}
@@ -133,21 +128,21 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
         {/* Quit before Rematch - this card gets rotated (see cardRotation above) to read right-side-up
         from this player's own side of the device, which puts whichever button is authored LAST
         nearest their hands. Listing Rematch last makes it the easier reach for both players. */}
-        <Button mode='contained' onPress={onQuit} style={styles.zoneButton} labelStyle={styles.zoneButtonLabel} buttonColor={quitBg} textColor={quitFg}>
+        <Button mode='outlined' onPress={onQuit} style={styles.zoneButton} labelStyle={styles.zoneButtonLabel}>
           Quit
         </Button>
         <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.zoneButton} labelStyle={styles.zoneButtonLabel} buttonColor={colors[player]} textColor={onColors[player]}>
           {ready ? 'Waiting…' : 'Rematch'}
         </Button>
-      </View>
+      </OverlayCard>
     )
   }
 
   return (
-    <View style={styles.overlay}>
+    <OverlayBackdrop>
       <View style={[styles.zone, p1Zone, { borderColor: colors[1], backgroundColor: `${colors[1]}22` }]}>{renderCard(1)}</View>
       <View style={[styles.zone, p2Zone, { borderColor: colors[2], backgroundColor: `${colors[2]}22` }]}>{renderCard(2)}</View>
-    </View>
+    </OverlayBackdrop>
   )
 }
 
@@ -158,25 +153,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: -2
   },
-  overlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    bottom: 0,
-    justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0
-  },
   overlayButton: { width: 160 },
-  overlayCard: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 16,
-    maxWidth: 360,
-    padding: 32
-  },
   // headlineLarge/headlineSmall's own line-height leaves slack under the glyphs that the flex `gap`
   // above stacks on top of - this claws it back, same fix game.tsx's own dialogs already use.
   overlayTitle: { fontWeight: 'bold', marginBottom: -8 },
@@ -202,10 +179,9 @@ const styles = StyleSheet.create({
   // of a typical short/landscape phone screen, so the overflow:hidden backstop above should only
   // ever actually clip in genuinely extreme cases.
   zoneButtonLabel: { marginVertical: 4 },
+  // A compact OverlayCard: its own shape, tightened to fit half a short screen.
   zoneCard: {
-    alignItems: 'center',
     borderRadius: 16,
-    borderWidth: 1,
     gap: 6,
     padding: 14
   },

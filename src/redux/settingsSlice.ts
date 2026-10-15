@@ -21,7 +21,8 @@ export const DEFAULT_SETTINGS: Settings = {
   arenaVariant: 'open',
   extendIntoSafeArea: false,
   wrapEdges: false,
-  deferBottomEdgeGestures: false
+  deferBottomEdgeGestures: false,
+  keepAwake: true
 }
 
 const { actions, reducer } = createSettingsSlice<Settings, 'merge', never>('settings', {

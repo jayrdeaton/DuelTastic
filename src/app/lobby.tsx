@@ -2,7 +2,7 @@ import { defaultColors, getThirdColor, useAutoPaperTheme, useThemeSettings } fro
 import { FakeLandscapeView, getViewRotation, rotateInsets, useIsTouchPrimaryDevice, useOrientationState } from '@tastic/core'
 import { CornerActionButtons, getColorPopoverId, getCpuDifficultyPopoverId, getInlineColorPickerContentSize, getLabeledDropdownContentHeight, LABELED_DROPDOWN_POPOVER_WIDTH, MenuOption, PlayerSetupPanel, PressAwayOverlay, ReadyButton, SectionedDropdown, SharedActionBand, usePopoverHost, useZoneClampedAlign } from '@tastic/hud'
 import { assignSeatScheme } from '@tastic/input'
-import type { Profile as BaseProfile } from '@tastic/profile'
+import { avoidSeatColorClash, type Profile as BaseProfile } from '@tastic/profile'
 import { DualZoneLayout, needsSharedNeutralZone, useDualZoneLayout } from '@tastic/split-screen'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -276,12 +276,12 @@ export default function LobbyScreen() {
   // real values by this component's very first render.
   useEffect(() => {
     const p1Target = p1Profile ? (profileOverride[1] ?? p1Profile.color) : lastGuestColor[1]
-    let p2Target = !p2IsHuman ? lastCpuColor : p2Profile ? (profileOverride[2] ?? p2Profile.color) : lastGuestColor[2]
     // Same collision guard Theme.tsx's own cold-boot read used to run - an independently-sourced
     // pair (say, a profile's saved favorite landing on the other seat's own remembered guest/CPU
     // color) has no swap gesture behind it the way a manual recolor does, so this just nudges P2 off
-    // P1 rather than leaving both seats' round-end pips/labels ambiguous.
-    if (p2Target.toLowerCase() === p1Target.toLowerCase()) p2Target = p2Target.toLowerCase() === DEFAULT_P1_COLOR.toLowerCase() ? DEFAULT_P2_COLOR : DEFAULT_P1_COLOR
+    // P1 rather than leaving both seats' round-end pips/labels ambiguous. The rule now lives in
+    // @tastic/profile's avoidSeatColorClash (shared with the other games since 2026-10-15).
+    const p2Target = avoidSeatColorClash(p1Target, !p2IsHuman ? lastCpuColor : p2Profile ? (profileOverride[2] ?? p2Profile.color) : lastGuestColor[2], [DEFAULT_P1_COLOR, DEFAULT_P2_COLOR])
     setThemeColor({ color: { primary: p1Target, secondary: p2Target, tertiary: getThirdColor(p1Target, p2Target) } })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastSelected[1], lastSelected[2], p1Profile?.color, p2Profile?.color, p2IsHuman])
@@ -293,11 +293,10 @@ export default function LobbyScreen() {
   // here. The live SectionedDropdown never actually reaches the swap case on its own - the other
   // seat's current scheme stays in its own option list (so the gauge shows the right position) but
   // renders disabled via takenValue (see this file's own p2KeySchemePicker below), so tapping it is
-  // a no-op - but a profile's saved key scheme (see handleP1ProfileSelect/handleP2ProfileSelect
-  // below) pre-fills by calling this directly, bypassing that disabled state entirely, so a real
-  // collision is reachable there and needs the swap treatment too. Declared above
-  // handleP1ProfileSelect/handleP2ProfileSelect (rather than after, next to the other seat-color
-  // handlers) purely so those can close over these without a temporal-dead-zone reference.
+  // a no-op. A profile pick's pre-fill (handleP1ProfileSelect/handleP2ProfileSelect below) bypasses
+  // that disabled state, so a real collision is reachable there; it runs assignSeatScheme itself
+  // rather than calling these, since these write back to lastSelected's profiles, which inside a
+  // pick are still the selections from before it.
   const handleP1KeySchemeChange = useCallback(
     (scheme: KeyScheme) => {
       const keyScheme = assignSeatScheme(settings.keyScheme, 1, scheme)
@@ -336,23 +335,44 @@ export default function LobbyScreen() {
   // base Profile (matching PlayerSetupPanel's onProfileSelect signature exactly, which has no
   // opinion on this app's own keyScheme field) and re-looks the full, app-typed Profile up out of
   // this app's own `profiles` by id rather than casting the callback's own argument.
+  //
+  // Picking the other seat's profile swaps the two (see @tastic/profile's select): the other seat's
+  // override is cleared too, since its profile changes without its own handler running. The
+  // pre-fill gives this seat the picked profile's scheme (assignSeatScheme moves the other seat off
+  // it if needed) and writes nothing back to the picked profile, which already has that scheme. The
+  // only write is the other seat's moved scheme, to whichever profile that seat holds after the
+  // pick: seat 1's previous one when the pick swapped them. `lastSelected` here is still the
+  // selection from before the pick, which is why this doesn't call handleP1KeySchemeChange (it
+  // used to, and saved the picked profile's scheme onto this seat's previous profile).
   const handleP1ProfileSelect = useCallback(
     (profile: BaseProfile | null) => {
+      const swapped = !!profile && profile.id === lastSelected[2]
       dispatch(seatColorsActions.setProfileOverride({ seat: 1, color: null }))
+      if (swapped) dispatch(seatColorsActions.setProfileOverride({ seat: 2, color: null }))
       selectProfile(1, profile?.id ?? null)
       const full = profile && profiles.find((p) => p.id === profile.id)
-      if (full) handleP1KeySchemeChange(full.keyScheme)
+      if (!full) return
+      const keyScheme = assignSeatScheme(settings.keyScheme, 1, full.keyScheme)
+      setSettings({ keyScheme })
+      const seat2ProfileId = swapped ? lastSelected[1] : lastSelected[2]
+      if (keyScheme[2] !== settings.keyScheme[2] && seat2ProfileId) updateProfile(seat2ProfileId, { keyScheme: keyScheme[2] })
     },
-    [dispatch, selectProfile, profiles, handleP1KeySchemeChange]
+    [dispatch, lastSelected, selectProfile, profiles, settings.keyScheme, setSettings, updateProfile]
   )
   const handleP2ProfileSelect = useCallback(
     (profile: BaseProfile | null) => {
+      const swapped = !!profile && profile.id === lastSelected[1]
       dispatch(seatColorsActions.setProfileOverride({ seat: 2, color: null }))
+      if (swapped) dispatch(seatColorsActions.setProfileOverride({ seat: 1, color: null }))
       selectProfile(2, profile?.id ?? null)
       const full = profile && profiles.find((p) => p.id === profile.id)
-      if (full) handleP2KeySchemeChange(full.keyScheme)
+      if (!full) return
+      const keyScheme = assignSeatScheme(settings.keyScheme, 2, full.keyScheme)
+      setSettings({ keyScheme })
+      const seat1ProfileId = swapped ? lastSelected[2] : lastSelected[1]
+      if (keyScheme[1] !== settings.keyScheme[1] && seat1ProfileId) updateProfile(seat1ProfileId, { keyScheme: keyScheme[1] })
     },
-    [dispatch, selectProfile, profiles, handleP2KeySchemeChange]
+    [dispatch, lastSelected, selectProfile, profiles, settings.keyScheme, setSettings, updateProfile]
   )
 
   // Covers exactly the fields LobbySharedControls itself exposes - board shape/size, pace, and

@@ -22,6 +22,11 @@ export const DEFAULT_GRID_SIZE_TIER: GridSizeTier = 'medium'
 // from stretching into an unplayably wide, short rectangle.
 export const MAX_BOARD_CONTENT_WIDTH = 1000
 
+// Threshold (in CSS px) at or above which web counts as "desktop" rather than phone-shaped - the
+// same 768 AirHockey, BoxHockey and Pong use. There, game.tsx keeps the back/settings chips in the
+// page's top corners for the whole match instead of hiding them while a round is live.
+export const DESKTOP_WEB_MIN_WIDTH = 768
+
 // Every ms-per-tick constant below is tuned at GRID_CELL_PX.medium (this app's original fixed
 // CELL_SIZE) - see scaleMsForCellPx, which rescales them to whichever tier is actually active so
 // the cycle's on-screen (px/sec) pace stays constant across grid-size tiers instead of silently

@@ -1,4 +1,5 @@
 import { Provider as AutoPaperProvider, themeActions, ThemeSettings, useThemeBridgeProps } from '@rific/auto-paper'
+import * as ExpoBlur from 'expo-blur'
 import * as SplashScreen from 'expo-splash-screen'
 import { ReactNode, useCallback } from 'react'
 import Reanimated from 'react-native-reanimated'
@@ -63,7 +64,13 @@ export function Theme({ children }: Props) {
     // fontFamily: MONO_FONT on nearly every individual Text/TextInput this app renders (achievements,
     // ProfileChip, ProfilePicker, ProfilesManager, LabeledDropdown, OnboardingOverlay); those explicit
     // overrides are now redundant (though harmless if any remain) since the theme itself supplies it.
-    <AutoPaperProvider {...bridgeProps} reanimated={Reanimated} fontFamily={MONO_FONT}>
+    // expoBlur is what lets auto-paper's BlurView actually blur (the settings sheet, Paper menus and
+    // @tastic/hud's overlay cards) while the player's Blur setting is on. Without it they paint the
+    // theme's solid surface instead, and hud's Settings hides the Blur row.
+    // statusBar={false}: auto-paper renders no React Native StatusBar (here or in Appbar.Header). The
+    // status bar is set per screen (_layout.tsx's useRotationAwareStatusBar), and with @tastic/core's
+    // config plugin on, a mounted StatusBar logs an error (a red box in a dev build).
+    <AutoPaperProvider {...bridgeProps} expoBlur={ExpoBlur} statusBar={false} reanimated={Reanimated} fontFamily={MONO_FONT}>
       {children}
     </AutoPaperProvider>
   )

@@ -1,6 +1,6 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { Button } from '@rific/feedback-press'
-import { AchievementUnlockList } from '@tastic/hud'
+import { AchievementUnlockList, OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
 import { type Profile } from '@tastic/profile'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
@@ -45,10 +45,8 @@ const SEATS: readonly Player[] = [1, 2]
 // per-player split - there's no decision left for either player to make here, just a result to
 // read before backing out to the menu.
 export default function MatchOverDialog({ roundHistory, colors, profileNames = {}, seatProfiles = {}, profileUnlocked = {}, gameMode, onExit, rotation = 0 }: MatchOverDialogProps) {
-  const { colors: themeColors, dark } = useAutoPaperTheme()
-  const cardBg = dark ? '#111111' : '#F2F2F2'
-  const cardBorder = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'
-  const fg = dark ? '#FFFFFF' : '#000000'
+  const { colors: themeColors } = useAutoPaperTheme()
+  const { fg } = useOverlayCardColors()
 
   const p1Wins = roundHistory.filter((r) => r.type === 'win' && r.winner === 1).length
   const p2Wins = roundHistory.filter((r) => r.type === 'win' && r.winner === 2).length
@@ -69,8 +67,8 @@ export default function MatchOverDialog({ roundHistory, colors, profileNames = {
   const p2Label = profileNames[2] ?? (gameMode === 'vsCpu' ? 'CPU' : 'P2')
 
   return (
-    <View style={styles.overlay}>
-      <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }, rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}>
+    <OverlayBackdrop>
+      <OverlayCard style={rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }}>
         <Icon source={icon} size={64} color={titleColor} />
         <Text variant='headlineLarge' style={[styles.overlayTitle, { color: titleColor }]}>
           {title}
@@ -100,31 +98,13 @@ export default function MatchOverDialog({ roundHistory, colors, profileNames = {
         <Button mode='contained' onPress={onExit} style={styles.overlayButton} buttonColor={themeColors.primary} textColor={themeColors.onPrimary}>
           Quit
         </Button>
-      </View>
-    </View>
+      </OverlayCard>
+    </OverlayBackdrop>
   )
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.72)',
-    bottom: 0,
-    justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0
-  },
   overlayButton: { width: 160 },
-  overlayCard: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 16,
-    maxWidth: 360,
-    padding: 32
-  },
   // Uppercased via style rather than baked into the title string itself, so a mixed-case profile
   // name substituted into "{name} WINS THE MATCH!" always reads in the same case as the rest of the
   // sentence instead of visually breaking the flow.
