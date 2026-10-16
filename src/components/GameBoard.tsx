@@ -193,7 +193,7 @@ function wallPath(grid: GridSize, cellPx: number, orientationMode: OrientationMo
   const height = grid.rows * cellPx
   const midX = width / 2
   const midY = height / 2
-  const path = Skia.Path.Make()
+  const path = Skia.PathBuilder.Make()
 
   // Three sides of this player's own zone, omitting the fourth (the shared midline with the other
   // player's zone).
@@ -219,7 +219,7 @@ function wallPath(grid: GridSize, cellPx: number, orientationMode: OrientationMo
     path.lineTo(width, height)
     path.lineTo(midX, height)
   }
-  return path
+  return path.detach()
 }
 
 function Walls({ grid, cellPx, orientationMode, p1OnRight, players, phase, wrapEdges }: { grid: GridSize; cellPx: number; orientationMode: OrientationMode; p1OnRight: boolean; players: Record<Player, PlayerState>; phase: GamePhase; wrapEdges: boolean }) {
@@ -273,8 +273,8 @@ function tailProgress(tick: number, growthRate: number, trailLength: number): nu
 }
 
 function trailPath(trail: PlayerState['trail'], cellPx: number) {
-  const path = Skia.Path.Make()
-  if (trail.length === 0) return path
+  const path = Skia.PathBuilder.Make()
+  if (trail.length === 0) return path.detach()
   const first = cellCenter(trail[0], cellPx)
   path.moveTo(first.x, first.y)
   let prev = trail[0]
@@ -287,7 +287,7 @@ function trailPath(trail: PlayerState['trail'], cellPx: number) {
     else path.moveTo(x, y)
     prev = cell
   }
-  return path
+  return path.detach()
 }
 
 // The underground portion of a player's own trail, as a separate Skia path rendered underneath the
@@ -298,7 +298,7 @@ function trailPath(trail: PlayerState['trail'], cellPx: number) {
 // is always a chain of geometrically adjacent steps (unlike a portal jump), so consecutive
 // tunnel-member cells are always genuinely adjacent here too.
 function tunnelHighlightPath(trail: PlayerState['trail'], tunnelCellSet: ReadonlySet<string>, cellPx: number) {
-  const path = Skia.Path.Make()
+  const path = Skia.PathBuilder.Make()
   let drawing = false
   for (const cell of trail) {
     const isMember = tunnelCellSet.has(cellKey(cell))
@@ -313,7 +313,7 @@ function tunnelHighlightPath(trail: PlayerState['trail'], tunnelCellSet: Readonl
       drawing = true
     }
   }
-  return path
+  return path.detach()
 }
 
 // Walks `progress` (0 = nothing eaten, 1 = fully eaten) across an ordered chain of grid cells and
@@ -328,11 +328,11 @@ function tunnelHighlightPath(trail: PlayerState['trail'], tunnelCellSet: Readonl
 // resolveTurnIntent in utils/turnIntent.ts for the same pattern.
 function partialTrailPath(cells: { x: number; y: number }[], progress: number, cellPx: number) {
   'worklet'
-  const path = Skia.Path.Make()
-  if (cells.length < 2) return path
+  const path = Skia.PathBuilder.Make()
+  if (cells.length < 2) return path.detach()
   const eatenFloat = progress * (cells.length - 1)
   const eatenWhole = Math.floor(eatenFloat)
-  if (eatenWhole >= cells.length - 1) return path
+  if (eatenWhole >= cells.length - 1) return path.detach()
   const frac = eatenFloat - eatenWhole
   const a = cells[eatenWhole]
   const b = cells[eatenWhole + 1]
@@ -347,7 +347,7 @@ function partialTrailPath(cells: { x: number; y: number }[], progress: number, c
   for (let i = eatenWhole + 1; i < cells.length; i++) {
     path.lineTo(cells[i].x * cellPx + cellPx / 2, cells[i].y * cellPx + cellPx / 2)
   }
-  return path
+  return path.detach()
 }
 
 // Purely cosmetic shape/sizing for the burst below - kept local rather than in constants/game.ts,

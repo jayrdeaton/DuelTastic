@@ -62,7 +62,7 @@ function wordPath(box: WordBox, clockwise: boolean) {
   const right = left + box.width + marginLeft + marginRight
   const bottom = top + box.height + TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM
 
-  const path = Skia.Path.Make()
+  const path = Skia.PathBuilder.Make()
   path.moveTo(left, top)
   if (clockwise) {
     path.lineTo(right, top)
@@ -74,7 +74,7 @@ function wordPath(box: WordBox, clockwise: boolean) {
     path.lineTo(right, top)
   }
   path.close()
-  return path
+  return path.detach()
 }
 
 // Exact perimeter of the same shape wordPath() draws (closed-form, no Skia needed): a plain
