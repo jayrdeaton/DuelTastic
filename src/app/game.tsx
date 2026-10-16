@@ -489,7 +489,12 @@ function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSett
       rather than only the MatchOverDialog's own exit button. */}
       {controlsVisible &&
         (useCornerLayout ? (
-          <FakeLandscapeView style={[StyleSheet.absoluteFill, styles.cornerChipsWrap]}>
+          // passThrough: this full-bleed frame only exists to give the two corner slots something to
+          // rotate, so it must never swallow the board's touches or the result card's buttons beneath
+          // it. A `pointerEvents: 'box-none'` style can't do that: FakeLandscapeView hands the style to
+          // its inner View, and react-native-web drops it there, which left the whole frame clickable
+          // on web.
+          <FakeLandscapeView passThrough style={StyleSheet.absoluteFill}>
             <View style={[styles.cornerLeftSlot, { top: 8 + cornerInsets.top, left: 8 + cornerInsets.left }]}>
               <IconButton icon='arrow-left' iconColor={chipFg} containerColor={chipBg} style={styles.chipButton} size={22} onPress={onBackPress} accessibilityLabel='Back' />
             </View>
@@ -718,10 +723,6 @@ const styles = StyleSheet.create({
   // its own (unlike leftSlot/rightSlot below) - both are rendered inside a FakeLandscapeView that
   // supplies rotation-aware insets inline, so they actually move to the correct physical corner
   // under a live tilt instead of just spinning a glyph in place at a fixed physical offset.
-  // box-none: this full-bleed wrapper only exists to give FakeLandscapeView something to rotate -
-  // it must never itself swallow the board's own touches in the (mostly empty) space between the
-  // two corner slots below.
-  cornerChipsWrap: { pointerEvents: 'box-none' },
   cornerLeftSlot: { position: 'absolute' },
   cornerRightSlot: { position: 'absolute' },
   // top: 0 + bottom: 0 + justifyContent: 'center' centers the button on the board's vertical
