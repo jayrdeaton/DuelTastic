@@ -1,3 +1,4 @@
+import { callWorkletCallback, useWorkletCallback } from '@rific/core'
 import { useVibration } from '@rific/feedback-press'
 import { applyControlInversion, isEffectiveTurn } from '@tastic/input'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -87,6 +88,12 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
     selection()
   }, [])
 
+  // The gesture worklets call these through callWorkletCallback + a key, never runOnJS(handleTurn) directly: react-native-worklets
+  // holds a runOnJS target from native code for as long as the worklet's cached copy lives, and a component callback there
+  // would pin this component (and everything it closes over) in memory forever.
+  const turnKey = useWorkletCallback(handleTurn)
+  const activateKey = useWorkletCallback(handleActivate)
+
   // Per-player drag state, read/written from the UI-thread gesture worklets below (never touched
   // from JS) so a whole continuous touch can be tracked without bouncing through React state.
   // `base` is the translation (relative to the gesture's own onStart) at which the *current*
@@ -136,7 +143,7 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
           base.value = { x: e.translationX, y: e.translationY }
           if (direction !== lastDirection.value) {
             lastDirection.value = direction
-            runOnJS(handleTurn)(player, direction)
+            runOnJS(callWorkletCallback)(turnKey, player, direction)
           }
         })
 
@@ -153,12 +160,12 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
         .hitSlop({})
         .enabled(enabled)
         .onEnd((_event, success) => {
-          if (success) runOnJS(handleActivate)(player)
+          if (success) runOnJS(callWorkletCallback)(activateKey, player)
         })
 
       return Gesture.Simultaneous(pan, tap)
     },
-    [enabled, orientationMode, handleTurn, handleActivate]
+    [enabled, orientationMode, turnKey, activateKey]
   )
 
   const soloGesture = useMemo(() => (solo ? makePlayerGesture(humanPlayers[0], baseFor(humanPlayers[0]), lastDirectionFor(humanPlayers[0])) : null), [solo, humanPlayers, makePlayerGesture]) // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/refs -- baseFor/lastDirectionFor read stable SharedValue refs (like useRef), not reactive state; SharedValue.value is only ever read inside worklet/event callbacks, never synchronously during render, despite the shape looking ref-like to this rule
