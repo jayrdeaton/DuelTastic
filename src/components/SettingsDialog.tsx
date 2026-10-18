@@ -29,5 +29,5 @@ export interface SettingsDialogProps {
 // three call sites (index.tsx, lobby.tsx, game.tsx) needed to change.
 export function SettingsDialog({ visible, onDismiss, settings, setSettings, rotation = 0, showHowToPlay = false }: SettingsDialogProps) {
   const { open: openGuide } = useGuide()
-  return <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={release.otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} deferBottomEdgeGestures={settings.deferBottomEdgeGestures} onDeferBottomEdgeGestures={(value) => setSettings({ deferBottomEdgeGestures: value })} keepAwake={settings.keepAwake} onKeepAwakeChange={(value) => setSettings({ keepAwake: value })} onUpdateError={useUpdateErrorToast()} onShowHowToPlay={showHowToPlay ? openGuide : undefined} />
+  return <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={release.otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} deferBottomEdgeGestures={settings.deferBottomEdgeGestures} onDeferBottomEdgeGestures={(value) => setSettings({ deferBottomEdgeGestures: value })} onUpdateError={useUpdateErrorToast()} onShowHowToPlay={showHowToPlay ? openGuide : undefined} />
 }

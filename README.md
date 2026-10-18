@@ -1,6 +1,6 @@
 # LightCycles
 
-A Tron-style light-cycle duel for two players on one phone, or one player against the CPU.
+A light-cycle duel for two players on one phone, or one player against the CPU.
 
 LightCycles is a local multiplayer arcade game: each rider leaves a solid trail behind them, and the last cycle still riding wins the round. It runs on iOS, Android, and web from one codebase. Built with Expo, React Native, and React Native Skia, it is part of a family of games built on my open-source `@tastic` game-engine and `@rific` Expo utility packages. App Store and Google Play release in progress.
 

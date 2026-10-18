@@ -108,10 +108,15 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
     // flip in portrait, not landscape.
     const cardRotation = player === 2 ? getOpposingZoneRotation(rotation) : rotation
     const unlocked = profileUnlocked[player]
+    // The same card as the solo dialog above, so each seat's card is as big and as easy to hit as
+    // vsCpu's. It used to be a compact version (28pt icon, 130x28 buttons), far too small (Jay,
+    // 2026-10-16). Worst case, with an achievement badge, it's about 302pt tall: under half of an
+    // iPhone SE's 667pt screen, held upright or sideways (rotated, its height runs along the 375pt
+    // width).
     return (
-      <OverlayCard style={[styles.zoneCard, cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }]}>
-        <Icon source={icon} size={28} color={color} />
-        <Text variant='headlineSmall' style={[styles.overlayTitle, { color }]}>
+      <OverlayCard style={cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }}>
+        <Icon source={icon} size={64} color={color} />
+        <Text variant='headlineLarge' style={[styles.overlayTitle, { color }]}>
           {text}
         </Text>
         {/* Rides along on this player's own card - already rotated/zoned to face them, same as
@@ -128,10 +133,10 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
         {/* Quit before Rematch - this card gets rotated (see cardRotation above) to read right-side-up
         from this player's own side of the device, which puts whichever button is authored LAST
         nearest their hands. Listing Rematch last makes it the easier reach for both players. */}
-        <Button mode='outlined' onPress={onQuit} style={styles.zoneButton} labelStyle={styles.zoneButtonLabel}>
+        <Button mode='outlined' onPress={onQuit} style={styles.overlayButton}>
           Quit
         </Button>
-        <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.zoneButton} labelStyle={styles.zoneButtonLabel} buttonColor={colors[player]} textColor={onColors[player]}>
+        <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.overlayButton} buttonColor={colors[player]} textColor={onColors[player]}>
           {ready ? 'Waiting…' : 'Rematch'}
         </Button>
       </OverlayCard>
@@ -162,29 +167,14 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderWidth: 3,
     justifyContent: 'center',
-    // A per-player zone is exactly half the screen - on a short/landscape screen there isn't
-    // always room for a full card (icon + title + two buttons) within that half. zoneCard is
-    // already sized to comfortably fit realistic cases (see its own comment), but this is the
-    // backstop for whatever's left: clipping at this zone's own edge reads as a minor crop in an
-    // extreme case, instead of the two zones' cards spilling into and visibly overlapping each
-    // other right at the shared seam.
+    // A per-player zone is exactly half the screen. The card fits half of a 667pt screen (see
+    // renderCard), but this is the backstop for anything shorter: clipping at this zone's own edge
+    // reads as a minor crop, instead of the two zones' cards spilling into and visibly overlapping
+    // each other right at the shared seam.
     overflow: 'hidden',
     position: 'absolute'
   },
   zoneBottom: { bottom: 0, left: 0, right: 0, top: '50%' },
-  zoneButton: { width: 130 },
-  // marginVertical: 4 below (zoneButtonLabel) claws back react-native-paper's own default label
-  // margin (10 per button, i.e. ~12px saved per button here) - combined with the smaller icon and
-  // tighter gap/padding here, this keeps a full two-button card comfortably under half the height
-  // of a typical short/landscape phone screen, so the overflow:hidden backstop above should only
-  // ever actually clip in genuinely extreme cases.
-  zoneButtonLabel: { marginVertical: 4 },
-  // A compact OverlayCard: its own shape, tightened to fit half a short screen.
-  zoneCard: {
-    borderRadius: 16,
-    gap: 6,
-    padding: 14
-  },
   zoneLeft: { bottom: 0, left: 0, right: '50%', top: 0 },
   zoneRight: { bottom: 0, left: '50%', right: 0, top: 0 },
   zoneTop: { bottom: '50%', left: 0, right: 0, top: 0 }

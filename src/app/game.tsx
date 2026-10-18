@@ -1,4 +1,5 @@
 import { getBlendedColor, useAutoPaperTheme } from '@rific/auto-paper'
+import { useKeepAwake } from '@rific/core'
 import { IconButton, useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { broadcastDeviceUnlocks } from '@tastic/achievements'
@@ -6,7 +7,6 @@ import { computeContentBounds, FakeLandscapeView, getFixedZoneRotation, getViewR
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
 import { type Profile } from '@tastic/profile'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
 import { router } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LayoutChangeEvent, Platform, StyleSheet, useWindowDimensions, View } from 'react-native'
@@ -124,17 +124,10 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const { backgroundPaused, resume } = useBackgroundPause(() => state.phase !== 'roundOver' && !settingsOpen && !confirmVisible)
   // Keeps the screen from dimming and locking while a match is up, unless Keep Awake is off in
   // Settings (read live, so the toggle applies mid-match). Expo only does this by itself in
-  // development builds, and the OS auto-lock only counts screen touches, so tilt or keyboard steering,
-  // or watching the CPU, could let a release build lock mid-match. Failures are dropped: a browser
-  // without the Screen Wake Lock API (or one that refuses it) just keeps its own timeout.
-  const keepAwake = useSelector((state: RootState) => state.settings.keepAwake)
-  useEffect(() => {
-    if (!keepAwake) return undefined
-    activateKeepAwakeAsync('game').catch(() => {})
-    return () => {
-      deactivateKeepAwake('game').catch(() => {})
-    }
-  }, [keepAwake])
+  // development builds, and the OS auto-lock only counts screen touches, so tilt or keyboard
+  // steering, or watching the CPU, could let a release build lock mid-match. The setting and the
+  // expo-keep-awake module are @rific/core's, from Providers.tsx's KeepAwakeBridge.
+  useKeepAwake('game')
   const paused = settingsOpen || confirmVisible || backgroundPaused
   const { state, turn, activate, beginPlaying, rematch, tickIntervalMs, cellPx } = useGameState(width, height, settings, colors, orientationMode, p1OnRight, safeAreaInsetsPx, paused)
 

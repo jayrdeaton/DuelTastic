@@ -1,7 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { getAchievementCatalogRows } from '@tastic/achievements'
 import { FakeLandscapeView, rotateInsets, useRotation } from '@tastic/core'
-import { AchievementCatalogSection, ActivityStatSection, BaseStatsScreen, StatRow, StatSection, usePopoverHost } from '@tastic/hud'
+import { AchievementCatalogSection, ActivityStatSection, BaseStatsScreen, StatRow, StatSection, usePopoverHost, useWellColors } from '@tastic/hud'
 import { ProfileChip, ProfilePicker } from '@tastic/profile'
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -94,11 +94,10 @@ export default function AchievementsScreen() {
   // Needs its own host since this screen has no other popover on it to share one with.
   const profilePickerHost = usePopoverHost()
   // Only needed here for ColorStatRow/ProfileRankingRow below, which stay LightCycles-local (see
-  // their own doc comments) - @tastic/hud's own BaseStatsScreen/StatRow/StatSection/AchievementRow
-  // all derive this identical dark-mode formula internally now, so nothing else in this file needs
-  // to compute or thread it through anymore.
-  const fg = dark ? '#FFFFFF' : '#000000'
-  const fgMuted = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+  // their own doc comments) - they sit in a StatSection well, so they take the well's own text colors
+  // (@tastic/hud's useWellColors: onSurface, onSurfaceVariant), the same ones hud's StatRow and
+  // AchievementRow default to.
+  const { fg, fgMuted } = useWellColors()
 
   // null = "All Profiles" (device-wide, today's original view). Self-heals to null on its own if the
   // selected profile gets deleted from another still-mounted screen (see expo-router's keep-prior-

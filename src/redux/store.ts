@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { combineReducers, configureStore, type Middleware } from '@reduxjs/toolkit'
 import { createThemeReducer, getThirdColor } from '@rific/auto-paper'
+import { keepAwakeReducer } from '@rific/core'
 import { defaultSoundSettings, hapticReducer, soundReducer, type SoundSettings } from '@rific/feedback-press'
 import { createReturningPlayerMigrate } from '@tastic/hud/guide'
 import { profilesReducer } from '@tastic/profile'
@@ -53,6 +54,9 @@ const rootReducer = combineReducers({
   theme: themeReducer,
   haptic: hapticReducer,
   sound: appSoundReducer,
+  // @rific/core's Keep Awake setting (see Providers.tsx's KeepAwakeBridge), under the namespace its
+  // REHYDRATE handling expects.
+  keepAwake: keepAwakeReducer,
   // The shared App Group roster (see @tastic/profile's resolveInitialProfiles/
   // useSharedProfilesSync, wired in hooks/useProfiles.tsx) is layered on top of this as a separate
   // sync target - this slice persisting normally via redux-persist, same as every other key here,
@@ -63,8 +67,8 @@ const rootReducer = combineReducers({
   // keyScheme - this app's one genuine per-profile extension field (see profileExtensionsSlice's
   // own doc) - deliberately kept out of the shared `profiles` slice above; always local.
   profileExtensions,
-  // lobby.tsx's own dedicated guest/CPU/profile-override seat-color memory (lastGuestColor/
-  // lastCpuColor/profileOverride) - separate from `theme` above (a live snapshot only) - see
+  // lobby.tsx's own dedicated guest/CPU/per-profile seat-color memory (lastGuestColor/
+  // lastCpuColor/profileColors) - separate from `theme` above (a live snapshot only) - see
   // seatColorsSlice.ts's own doc.
   seatColors,
   // Which version of the how-to-play flow this player has finished or skipped - its own key rather
@@ -79,6 +83,10 @@ const rootReducer = combineReducers({
 
 export const persistConfig = {
   key: 'root',
+  // On web every Tastic game shares one origin (games.infinitetoken.com) and so one localStorage, where AsyncStorage
+  // keeps this state under keyPrefix + key: the default prefix would make every game's state the same persist:root.
+  // REHYDRATE still reports key 'root', so guideSlice's persistKey is unchanged.
+  keyPrefix: 'lightcycles:',
   storage: AsyncStorage,
   // Grandfathers players from the shipped pre-redux build (7a595fa) past the guide: they have no root
   // store yet, only that build's own keys, which would otherwise look like a fresh install. A no-op once
