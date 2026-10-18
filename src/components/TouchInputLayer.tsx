@@ -4,7 +4,8 @@ import { applyControlInversion, isEffectiveTurn } from '@tastic/input'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
-import { runOnJS, SharedValue, useSharedValue } from 'react-native-reanimated'
+import { SharedValue, useSharedValue } from 'react-native-reanimated'
+import { scheduleOnRN } from 'react-native-worklets'
 
 import { useGameSound } from '@/hooks/useGameSound'
 import { Direction, KeyScheme, OrientationMode, Player } from '@/types'
@@ -88,8 +89,8 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
     selection()
   }, [])
 
-  // The gesture worklets call these through callWorkletCallback + a key, never runOnJS(handleTurn) directly: react-native-worklets
-  // holds a runOnJS target from native code for as long as the worklet's cached copy lives, and a component callback there
+  // The gesture worklets call these through callWorkletCallback + a key, never scheduleOnRN(handleTurn) directly: react-native-worklets
+  // holds a scheduleOnRN target from native code for as long as the worklet's cached copy lives, and a component callback there
   // would pin this component (and everything it closes over) in memory forever.
   const turnKey = useWorkletCallback(handleTurn)
   const activateKey = useWorkletCallback(handleActivate)
@@ -143,7 +144,7 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
           base.value = { x: e.translationX, y: e.translationY }
           if (direction !== lastDirection.value) {
             lastDirection.value = direction
-            runOnJS(callWorkletCallback)(turnKey, player, direction)
+            scheduleOnRN(callWorkletCallback, turnKey, player, direction)
           }
         })
 
@@ -160,7 +161,7 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
         .hitSlop({})
         .enabled(enabled)
         .onEnd((_event, success) => {
-          if (success) runOnJS(callWorkletCallback)(activateKey, player)
+          if (success) scheduleOnRN(callWorkletCallback, activateKey, player)
         })
 
       return Gesture.Simultaneous(pan, tap)

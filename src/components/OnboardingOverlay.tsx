@@ -1,7 +1,8 @@
 import { getOpposingZoneRotation, ViewRotation } from '@tastic/core'
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import { scheduleOnRN } from 'react-native-worklets'
 
 import RoundHistoryPips from '@/components/RoundHistoryPips'
 import { MONO_FONT } from '@/constants/fonts'
@@ -68,7 +69,7 @@ export default function OnboardingOverlay({ orientationMode, p1OnRight, rotation
     const fadeTimer = setTimeout(
       () => {
         opacity.value = withTiming(0, { duration: ONBOARDING_FADE_MS }, (finished) => {
-          if (finished) runOnJS(onComplete)()
+          if (finished) scheduleOnRN(onComplete)
         })
       },
       ONBOARDING_COUNTDOWN_STEP_MS * 3 + ONBOARDING_GO_HOLD_MS
