@@ -233,8 +233,8 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // this match (see MatchOverDialog): unlike Rematch, a single Quit ends it regardless of what the
   // other player wants, so this never gets reset back to false the way rematchReady does above.
   const [matchOver, setMatchOver] = useState(false)
-  const handleQuit = useCallback(() => setMatchOver(true), [])
-  const handleRequestRematch = useCallback((player: Player) => setRematchReady((ready) => ({ ...ready, [player]: true })), [])
+  const handleQuit = useCallback(() => setMatchOver(true), [setMatchOver])
+  const handleRequestRematch = useCallback((player: Player) => setRematchReady((ready) => ({ ...ready, [player]: true })), [setRematchReady])
 
   // On a desktop-web page (web, at least DESKTOP_WEB_MIN_WIDTH wide) the chips stay up in the page's
   // top corners for the whole match, so there's always a way out or into Settings; either dialog
