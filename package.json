@@ -1,6 +1,6 @@
 {
   "name": "light-cycles",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "A local multiplayer pass-and-play cycle battle game",
   "type": "commonjs",
