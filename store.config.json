@@ -1,6 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
+    "version": "1.1.3",
     "copyright": "2026 Infinite Token LLC",
     "categories": [
       [
@@ -13,19 +14,25 @@
       "en-US": {
         "title": "LightCyclesTastic",
         "subtitle": "Light Cycle Duels. No Ads.",
-        "description": "A fast arcade duel for two players on one phone, or one player against the CPU. Every rider leaves a solid trail behind them, and the last cycle still riding wins. No ads, no accounts.\n\n• Two players face to face, each steering in their own half of the screen\n• Play the CPU at three difficulties\n• Five arenas: Open, Pillars, Gauntlet, Portals, and Underpass\n• Six optional powerups, including Shield, Stasis, and Overdrive\n• Three grid sizes, three speeds, and Wrap Edges\n• Player profiles, stats, and 30 achievements\n• Plays offline\n\nPart of the Tastic family of games. Your player profiles are shared with the other Tastic games on your device.\n\nOpen source on GitHub: https://github.com/jayrdeaton/LightCycles",
+        "promoText": "Play a friend face to face on one phone, or take on the CPU from Drone to Mainframe. Six powerups and five arenas when you want more chaos.",
+        "description": "A fast arcade duel for two players on one phone, or one player against the CPU. Every rider leaves a solid trail, and the last cycle still riding wins. No ads, no accounts.\n\nHOW IT PLAYS\n• Swipe to steer. Walls and every trail are deadly, your own included\n• Two players sit face to face, each steering in their own half of the screen\n• Or play the CPU at three difficulties: Drone, Bot, and Mainframe\n\nMIX IT UP\n• Five arenas: Open, Pillars, Gauntlet, Portals, and Underpass\n• Six optional powerups: Overdrive, Stasis, Shield, Prune, Hack, and Overclock\n• Three grid sizes, three speeds, a shorter trail option, and Wrap Edges\n\nKEEP SCORE\n• Player profiles, each with its own name and color\n• Stats for every mode, color, and player\n• 30 achievements in bronze, silver, and gold\n\nALWAYS READY\n• A match pauses when you leave the app\n• Light and dark mode, on iPhone and iPad\n• Plays offline\n\nIf you play other Tastic games, your player profiles come with you on the same device.\n\nOpen source on GitHub: https://github.com/jayrdeaton/LightCycles",
         "keywords": [
           "trail",
           "arcade",
           "retro",
-          "two player",
-          "multiplayer",
-          "local",
           "versus",
           "neon",
           "bike",
-          "pass and play",
-          "offline"
+          "multiplayer",
+          "local",
+          "offline",
+          "two",
+          "player",
+          "party",
+          "snake",
+          "grid",
+          "cpu",
+          "friend"
         ],
         "marketingUrl": "https://games.infinitetoken.com/lightcycles",
         "supportUrl": "https://games.infinitetoken.com/support",
