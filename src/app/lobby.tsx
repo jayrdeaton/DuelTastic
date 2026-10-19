@@ -145,7 +145,13 @@ export default function LobbyScreen() {
   // button) reads the live values directly and never re-positions, so nothing about it needs
   // masking. Also drives the solo (vs-CPU) branch's own row below - that one doesn't rotate anyone
   // 180°, but still reorders/fades across a portrait<->landscape change the same way.
-  const { panelLayout, panelFadeStyle } = useDualZoneLayout(orientationMode, p1OnRight, p1OnRightResolved, upsideDown, LOBBY_PANEL_SWAP_FADE_MS)
+  //
+  // 2 Player ignores the tilt entirely and stays face-to-face: P1 in the physical bottom half, P2
+  // in the top half, the same split /game always plays on (see its own fixed 'faceToFace'), so each
+  // player gets the same half of the phone in the lobby and in the match. Following the tilt here
+  // used to put the seats side by side (or swap them upside down) and then move them on Ready.
+  const fixedSeats = gameMode === 'twoPlayer'
+  const { panelLayout, panelFadeStyle } = useDualZoneLayout(fixedSeats ? 'faceToFace' : orientationMode, fixedSeats ? true : p1OnRight, fixedSeats || p1OnRightResolved, fixedSeats ? false : upsideDown, LOBBY_PANEL_SWAP_FADE_MS)
   const isSideBySide = panelLayout.orientationMode === 'sideBySide'
 
   const [settingsOpen, setSettingsOpen] = useState(false)
