@@ -27,7 +27,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appName": "LightCyclesTastic"
+        "appName": "LightCycleTastic"
       }
     },
     "preview": {}
