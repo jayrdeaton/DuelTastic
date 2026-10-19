@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 # LightCycles
 
-A local multiplayer Tron/lightcycles pass-and-play game (Expo/React Native, Skia-rendered). Part of the `@rific`/`@tastic`/InfiniteToken app ecosystem - depends on `@rific/auto-paper`, `@rific/feedback-press`, `@rific/focus-chain`, `@rific/splash-gate`, `@rific/toaster`, `@rific/updater`, `@tastic/achievements`, `@tastic/core`, `@tastic/edge-guard`, `@tastic/hud`, `@tastic/input`, `@tastic/profile`, `@tastic/split-screen`.
+A local multiplayer Tron/lightcycles pass-and-play game (Expo/React Native, Skia-rendered). Part of the `@rific`/`@tastic`/InfiniteToken app ecosystem - depends on `@rific/auto-paper`, `@rific/feedback-press`, `@rific/focus-chain`, `@rific/gestures`, `@rific/splash-gate`, `@rific/toaster`, `@rific/updater`, `@tastic/achievements`, `@tastic/core`, `@tastic/edge-guard`, `@tastic/hud`, `@tastic/input`, `@tastic/profile`, `@tastic/split-screen`.
 
 **Expo has changed.** Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before writing any code - don't rely on general Expo knowledge, this app is on SDK 57 specifically.
 
