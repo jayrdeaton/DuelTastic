@@ -1,0 +1,80 @@
+{
+  "font": "../node_modules/@expo-google-fonts/orbitron/700Bold/Orbitron_700Bold.ttf",
+  "out": "screenshots",
+  "raw": "screenshots/raw",
+  "background": [
+    "#0b1820",
+    "#000000"
+  ],
+  "shots": [
+    {
+      "name": "01-duel",
+      "title": "Two Players, One Phone",
+      "sub": "Face to face, each in your own half",
+      "device": "iphone"
+    },
+    {
+      "name": "01-duel",
+      "title": "Two Players, One Phone",
+      "sub": "Face to face, each in your own half",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "01-duel",
+      "title": "Two Players, One iPad",
+      "sub": "Face to face, each in your own half",
+      "device": "ipad"
+    },
+    {
+      "name": "02-cpu",
+      "title": "Take On the CPU",
+      "sub": "From Drone up to Mainframe"
+    },
+    {
+      "name": "03-win",
+      "title": "Last Cycle Riding Wins",
+      "sub": "Walls and every trail are deadly"
+    },
+    {
+      "name": "04-powerups",
+      "title": "Six Powerups",
+      "sub": "Turn on any of them, or none",
+      "device": "iphone"
+    },
+    {
+      "name": "04-powerups",
+      "title": "Six Powerups",
+      "sub": "Turn on any of them, or none",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "05-arenas",
+      "title": "Five Arenas",
+      "sub": "Plus Wrap Edges and Full Screen",
+      "device": "iphone"
+    },
+    {
+      "name": "05-arenas",
+      "title": "Five Arenas",
+      "sub": "Plus Wrap Edges and Full Screen",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "06-profiles",
+      "title": "A Profile for Every Player",
+      "sub": "Each with its own name and color",
+      "device": "iphone"
+    },
+    {
+      "name": "06-profiles",
+      "title": "A Profile for Every Player",
+      "sub": "Each with its own name and color",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "07-stats",
+      "title": "Stats and Achievements",
+      "sub": "For every player and color"
+    }
+  ]
+}

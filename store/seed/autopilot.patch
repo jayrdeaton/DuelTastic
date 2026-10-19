@@ -1,0 +1,42 @@
+diff --git a/src/hooks/useGameState.ts b/src/hooks/useGameState.ts
+index c3df438..b8253d4 100644
+--- a/src/hooks/useGameState.ts
++++ b/src/hooks/useGameState.ts
+@@ -2,8 +2,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
+ 
+ import { GRID_CELL_PX, MAX_TICK_DT_MS, scaleMsForCellPx, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_MIN_INTERVAL_MS, SPEED_TIER_INTERVAL_MS, TRAIL_SPEED_RATE } from '@/constants/game'
+ import { Direction, OrientationMode, Player, Settings } from '@/types'
+-import { applyCpuActivation, applyCpuTurn } from '@/utils/cpuAi'
+-import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/utils/gameEngine'
++import { applyCpuActivation, applyCpuTurn, chooseCpuDirection } from '@/utils/cpuAi'
++import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, computeTickIntervalMs, createInitialGameState, startPlaying, stepsFor, tickGame } from '@/utils/gameEngine'
++import type { GameState } from '@/types'
++
++// TEMPORARY (App Store screenshots only, never commit): steers the human seats with the CPU's own AI.
++function storeAutopilot(s: GameState, settings: Settings): GameState {
++  if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT !== '1' || s.phase !== 'playing') return s
++  const seats: Player[] = settings.gameMode === 'vsCpu' ? [1] : [1, 2]
++  let next = s
++  for (const seat of seats) {
++    const player = next.players[seat]
++    if (!player.alive) continue
++    const tunnelCellSet = buildTunnelCellSet(next.tunnels)
++    const occupied = buildOccupiedSet(next.players, next.obstacles, tunnelCellSet)
++    const direction = chooseCpuDirection({ player, grid: next.grid, occupied, difficulty: 'normal', ownSteps: stepsFor(player.effects), pickups: next.pickups, heldPowerup: player.heldPowerup, portals: buildPortalLookup(next.portals), tunnelCellSet, tunnelOccupied: buildTunnelOccupiedSet(next.players, tunnelCellSet, seat), wrapEdges: settings.wrapEdges })
++    next = applyTurnIntent(next, seat, direction)
++  }
++  return next
++}
+ 
+ // orientationMode/p1OnRight are passed separately rather than read off `settings` - they're
+ // derived live from the device's own physical tilt (see useOrientationState), not a stored
+@@ -81,7 +98,8 @@ export function useGameState(width: number, height: number, settings: Settings,
+         setTickIntervalMs(intervalMs)
+         const trailSpeedRate = TRAIL_SPEED_RATE[settings.trailSpeedTier]
+         const enabledPowerups = settings.enabledPowerups
+-        setState((s) => {
++        setState((prev) => {
++          const s = storeAutopilot(prev, settings)
+           if (settings.gameMode !== 'vsCpu') return tickGame(s, undefined, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
+           // Built once and reused for both - see buildOccupiedSet's own comment on why this is
+           // always safe, not just an optimization that happens to hold today. The CPU decides its
