@@ -1,9 +1,10 @@
 import { useVibration } from '@rific/feedback-press'
-import { applyControlInversion, isEffectiveTurn, isTap, KEY_SCHEMES, resolveKeyDirection } from '@tastic/input'
-import { useEffect, useMemo } from 'react'
+import { applyControlInversion, isEffectiveTurn, isTap } from '@tastic/input'
+import { useEffect } from 'react'
 
 import { useGameSound } from '@/hooks/useGameSound'
 import { Direction, KeyScheme, OrientationMode, Player } from '@/types'
+import { resolveKeyAction } from '@/utils/keyControls'
 import { resolveTurnIntent, TAP_MAX_DISTANCE } from '@/utils/turnIntent'
 
 export interface TouchInputLayerProps {
@@ -27,12 +28,8 @@ export interface TouchInputLayerProps {
 
 // One physical-key set per scheme (see the lobby's keyboard-scheme picker) - player 1 and player 2
 // can independently pick any scheme, so the actual key -> player map below is built per-mount
-// rather than hardcoded to one fixed WASD/Arrows split. Movement keys come from @tastic/input's
-// KEY_SCHEMES; `activate` is a 4th, adjacency-based binding per scheme (thumb-reachable from wasd,
-// centrally reachable from arrows, adjacent to ijkl's own cluster) that KEY_SCHEMES doesn't cover,
-// kept local here - distinct across all three so two local players sharing one keyboard never
-// collide, even if both happen to pick the same scheme.
-const ACTIVATE_KEYS: Record<KeyScheme, string> = { wasd: 'q', arrows: ' ', ijkl: 'u' }
+// rather than hardcoded to one fixed WASD/Arrows split. utils/keyControls.ts's resolveKeyAction says
+// which seat a key belongs to and what it does.
 
 interface TrackedPointer {
   player: Player
@@ -50,15 +47,6 @@ interface TrackedPointer {
 }
 
 export default function TouchInputLayer({ orientationMode, humanPlayers, enabled, onTurn, onActivate, controlInverted, keyScheme, currentDirections }: TouchInputLayerProps) {
-  // A single-purpose map from activate key -> player, since an activate key has no Direction of
-  // its own (see ACTIVATE_KEYS above; movement keys are matched directly against KEY_SCHEMES via
-  // resolveKeyDirection in handleKeyDown below, so no analogous map is needed for those).
-  const activateKeyMap = useMemo(() => {
-    const map: Record<string, Player> = {}
-    for (const player of [1, 2] as Player[]) map[ACTIVATE_KEYS[keyScheme[player]]] = player
-    return map
-  }, [keyScheme])
-
   const playTurn = useGameSound(require('../../assets/sounds/turn.wav'), { poolSize: 8 })
   const playActivate = useGameSound(require('../../assets/sounds/select.wav'), { poolSize: 4 })
   const { selection } = useVibration()
@@ -67,33 +55,26 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
     if (!enabled) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase()
-      const activatePlayer = activateKeyMap[key]
-      if (activatePlayer !== undefined && humanPlayers.includes(activatePlayer)) {
-        e.preventDefault()
-        onActivate(activatePlayer)
+      const action = resolveKeyAction(e, keyScheme, humanPlayers)
+      if (!action) return
+      e.preventDefault()
+      if (action.kind === 'activate') {
+        onActivate(action.player)
         playActivate()
         selection()
         return
       }
-
-      for (const player of humanPlayers) {
-        const direction = resolveKeyDirection(key, KEY_SCHEMES[keyScheme[player]])
-        if (!direction) continue
-        e.preventDefault()
-        const invertedDirection = applyControlInversion(direction, controlInverted[player])
-        onTurn(player, invertedDirection)
-        if (isEffectiveTurn(invertedDirection, currentDirections[player])) {
-          playTurn()
-          selection()
-        }
-        return
+      const invertedDirection = applyControlInversion(action.direction, controlInverted[action.player])
+      onTurn(action.player, invertedDirection)
+      if (isEffectiveTurn(invertedDirection, currentDirections[action.player])) {
+        playTurn()
+        selection()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [enabled, humanPlayers, onTurn, onActivate, controlInverted, currentDirections, keyScheme, activateKeyMap, playTurn, playActivate, selection])
+  }, [enabled, humanPlayers, onTurn, onActivate, controlInverted, currentDirections, keyScheme, playTurn, playActivate, selection])
 
   // Swipe input, mirroring TouchInputLayer.tsx's Pan gestures but via raw window pointer events -
   // react-native-gesture-handler has no bearing here (RNGH ships no web target this app pulls in),

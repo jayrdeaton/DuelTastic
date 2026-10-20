@@ -35,7 +35,13 @@ export type ArenaVariant = 'open' | 'pillars' | 'gauntlet' | 'portals' | 'underp
 // shouldTrimTrailAt for the mechanics.
 export type TrailSpeedTier = 'off' | 'medium' | 'fast'
 
-export type KeyScheme = 'wasd' | 'arrows' | 'ijkl'
+// A seat's controls on desktop web. 'mouse' has no keys of its own: dragging steers and a click uses
+// the powerup, which works on every seat whatever its scheme (TouchInputLayer.web.tsx's pointer
+// listeners are always on), so picking it only turns that seat's keys off. Same five as Snake's.
+export type KeyScheme = 'mouse' | 'wasd' | 'arrows' | 'ijkl' | 'numpad'
+
+// The schemes that do have keys (@tastic/input's KeyScheme).
+export type KeyboardScheme = Exclude<KeyScheme, 'mouse'>
 
 export type GamePhase = 'onboarding' | 'playing' | 'roundOver'
 

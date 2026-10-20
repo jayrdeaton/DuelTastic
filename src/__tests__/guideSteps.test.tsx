@@ -1,4 +1,4 @@
-import { SeatDevicesHint } from '@tastic/hud/guide'
+import { SeatDevicesHint, SwipeHint } from '@tastic/hud/guide'
 import { isValidElement, type ReactElement } from 'react'
 
 import { getGuideSteps } from '@/constants/guideSteps'
@@ -8,7 +8,7 @@ const DEFAULT_KEYS: Record<Player, KeyScheme> = { 1: 'wasd', 2: 'arrows' }
 
 // Every KeyScheme, typed as a record so adding a scheme to the union fails typecheck here until it's
 // listed, which keeps the exhaustive body-length check below exhaustive.
-const SCHEME_SET: Record<KeyScheme, true> = { wasd: true, arrows: true, ijkl: true }
+const SCHEME_SET: Record<KeyScheme, true> = { mouse: true, wasd: true, arrows: true, ijkl: true, numpad: true }
 const SCHEMES = Object.keys(SCHEME_SET) as KeyScheme[]
 const EVERY_PAIR: Record<Player, KeyScheme>[] = SCHEMES.flatMap((p1) => SCHEMES.map((p2) => ({ 1: p1, 2: p2 })))
 
@@ -56,22 +56,38 @@ describe('getGuideSteps', () => {
     expect(textOf(false)).not.toMatch(/swipe/i)
     expect(textOf(false)).toMatch(/Player 1 uses WASD, player 2 uses the arrow keys/)
     expect(textOf(false, { 1: 'ijkl', 2: 'wasd' })).toMatch(/Player 1 uses IJKL, player 2 uses WASD/)
+    expect(textOf(false, { 1: 'numpad', 2: 'arrows' })).toMatch(/Player 1 uses the numpad, player 2 uses the arrow keys/)
+    const [numpadSteer] = getGuideSteps({ touch: false, keys: { 1: 'numpad', 2: 'wasd' } })
+    expect((numpadSteer.art as ReactElement<{ labels?: unknown }>).props.labels).toEqual({ up: '8', left: '4', down: '2', right: '6' })
   })
 
-  it("uses the fleet's desktop two-player wording: One Keyboard, since every LightCycles scheme is a key scheme", () => {
+  it("uses the fleet's desktop two-player wording: One Keyboard when neither seat is on the mouse", () => {
     const [, , twoPlayer] = getGuideSteps({ touch: false, keys: DEFAULT_KEYS })
 
     expect(twoPlayer.title).toBe('Two Players, One Keyboard')
     expect(twoPlayer.body).toBe('Player 1 uses WASD, player 2 uses the arrow keys. Change them before a match.')
   })
 
-  it("draws the desktop two-player card with hud's shared SeatDevicesHint, both seats on the keyboard", () => {
+  it("teaches a mouse seat to drag, with hud's mouse SwipeHint, and says One Computer", () => {
+    const [steer, , twoPlayer] = getGuideSteps({ touch: false, keys: { 1: 'mouse', 2: 'wasd' } })
+
+    expect(steer.body).toMatch(/^Drag the mouse/)
+    expect((steer.art as ReactElement).type).toBe(SwipeHint)
+    expect((steer.art as ReactElement<{ pointer?: string; direction?: string }>).props).toMatchObject({ pointer: 'mouse', direction: 'up' })
+    expect(twoPlayer.title).toBe('Two Players, One Computer')
+    expect(twoPlayer.body).toBe('Player 1 uses the mouse, player 2 uses WASD. Drag in your own half.')
+    expect(getGuideSteps({ touch: false, keys: { 1: 'mouse', 2: 'mouse' } })[2].body).toBe('Both players use the mouse. Drag in your own half.')
+  })
+
+  it("draws the desktop two-player card with hud's shared SeatDevicesHint, each seat's own device", () => {
+    const devices = (keys: Record<Player, KeyScheme>) => (getGuideSteps({ touch: false, keys })[2].art as ReactElement<{ devices: readonly string[] }>).props.devices
     const [, , twoPlayer] = getGuideSteps({ touch: false, keys: DEFAULT_KEYS })
 
     expect(isValidElement(twoPlayer.art)).toBe(true)
-    const art = twoPlayer.art as ReactElement<{ devices: readonly string[] }>
-    expect(art.type).toBe(SeatDevicesHint)
-    expect(art.props.devices).toEqual(['keyboard', 'keyboard'])
+    expect((twoPlayer.art as ReactElement).type).toBe(SeatDevicesHint)
+    expect(devices(DEFAULT_KEYS)).toEqual(['keyboard', 'keyboard'])
+    expect(devices({ 1: 'mouse', 2: 'arrows' })).toEqual(['mouse', 'keyboard'])
+    expect(devices({ 1: 'ijkl', 2: 'mouse' })).toEqual(['keyboard', 'mouse'])
   })
 
   it.each(EVERY_PAIR)('keeps every desktop body within 90 characters for seat keys %j', (keys) => {

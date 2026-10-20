@@ -25,3 +25,9 @@ Deferred to ship SDK 58 the same day:
 ## Store ignores back to the root .gitignore (2026-10-19)
 
 `store/.gitignore` holds `screenshots/` and `seed/seed.json` only because the root `.gitignore` is part of the EAS fingerprint (`ios/` and `android/` are gitignored, so it decides what's generated): adding them there changed the runtime version and would have cut OTA updates off from build 1.1.3 (28). Move them back, and delete `store/.gitignore`, in the same change as the next native change that bumps the fingerprint anyway (a native dependency, a config plugin, an `app.json` native field). Check with `eas fingerprint:compare --build-id <id>` that the fingerprint was already changing before adding this to it.
+
+## NOTES
+
+I think (and my kids agree) that the shield should last for a certain amount of time, and not go away after first contact.  Shield maybe should allow you to crash through gauntlet walls, pillars, and screen edges.
+
+Achievements on desktop are full width, but on solitaire its capped to a certain width, or the profile view is at least...  These should all be the same across the fleet.

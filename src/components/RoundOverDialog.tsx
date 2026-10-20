@@ -1,11 +1,12 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { Button } from '@rific/feedback-press'
 import { getOpposingZoneRotation, ViewRotation } from '@tastic/core'
-import { OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
+import { overlayActionStyles, OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 
-import { AchievementDefinition, GameMode, OrientationMode, Player, RoundOutcome } from '@/types'
+import type { SeatToastSpot } from '@/components/SeatToasters'
+import { GameMode, OrientationMode, Player, RoundOutcome } from '@/types'
 import { zoneSideFor } from '@/utils/playerZones'
 
 export interface RoundOverDialogProps {
@@ -22,17 +23,14 @@ export interface RoundOverDialogProps {
   // upside-down relative to them) or not (landscape: P1 and P2 are held side by side, facing the
   // same way, so P2's card uses this rotation unmodified).
   rotation: ViewRotation
+  // 2 Player: each seat's half and reading angle (game.tsx's seatToastSpots), the same spots its
+  // unlock toasts use. On a phone that's this component's own split and turn; at a computer it's
+  // the left and right halves, both upright, since the players sit side by side there.
+  seatSpots?: Record<Player, SeatToastSpot>
   humanPlayers: Player[]
   gameMode: GameMode
   outcome: RoundOutcome
   colors: Record<Player, string>
-  // Seat -> whatever that seat's OWN saved profile newly unlocked this round (see
-  // useGameStats.tsx's recordRoundOutcome) - only ever populated in two-player mode (see this
-  // component's own humanPlayers.length===1 branch, which never reads it: vsCpu keeps its existing
-  // plain Snackbar toast instead, since there's only one human perspective to address there). Badge
-  // rides along on each player's own card, so it's automatically rotated/zoned to face them, same as
-  // everything else on that card.
-  profileUnlocked?: Partial<Record<Player, AchievementDefinition[]>>
   // Whether each human has already pressed Rematch this round-over - GameRound owns the actual
   // "both agreed" logic (it fires the real rematch once every human player's entry is true); this
   // component only reflects that state back per player and reports taps upward.
@@ -47,12 +45,12 @@ export interface RoundOverDialogProps {
 // P2's zone rotated 180° so it reads right-side-up from their side of the device) or left/right
 // (side-by-side, ordered by p1OnRight) split OnboardingOverlay already uses for its countdown -
 // so "YOU WIN!"/"YOU LOSE!" and each player's own Rematch/Quit always face the player they're for.
-export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, humanPlayers, gameMode, outcome, colors, profileUnlocked = {}, rematchReady, onRequestRematch, onQuit }: RoundOverDialogProps) {
+export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, seatSpots, humanPlayers, gameMode, outcome, colors, rematchReady, onRequestRematch, onQuit }: RoundOverDialogProps) {
   const { colors: themeColors } = useAutoPaperTheme()
   const { fgMuted } = useOverlayCardColors()
   const onColors: Record<Player, string> = { 1: themeColors.onPrimary, 2: themeColors.onSecondary }
   // Quit is outlined, the fleet's secondary action (ConfirmDialog's Cancel), so it never reads as a
-  // second filled button beside Rematch, which fills with colors[player]: two filled buttons in one
+  // second filled button beside Play Again, which fills with colors[player]: two filled buttons in one
   // color on player 2's card read as "too much of one color" (Jay). It used to be a fixed gray fill,
   // which stopped matching once the card took the theme's tinted surface.
 
@@ -72,22 +70,22 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
     const { text, icon, color } = perspective(player)
     const ready = rematchReady[player]
     return (
-      <OverlayBackdrop>
-        <OverlayCard style={rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }}>
+      <OverlayBackdrop style={styles.backdrop}>
+        <OverlayCard style={[styles.singleCard, rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}>
           <Icon source={icon} size={64} color={color} />
           <Text variant='headlineLarge' style={[styles.overlayTitle, { color }]}>
             {text}
           </Text>
-          {/* Quit listed before Rematch: both cards below get rotated to face whichever player
-          they're for, and that rotation is defined so the LAST item always lands nearest that
-          player's own hands (see renderCard's identical ordering/comment) - so this order is what
-          makes Rematch, not Quit, the easier reach. */}
-          <Button mode='outlined' onPress={onQuit} style={styles.overlayButton}>
-            Quit
-          </Button>
-          <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.overlayButton} buttonColor={colors[player]} textColor={onColors[player]}>
-            {ready ? 'Waiting…' : 'Rematch'}
-          </Button>
+          {/* hud's action row, as in ConfirmDialog: Quit (outlined) on the left, Play Again (filled) on the
+          right, side by side, as on the 2 Player cards below (Jay, 2026-10-20). */}
+          <View style={overlayActionStyles.actions}>
+            <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton}>
+              Quit
+            </Button>
+            <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={overlayActionStyles.actionButton} buttonColor={colors[player]} textColor={onColors[player]}>
+              {ready ? 'Waiting…' : 'Play Again'}
+            </Button>
+          </View>
         </OverlayCard>
       </OverlayBackdrop>
     )
@@ -96,8 +94,8 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
   // Matches OnboardingOverlay's identical split exactly (both via zoneSideFor), so a player's zone
   // never swaps sides between the countdown and this dialog.
   const zoneStyles = { top: styles.zoneTop, bottom: styles.zoneBottom, left: styles.zoneLeft, right: styles.zoneRight }
-  const p1Zone = zoneStyles[zoneSideFor(1, orientationMode, p1OnRight)]
-  const p2Zone = zoneStyles[zoneSideFor(2, orientationMode, p1OnRight)]
+  const p1Zone = zoneStyles[seatSpots ? seatSpots[1].zone : zoneSideFor(1, orientationMode, p1OnRight)]
+  const p2Zone = zoneStyles[seatSpots ? seatSpots[2].zone : zoneSideFor(2, orientationMode, p1OnRight)]
 
   const renderCard = (player: Player) => {
     const { text, icon, color } = perspective(player)
@@ -106,62 +104,60 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
     // structural - isFaceToFace is always true here, so it can never stand in for an actual live
     // landscape hold) - see that function's own doc for why P2's card only gets the +180 baseline
     // flip in portrait, not landscape.
-    const cardRotation = player === 2 ? getOpposingZoneRotation(rotation) : rotation
-    const unlocked = profileUnlocked[player]
+    const cardRotation = seatSpots ? seatSpots[player].rotation : player === 2 ? getOpposingZoneRotation(rotation) : rotation
     // The same card as the solo dialog above, so each seat's card is as big and as easy to hit as
     // vsCpu's. It used to be a compact version (28pt icon, 130x28 buttons), far too small (Jay,
-    // 2026-10-16). Worst case, with an achievement badge, it's about 302pt tall: under half of an
-    // iPhone SE's 667pt screen, held upright or sideways (rotated, its height runs along the 375pt
-    // width).
+    // 2026-10-16). Worst case it's under 302pt tall (its size when it also carried a one-line unlock
+    // badge, since moved to toasts): under half of an iPhone SE's 667pt screen, held upright or
+    // sideways (rotated, its height runs along the 375pt width). Unlocks are toasts in each seat's
+    // half (SeatToasters).
     return (
-      <OverlayCard style={cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }}>
+      <OverlayCard style={[styles.seatCard, cardRotation % 360 !== 0 && { transform: [{ rotate: `${cardRotation}deg` }] }]}>
         <Icon source={icon} size={64} color={color} />
         <Text variant='headlineLarge' style={[styles.overlayTitle, { color }]}>
           {text}
         </Text>
-        {/* Rides along on this player's own card - already rotated/zoned to face them, same as
-        everything else here - rather than a separate floating toast, which has no natural "which
-        side of the device" concept of its own. */}
-        {unlocked && unlocked.length > 0 && (
-          <View style={styles.achievementBadge}>
-            <Icon source='trophy-award' size={16} color={color} />
-            <Text variant='labelSmall' style={{ color }}>
-              {unlocked.length === 1 ? `${unlocked[0].title} unlocked!` : `${unlocked.length} achievements unlocked!`}
-            </Text>
-          </View>
-        )}
-        {/* Quit before Rematch - this card gets rotated (see cardRotation above) to read right-side-up
-        from this player's own side of the device, which puts whichever button is authored LAST
-        nearest their hands. Listing Rematch last makes it the easier reach for both players. */}
-        <Button mode='outlined' onPress={onQuit} style={styles.overlayButton}>
-          Quit
-        </Button>
-        <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={styles.overlayButton} buttonColor={colors[player]} textColor={onColors[player]}>
-          {ready ? 'Waiting…' : 'Rematch'}
-        </Button>
+        {/* hud's action row, as in ConfirmDialog: Quit (outlined) on the left and Play Again (filled in
+        this player's color) on the right, side by side, wrapping to a stack only on a card too narrow
+        for both. Side by side keeps the card short, leaving room in the half for this player's unlock
+        toasts (Jay, 2026-10-20). Play Again still waits for both players (Waiting… until the other
+        presses theirs). */}
+        <View style={overlayActionStyles.actions}>
+          <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton}>
+            Quit
+          </Button>
+          <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={overlayActionStyles.actionButton} buttonColor={colors[player]} textColor={onColors[player]}>
+            {ready ? 'Waiting…' : 'Play Again'}
+          </Button>
+        </View>
       </OverlayCard>
     )
   }
 
   return (
     <OverlayBackdrop>
-      <View style={[styles.zone, p1Zone, { borderColor: colors[1], backgroundColor: `${colors[1]}22` }]}>{renderCard(1)}</View>
-      <View style={[styles.zone, p2Zone, { borderColor: colors[2], backgroundColor: `${colors[2]}22` }]}>{renderCard(2)}</View>
+      <View style={[styles.zone, p1Zone, { borderColor: colors[1], backgroundColor: `${colors[1]}22` }]} testID='round-over-1'>
+        {renderCard(1)}
+      </View>
+      <View style={[styles.zone, p2Zone, { borderColor: colors[2], backgroundColor: `${colors[2]}22` }]} testID='round-over-2'>
+        {renderCard(2)}
+      </View>
     </OverlayBackdrop>
   )
 }
 
 const styles = StyleSheet.create({
-  achievementBadge: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: -2
-  },
-  overlayButton: { width: 160 },
+  // The single card, as ConfirmDialog's: room from the screen's edges, and the card's full width
+  // allowance (OverlayCard's maxWidth, 360) so its action row has room to sit side by side.
+  backdrop: { paddingHorizontal: 24 },
   // headlineLarge/headlineSmall's own line-height leaves slack under the glyphs that the flex `gap`
   // above stacks on top of - this claws it back, same fix game.tsx's own dialogs already use.
   overlayTitle: { fontWeight: 'bold', marginBottom: -8 },
+  // A player's own card in their half: the full width allowance (OverlayCard's maxWidth, 360), as
+  // ConfirmDialog's card takes, so the action row has room to sit side by side; sized to its content
+  // the card would be as narrow as one button and the row would wrap.
+  seatCard: { width: '100%' },
+  singleCard: { width: '100%' },
   zone: {
     alignItems: 'center',
     borderStyle: 'dashed',
@@ -172,6 +168,8 @@ const styles = StyleSheet.create({
     // reads as a minor crop, instead of the two zones' cards spilling into and visibly overlapping
     // each other right at the shared seam.
     overflow: 'hidden',
+    // Keeps a full-width card off the half's dashed edge.
+    paddingHorizontal: 16,
     position: 'absolute'
   },
   zoneBottom: { bottom: 0, left: 0, right: 0, top: '50%' },

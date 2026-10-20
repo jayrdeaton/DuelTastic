@@ -99,11 +99,15 @@ const POWERUP_OPTIONS: MenuOption<PowerupType>[] = [
 ]
 
 // Was previously declared in the now-removed local LobbyPlayerPanel.tsx (moved to @tastic/hud's
-// shared PlayerSetupPanel) - lives here now since this is its only remaining call site.
+// shared PlayerSetupPanel) - lives here now since this is its only remaining call site. Each label
+// also names the scheme's powerup key (ACTIVATE_KEYS in constants/game.ts), which nothing else on
+// screen says.
 const KEY_SCHEME_OPTIONS: { value: KeyScheme; label: string }[] = [
-  { value: 'wasd', label: 'WASD' },
-  { value: 'arrows', label: 'Arrows' },
-  { value: 'ijkl', label: 'IJKL' }
+  { value: 'mouse', label: 'Mouse+Click' },
+  { value: 'wasd', label: 'WASD+Q' },
+  { value: 'arrows', label: 'Arrows+Space' },
+  { value: 'ijkl', label: 'IJKL+U' },
+  { value: 'numpad', label: 'Numpad+Enter' }
 ]
 
 function pickRandom<T>(options: readonly { value: T }[]): T {

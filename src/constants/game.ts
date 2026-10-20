@@ -1,4 +1,12 @@
-import { CpuDifficulty, GridSizeTier, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
+import { CpuDifficulty, GridSizeTier, type KeyboardScheme, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
+
+// The key that uses a held powerup, per scheme (desktop web), matched against KeyboardEvent.key.
+// @tastic/input's KEY_SCHEMES only covers movement, so this 4th binding lives here: next to each
+// scheme's own cluster (Q by WASD, Space for the arrows, U by IJKL) and distinct across all of them,
+// so two players sharing one keyboard never collide. Numpad's is NumpadEnter, matched by code in
+// utils/keyControls.ts (a numpad key's .key flips with NumLock). The lobby's picker names each one.
+// The same keys as Snake's keyboardControls.ts.
+export const ACTIVATE_KEYS: Record<Exclude<KeyboardScheme, 'numpad'>, string> = { wasd: 'q', arrows: ' ', ijkl: 'u' }
 
 // Grid cell edge length in px per tier - cols/rows are derived from the safe area at this
 // resolution (see utils/grid.ts). Matches the lobby's small/medium/large vehicle icons literally:

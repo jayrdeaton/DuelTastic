@@ -1,13 +1,11 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { Button } from '@rific/feedback-press'
-import { AchievementUnlockList, OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
-import { type Profile } from '@tastic/profile'
+import { OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 
 import RoundHistoryPips from '@/components/RoundHistoryPips'
-import { ACHIEVEMENT_TIER_COLORS } from '@/constants/achievements'
-import { AchievementDefinition, GameMode, Player, RoundOutcome } from '@/types'
+import { GameMode, Player, RoundOutcome } from '@/types'
 
 export interface MatchOverDialogProps {
   // Oldest first - same array GameScreen already tracks across rematches (see game.tsx). Whatever
@@ -19,16 +17,6 @@ export interface MatchOverDialogProps {
   // Seat -> saved profile name, only for seats that had one selected - falls back to the existing
   // P1/P2/YOU/CPU labels below when absent, so this stays fully optional/backward-compatible.
   profileNames?: Partial<Record<Player, string>>
-  // Seat -> saved profile - marks each achievement row below with whichever seat earned it (its
-  // ProfileChip, or a plain avatar in the seat's color for a guest), since both seats can unlock in
-  // the same two-player match and the list itself no longer lives in either seat's own score column.
-  seatProfiles?: Partial<Record<Player, Profile>>
-  // Seat -> whatever that seat's OWN saved profile newly unlocked on the FINAL round of the match
-  // (see useGameStats.tsx's recordRoundOutcome) - the match-ending round skips RoundOverDialog
-  // entirely in favor of this dialog, so this is where that round's own badge needs to land instead.
-  // Rendered in each seat's own score column, not independently rotated per seat (unlike
-  // RoundOverDialog) - this dialog's own single shared `rotation` already covers the whole card.
-  profileUnlocked?: Partial<Record<Player, AchievementDefinition[]>>
   gameMode: GameMode
   onExit: () => void
   // Live physical-hold rotation (see @tastic/split-screen's getViewRotation) - applied to the card
@@ -36,15 +24,13 @@ export interface MatchOverDialogProps {
   rotation?: number
 }
 
-const SEATS: readonly Player[] = [1, 2]
-
 // Shown once either player quits from the round-over dialog (see RoundOverDialog) - "it's over"
 // covers every round played this streak, not just the one that just finished, so this tallies the
 // whole roundHistory rather than repeating that last round's own outcome. One shared, unrotated
 // dialog (matching game.tsx's existing quit-confirmation dialog) rather than RoundOverDialog's
 // per-player split - there's no decision left for either player to make here, just a result to
 // read before backing out to the menu.
-export default function MatchOverDialog({ roundHistory, colors, profileNames = {}, seatProfiles = {}, profileUnlocked = {}, gameMode, onExit, rotation = 0 }: MatchOverDialogProps) {
+export default function MatchOverDialog({ roundHistory, colors, profileNames = {}, gameMode, onExit, rotation = 0 }: MatchOverDialogProps) {
   const { colors: themeColors } = useAutoPaperTheme()
   const { fg } = useOverlayCardColors()
 
@@ -90,11 +76,6 @@ export default function MatchOverDialog({ roundHistory, colors, profileNames = {
           </View>
         </View>
         <RoundHistoryPips roundHistory={roundHistory} p1Color={colors[1]} p2Color={colors[2]} />
-        {/* Listed individually rather than as a per-seat "N unlocked!" badge (which used to sit in
-        the score column above and threw off the vertical alignment between the two scores whenever
-        only one side had a badge) - one row per achievement, under the pips where it doesn't affect
-        the score row's height. */}
-        <AchievementUnlockList unlocks={profileUnlocked} seats={SEATS} owners={{ 1: { profile: seatProfiles[1], color: colors[1] }, 2: { profile: seatProfiles[2], color: colors[2] } }} tierColors={ACHIEVEMENT_TIER_COLORS} fg={fg} />
         <Button mode='contained' onPress={onExit} style={styles.overlayButton} buttonColor={themeColors.primary} textColor={themeColors.onPrimary}>
           Quit
         </Button>
