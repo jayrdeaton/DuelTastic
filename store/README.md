@@ -73,7 +73,7 @@ Upload in the version's Product Page Information > Header and Search Results (He
 >
 > On first launch a three-card How to Play guide appears. Tap Skip to go straight to the game.
 
-**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). Jay: confirm where the sound effects in `assets/sounds/` came from before answering this, since nothing in the repo records it.
+**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21).
 
 **Pricing and Availability:** Free, all territories except China mainland (needs a government game approval number) and Vietnam (needs a game license from a local company), the same as SolitaireTastic. Apple Silicon Mac and Apple Vision Pro availability unticked: the app has never been run on either (no accelerometer on a Mac).
 
