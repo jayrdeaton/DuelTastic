@@ -47,7 +47,9 @@ export interface RoundOverDialogProps {
 // so "YOU WIN!"/"YOU LOSE!" and each player's own Rematch/Quit always face the player they're for.
 export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, seatSpots, humanPlayers, gameMode, outcome, colors, rematchReady, onRequestRematch, onQuit }: RoundOverDialogProps) {
   const { colors: themeColors } = useAutoPaperTheme()
-  const { fgMuted } = useOverlayCardColors()
+  // Quit's outlined label is fg, the card's own text color, not Paper's default (the theme's
+  // primary), so neither seat's card shows another seat's color (Jay, 2026-10-20).
+  const { fg, fgMuted } = useOverlayCardColors()
   const onColors: Record<Player, string> = { 1: themeColors.onPrimary, 2: themeColors.onSecondary }
   // Quit is outlined, the fleet's secondary action (ConfirmDialog's Cancel), so it never reads as a
   // second filled button beside Play Again, which fills with colors[player]: two filled buttons in one
@@ -79,7 +81,7 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
           {/* hud's action row, as in ConfirmDialog: Quit (outlined) on the left, Play Again (filled) on the
           right, side by side, as on the 2 Player cards below (Jay, 2026-10-20). */}
           <View style={overlayActionStyles.actions}>
-            <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton}>
+            <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton} textColor={fg}>
               Quit
             </Button>
             <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={overlayActionStyles.actionButton} buttonColor={colors[player]} textColor={onColors[player]}>
@@ -123,7 +125,7 @@ export default function RoundOverDialog({ orientationMode, p1OnRight, rotation, 
         toasts (Jay, 2026-10-20). Play Again still waits for both players (Waiting… until the other
         presses theirs). */}
         <View style={overlayActionStyles.actions}>
-          <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton}>
+          <Button mode='outlined' onPress={onQuit} style={overlayActionStyles.actionButton} textColor={fg}>
             Quit
           </Button>
           <Button mode='contained' disabled={ready} onPress={() => onRequestRematch(player)} style={overlayActionStyles.actionButton} buttonColor={colors[player]} textColor={onColors[player]}>
