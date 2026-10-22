@@ -103,7 +103,7 @@ describe('evaluateUnlockedIds', () => {
 })
 
 describe('unlockedKey', () => {
-  it('returns the bare achievement id for a device-wide/"All Profiles" unlock (profileId null)', () => {
+  it('returns the bare achievement id for a device-wide/"Everyone" unlock (profileId null)', () => {
     expect(unlockedKey('total_wins_bronze', null)).toBe('total_wins_bronze')
   })
 

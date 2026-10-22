@@ -14,7 +14,7 @@ interface RecordRoundOutcomeContext {
   profileIds?: Partial<Record<Player, string>>
 }
 
-// Returned by recordRoundOutcome below - `device` is the device-wide/"All Profiles" newly-unlocked
+// Returned by recordRoundOutcome below - `device` is the device-wide/"Everyone" newly-unlocked
 // list (bare-id keyed), `profiles` is a parallel per-seat breakdown of whatever that seat's OWN
 // saved profile newly unlocked this round (only seats present in context.profileIds ever get an
 // entry). Kept as two separate lists rather than one merged one because game.tsx's two toast paths
