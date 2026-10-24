@@ -1,6 +1,6 @@
 import { cellKey, computeGridSize, isInBounds, isOppositeDirection, stepCell, wrapCell } from '@tastic/grid'
 
-import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_COLLECT_RADIUS_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/constants/game'
+import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_COLLECT_RADIUS_CELLS, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/constants/game'
 import { ArenaVariant, ControlEffect, Direction, GameState, GridCell, GridSize, OrientationMode, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, PowerupType, RoundOutcome, ShieldEffect, SpeedEffect, Tunnel } from '@/types'
 
 import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from './arenas'
@@ -218,11 +218,13 @@ function hasClearCollectionArea(cell: GridCell, grid: GridSize, occupied: Readon
 // above), so without this a pickup could otherwise spawn directly on a portal mouth or a live
 // tunnel cell. `unsafeCells` (see buildUnsafeAreaCells) is the device safe-area margin - same
 // treatment, since a cell inside it is still fully traversable board, just not somewhere a pickup
-// should ever land.
+// should ever land. The outer POWERUP_EDGE_MARGIN_CELLS along every edge are skipped too, where the
+// glyph would hang over the wall.
 function pickRandomEmptyCell(grid: GridSize, occupied: ReadonlySet<string>, random: () => number, portalCells: ReadonlySet<string> = new Set(), tunnelCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): GridCell | null {
   const candidates: GridCell[] = []
-  for (let x = 0; x < grid.cols; x++) {
-    for (let y = 0; y < grid.rows; y++) {
+  const m = POWERUP_EDGE_MARGIN_CELLS
+  for (let x = m; x < grid.cols - m; x++) {
+    for (let y = m; y < grid.rows - m; y++) {
       const cell = { x, y }
       if (portalCells.has(cellKey(cell)) || tunnelCells.has(cellKey(cell)) || unsafeCells.has(cellKey(cell))) continue
       if (hasClearCollectionArea(cell, grid, occupied)) candidates.push(cell)

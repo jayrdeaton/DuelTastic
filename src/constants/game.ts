@@ -1,4 +1,4 @@
-import { EFFECT_COLORS, EFFECT_ICONS, PICKUP_PULSE_DURATION_MS, PICKUP_PULSE_SCALE, PICKUP_RADIUS_CELLS, PICKUP_SPAWN_FADE_MS, pickupRadiusPx, REVERSE_COMPENSATION_CHANCE } from '@/games/shared/powerups'
+import { EFFECT_COLORS, EFFECT_ICONS, PICKUP_EDGE_MARGIN, PICKUP_PULSE_DURATION_MS, PICKUP_PULSE_SCALE, PICKUP_RADIUS_CELLS, PICKUP_SPAWN_FADE_MS, pickupRadiusPx, REVERSE_COMPENSATION_CHANCE } from '@/games/shared/powerups'
 import { CpuDifficulty, GridSizeTier, type KeyboardScheme, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 
 // The key that uses a held powerup, per scheme (desktop web), matched against KeyboardEvent.key.
@@ -234,6 +234,11 @@ export const powerupPickupRadiusPx = pickupRadiusPx
 // rendered footprint above, which visually spans well past a single cell, rather than requiring
 // the exact cell dead-center (see gameEngine.ts's tickGame). Shared with Turf and Tag.
 export const POWERUP_COLLECT_RADIUS_CELLS = PICKUP_RADIUS_CELLS
+
+// Cells kept clear of pickups along each edge of the board. The glyph is drawn about 1.8 cells wide
+// either side of its cell's center (and pulses bigger), so a pickup in the outer cell or the one
+// next to it hung over the wall, cut off at the board's edge. Shared with Turf and Tag.
+export const POWERUP_EDGE_MARGIN_CELLS = PICKUP_EDGE_MARGIN
 
 // On-board glyph animation timing - a quick grow/fade the instant a pickup spawns (so it doesn't
 // just pop into existence), then an endless gentle pulse for as long as it sits uncollected (see

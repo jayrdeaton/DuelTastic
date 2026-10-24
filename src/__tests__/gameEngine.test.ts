@@ -1,4 +1,4 @@
-import { GRID_CELL_PX, MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_ALL_TYPES, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/constants/game'
+import { GRID_CELL_PX, MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_ALL_TYPES, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/constants/game'
 import { GameState, GridCell, PlayerEffects, PlayerState } from '@/types'
 import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/utils/gameEngine'
 
@@ -666,88 +666,96 @@ describe('tickGame', () => {
         expect(next.pickups[0].cell).toEqual({ x: 5, y: 5 })
       })
 
-      it('never spawns somewhere its own collection radius would overlap a trail, even on an otherwise-empty cell (edges are fine)', () => {
-        // A 3-cell wall down the middle of a small grid. Both players are frozen (Stasis'd) and
-        // contribute nothing to `occupied` themselves - it's passed in explicitly here, as exactly
-        // this wall - so there's no interference from anyone's own move this tick. (1,*) and (3,*)
-        // are individually empty but sit right beside the wall (within collection radius of it);
-        // only the (0,*) column, a full cell away, has a genuinely clear collection footprint.
+      it('never spawns somewhere its own collection radius would overlap a trail, even on an otherwise-empty cell', () => {
+        // A wall down column 4 of a grid whose only cells clear of the edge margin are row 2, x 2-5.
+        // Both players are frozen (Stasis'd) and contribute nothing to `occupied` themselves - it's
+        // passed in explicitly here, as exactly this wall - so there's no interference from anyone's
+        // own move this tick. (3,2) and (5,2) are individually empty but sit right beside the wall
+        // (within collection radius of it); only (2,2), a full cell away, has a genuinely clear
+        // collection footprint.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
         const state = makeState({
-          grid: { cols: 4, rows: 3 },
+          grid: { cols: 8, rows: 5 },
           pickups: [],
           players: {
             1: ps({ trail: [{ x: 0, y: 0 }], direction: 'right', effects: frozen }),
-            2: ps({ trail: [{ x: 3, y: 2 }], direction: 'left', effects: frozen })
+            2: ps({ trail: [{ x: 7, y: 4 }], direction: 'left', effects: frozen })
           }
         })
-        const occupied = new Set(['2,0', '2,1', '2,2'])
+        const occupied = new Set(['4,0', '4,1', '4,2', '4,3', '4,4'])
 
         for (const random of [() => 0, () => 0.5, () => 0.99]) {
           const next = tickGame(state, occupied, 1, POWERUP_ALL_TYPES, random)
           expect(next.pickups).toHaveLength(1)
-          expect(next.pickups[0].cell.x).toBe(0)
+          expect(next.pickups[0].cell).toEqual({ x: 2, y: 2 })
         }
       })
 
-      it('never spawns a pickup directly on a portal cell, even when it would otherwise be the only clear candidate', () => {
-        // A 12-cell strip: player 1's 5-cell trail and player 2's single cell leave exactly two
-        // trail-clear gaps free of any collection-radius overlap - the two portal cells themselves
-        // (x=0 and x=8) - so without the portal exclusion, one of THOSE is exactly where this would
-        // spawn. Both frozen (Stasis) so `occupied` stays exactly this fixed layout all tick.
+      it('never spawns in the outer POWERUP_EDGE_MARGIN_CELLS along any edge, where the glyph would hang over the wall', () => {
+        // Players frozen in two corners, so every cell clear of them is otherwise a candidate.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
         const state = makeState({
-          grid: { cols: 12, rows: 1 },
           pickups: [],
           players: {
-            1: ps({
-              trail: [
-                { x: 2, y: 0 },
-                { x: 3, y: 0 },
-                { x: 4, y: 0 },
-                { x: 5, y: 0 },
-                { x: 6, y: 0 }
-              ],
-              direction: 'right',
-              effects: frozen
-            }),
-            2: ps({ trail: [{ x: 10, y: 0 }], direction: 'right', effects: frozen })
+            1: ps({ trail: [{ x: 0, y: 0 }], direction: 'right', effects: frozen }),
+            2: ps({ trail: [{ x: 9, y: 9 }], direction: 'left', effects: frozen })
+          }
+        })
+        const m = POWERUP_EDGE_MARGIN_CELLS
+        const cells = Array.from({ length: 50 }, (_, i) => tickGame(state, undefined, 1, POWERUP_ALL_TYPES, () => i / 50).pickups[0].cell)
+        for (const { x, y } of cells) {
+          expect(x).toBeGreaterThanOrEqual(m)
+          expect(x).toBeLessThan(10 - m)
+          expect(y).toBeGreaterThanOrEqual(m)
+          expect(y).toBeLessThan(10 - m)
+        }
+        // The cells just inside the margin are still used.
+        expect(cells.some((c) => c.x === m)).toBe(true)
+        expect(cells.some((c) => c.x === 10 - m - 1)).toBe(true)
+      })
+
+      it('never spawns a pickup directly on a portal cell, even when it would otherwise be the only clear candidate', () => {
+        // Inside the edge margin only row 2, x 2-12, is a candidate, and player 1's trail across
+        // x 4-10 leaves exactly two cells there with a clear collection footprint - the two portal
+        // cells themselves (x=2 and x=12) - so without the portal exclusion, one of THOSE is exactly
+        // where this would spawn. Both frozen (Stasis) so `occupied` stays exactly this fixed layout
+        // all tick.
+        const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
+        const state = makeState({
+          grid: { cols: 15, rows: 5 },
+          pickups: [],
+          players: {
+            1: ps({ trail: [4, 5, 6, 7, 8, 9, 10].map((x) => ({ x, y: 2 })), direction: 'right', effects: frozen }),
+            2: ps({ trail: [{ x: 14, y: 2 }], direction: 'right', effects: frozen })
           },
-          portals: [{ a: { x: 0, y: 0 }, b: { x: 8, y: 0 } }]
+          portals: [{ a: { x: 2, y: 2 }, b: { x: 12, y: 2 } }]
         })
         const next = tickGame(state, undefined, 1, POWERUP_ALL_TYPES, () => 0)
         expect(next.pickups).toEqual([])
+        // Without the portal, one of its cells is where it lands.
+        expect(tickGame({ ...state, portals: [] }, undefined, 1, POWERUP_ALL_TYPES, () => 0).pickups[0].cell).toEqual({ x: 2, y: 2 })
       })
 
       it('never spawns a pickup on a cell inside state.unsafeCells (the device safe-area margin), even when it would otherwise be the only clear candidates', () => {
-        // Same shape as the portal-exclusion test above: a 12-cell strip where the only trail-clear,
-        // collection-radius-clear gaps are x=0 and x=8 - here both are marked unsafe instead of
+        // Same layout as the portal-exclusion test above, where the only trail-clear,
+        // collection-radius-clear cells are (2,2) and (12,2) - here both are marked unsafe instead of
         // being portal cells, so without the exclusion one of them is exactly where this would spawn.
         const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
         const state = makeState({
-          grid: { cols: 12, rows: 1 },
+          grid: { cols: 15, rows: 5 },
           pickups: [],
           players: {
-            1: ps({
-              trail: [
-                { x: 2, y: 0 },
-                { x: 3, y: 0 },
-                { x: 4, y: 0 },
-                { x: 5, y: 0 },
-                { x: 6, y: 0 }
-              ],
-              direction: 'right',
-              effects: frozen
-            }),
-            2: ps({ trail: [{ x: 10, y: 0 }], direction: 'right', effects: frozen })
+            1: ps({ trail: [4, 5, 6, 7, 8, 9, 10].map((x) => ({ x, y: 2 })), direction: 'right', effects: frozen }),
+            2: ps({ trail: [{ x: 14, y: 2 }], direction: 'right', effects: frozen })
           },
           unsafeCells: [
-            { x: 0, y: 0 },
-            { x: 8, y: 0 }
+            { x: 2, y: 2 },
+            { x: 12, y: 2 }
           ]
         })
         const next = tickGame(state, undefined, 1, POWERUP_ALL_TYPES, () => 0)
         expect(next.pickups).toEqual([])
+        expect(tickGame({ ...state, unsafeCells: [] }, undefined, 1, POWERUP_ALL_TYPES, () => 0).pickups[0].cell).toEqual({ x: 2, y: 2 })
       })
     })
   })
