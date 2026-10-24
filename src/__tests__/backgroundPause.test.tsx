@@ -1,10 +1,12 @@
-import { useBackgroundPause } from '@tastic/core'
 import { act, renderHook } from '@testing-library/react-native'
+import { useEffect } from 'react'
 import { AppState } from 'react-native'
 
 import { DEFAULT_P1_COLOR, DEFAULT_P2_COLOR } from '@/constants/game'
 import { useGameState } from '@/hooks/useGameState'
+import { useMatchControls } from '@/hooks/useMatchFlow'
 import { DEFAULT_SETTINGS } from '@/redux/settingsSlice'
+import type { RoundOutcome } from '@/types'
 
 import { emitAppState } from '../testUtils/appState'
 
@@ -16,22 +18,23 @@ const CRASH_BOARD_PX = 1
 
 interface RoundProps {
   boardPx: number
-  settingsOpen: boolean
-  confirmVisible: boolean
+  roundHistory?: RoundOutcome[]
 }
 
-// GameRound's pause wiring in miniature: the same useBackgroundPause getter and `paused` fold,
-// feeding the real useGameState.
-function useRound({ boardPx, settingsOpen, confirmVisible }: RoundProps) {
-  const { backgroundPaused, resume } = useBackgroundPause(() => state.phase !== 'roundOver' && !settingsOpen && !confirmVisible)
-  const paused = settingsOpen || confirmVisible || backgroundPaused
-  const game = useGameState(boardPx, boardPx, DEFAULT_SETTINGS, COLORS, 'faceToFace', true, undefined, paused)
-  const { state } = game
-  return { ...game, backgroundPaused, resume }
+// A round screen's pause wiring in miniature: the real useMatchControls (shared by LightCycles' and
+// Turf's round screens) feeding the real useGameState, and told the phase the way useMatchFlow tells it.
+function useRound({ boardPx, roundHistory = [] }: RoundProps) {
+  const controls = useMatchControls(roundHistory)
+  const game = useGameState(boardPx, boardPx, DEFAULT_SETTINGS, COLORS, 'faceToFace', true, undefined, controls.paused)
+  const { trackPhase } = controls
+  useEffect(() => {
+    trackPhase(game.state.phase)
+  }, [game.state.phase, trackPhase])
+  return { ...game, ...controls }
 }
 
 async function startRound(props: Partial<RoundProps> = {}) {
-  const rendered = await renderHook(useRound, { initialProps: { boardPx: ROOMY_BOARD_PX, settingsOpen: false, confirmVisible: false, ...props } })
+  const rendered = await renderHook(useRound, { initialProps: { boardPx: ROOMY_BOARD_PX, ...props } })
   await act(async () => {
     rendered.result.current.beginPlaying()
   })
@@ -79,7 +82,7 @@ describe('pausing when the app leaves the foreground mid-match', () => {
   })
 
   it('latches during the countdown too', async () => {
-    const { result } = await renderHook(useRound, { initialProps: { boardPx: ROOMY_BOARD_PX, settingsOpen: false, confirmVisible: false } })
+    const { result } = await renderHook(useRound, { initialProps: { boardPx: ROOMY_BOARD_PX } })
     expect(result.current.state.phase).toBe('onboarding')
 
     await act(async () => emitAppState('inactive'))
@@ -96,11 +99,14 @@ describe('pausing when the app leaves the foreground mid-match', () => {
   })
 
   it('leaves the pause to Settings or Quit Match? while either is already open', async () => {
-    const { result, rerender } = await startRound({ settingsOpen: true })
+    const { result } = await startRound({ roundHistory: [{ type: 'draw' }] })
+    await act(async () => result.current.setSettingsOpen(true))
     await act(async () => emitAppState('background'))
     expect(result.current.backgroundPaused).toBe(false)
 
-    await rerender({ boardPx: ROOMY_BOARD_PX, settingsOpen: false, confirmVisible: true })
+    await act(async () => result.current.setSettingsOpen(false))
+    await act(async () => result.current.requestBack())
+    expect(result.current.confirmVisible).toBe(true)
     await act(async () => emitAppState('background'))
     expect(result.current.backgroundPaused).toBe(false)
   })
