@@ -4,7 +4,7 @@ import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDir
 // to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/utils/grid'
 
-import { activateEffect, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '../shared/powerups'
+import { activateEffect, cellsOnTick, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, takePickup } from '../shared/powerups'
 import { claimedCells } from './capture'
 import { TURF_EFFECT_TICKS, TURF_POWERUP_EFFECTS, TURF_SOD_RADIUS } from './constants'
 import { DEFAULT_TURF_RULES, type TurfEvents, type TurfLayout, type TurfOutcome, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
@@ -152,7 +152,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   if (state.phase !== 'playing') return state
   const { grid } = state
   const tick = state.tick + 1
-  const steps: Record<TurfSeat, number> = { 1: speedMultiplier(state.players[1].effects, tick), 2: speedMultiplier(state.players[2].effects, tick) }
+  const steps: Record<TurfSeat, number> = { 1: cellsOnTick(state.players[1].effects, tick), 2: cellsOnTick(state.players[2].effects, tick) }
   // Fence: nothing but the edge crashes its rider.
   const fenced: Record<TurfSeat, boolean> = { 1: isShielded(state.players[1].effects, tick), 2: isShielded(state.players[2].effects, tick) }
   // One turn a tick: a rider covers its steps in the direction it starts the tick with. A frozen

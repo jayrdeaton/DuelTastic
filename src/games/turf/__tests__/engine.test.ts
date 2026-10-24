@@ -437,6 +437,18 @@ describe('Frost', () => {
   })
 })
 
+describe('Mud', () => {
+  it('slows the other rider to a cell every other tick for its run', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'mud')
+    expect(s.players[2].effects.speed?.kind).toBe('slow')
+    s = run(s, TURF_EFFECT_TICKS.mud)
+    expect(s.players[2].head).toEqual({ x: 15, y: 2 + Math.floor(TURF_EFFECT_TICKS.mud / 2) })
+    expect(s.players[1].head.y).toBe(75 - TURF_EFFECT_TICKS.mud)
+    s = run(s, 2)
+    expect(s.players[2].head.y).toBe(2 + Math.floor(TURF_EFFECT_TICKS.mud / 2) + 2)
+  })
+})
+
 describe('Tangle', () => {
   it('lands on the other rider for its run', () => {
     let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'tangle')

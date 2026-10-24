@@ -20,6 +20,7 @@ export const TURF_ROUND_OPTIONS: MenuOption<number>[] = TURF_ROUND_SECONDS.map((
 export const TURF_POWERUP_OPTIONS: MenuOption<TurfPowerup>[] = [
   { value: 'dash', label: 'Dash', description: 'Ride at double speed', icon: TURF_POWERUP_ICONS.dash },
   { value: 'frost', label: 'Frost', description: 'Freeze the other rider', icon: TURF_POWERUP_ICONS.frost },
+  { value: 'mud', label: 'Mud', description: 'Slow the other rider down', icon: TURF_POWERUP_ICONS.mud },
   { value: 'fence', label: 'Fence', description: 'Only the edge can crash you', icon: TURF_POWERUP_ICONS.fence },
   { value: 'sod', label: 'Sod', description: 'Claim the ground around you', icon: TURF_POWERUP_ICONS.sod },
   { value: 'tangle', label: 'Tangle', description: 'Reverse their steering', icon: TURF_POWERUP_ICONS.tangle },

@@ -281,6 +281,16 @@ describe('powerups', () => {
     expect(s.players[1].head.y).toBeLessThan(8)
   })
 
+  it('Mud halves a rider’s pace, It’s included, and a slowed It can still tag', () => {
+    const s = run(use(use(setup({ head: { x: 2, y: 40 }, direction: 'up' }, { head: { x: 18, y: 40 }, direction: 'up' }, { rows: 60 }), 2, 'mud'), 1, 'mud'), 10)
+    expect(40 - s.players[1].head.y).toBe(5)
+    expect(40 - s.players[2].head.y).toBe(Math.floor((10 * TAG_IT_SPEED) / 2))
+    // It, slowed, riding down onto the runner parked against the bottom edge.
+    let t = use(setup({ head: { x: 5, y: 19 }, direction: 'down' }, { head: { x: 5, y: 15 }, direction: 'down' }), 1, 'mud')
+    t = run(t, 8)
+    expect(t.it).toBe(1)
+  })
+
   it('Safe keeps the runner from being tagged until it runs out', () => {
     // It parked against the edge right beside the runner, who's parked against it too.
     let s = use(setup({ head: { x: 5, y: 0 }, direction: 'up' }, { head: { x: 6, y: 0 }, direction: 'up' }), 1, 'safe')

@@ -24,13 +24,14 @@ export type TurfCrashRule = 'out' | 'home'
 // same colors and icons everywhere; TURF_POWERUP_EFFECTS in constants.ts says which is which):
 // - Dash (yours): double speed. LightCycles' Overdrive.
 // - Frost (theirs): frozen in place. LightCycles' Stasis.
+// - Mud (theirs): half speed for a while, a longer, softer Frost.
 // - Fence (yours): for a while nothing but the board's edge crashes you: nobody can cut your trail,
 //   you can cross your own, and a head-on never takes you out. LightCycles' Shield.
 // - Sod (yours): the ground around your head becomes yours at once, which brings you home if you're
 //   out, claiming your trail.
 // - Tangle (theirs): their steering is reversed. LightCycles' Hack.
 // - Gust (theirs): forced double speed. LightCycles' Overclock.
-export type TurfPowerup = 'dash' | 'frost' | 'fence' | 'sod' | 'tangle' | 'gust'
+export type TurfPowerup = 'dash' | 'frost' | 'mud' | 'fence' | 'sod' | 'tangle' | 'gust'
 
 export interface TurfRules {
   crash: TurfCrashRule

@@ -12,29 +12,31 @@ import { type GridCell, type GridSize, isInBounds } from '@tastic/grid'
 // Hack is a reverse):
 // - boost: the rider who used it rides at double speed.
 // - freeze: the other rider stands still.
+// - slow: the other rider rides at half speed: a longer, softer freeze.
 // - rush: the other rider is forced to double speed.
 // - reverse: the other rider's steering is reversed.
 // - shield: protects the rider who used it; from what is each game's (crashes in Turf, being tagged
 //   in Tag).
-export type EffectKind = 'boost' | 'freeze' | 'rush' | 'reverse' | 'shield'
+export type EffectKind = 'boost' | 'freeze' | 'slow' | 'rush' | 'reverse' | 'shield'
 
-export type SpeedKind = 'boost' | 'freeze' | 'rush'
+export type SpeedKind = 'boost' | 'freeze' | 'slow' | 'rush'
 
 // Who an effect lands on: the rider who used it, or the other one.
-export const EFFECT_TARGETS: Record<EffectKind, 'self' | 'other'> = { boost: 'self', freeze: 'other', rush: 'other', reverse: 'other', shield: 'self' }
+export const EFFECT_TARGETS: Record<EffectKind, 'self' | 'other'> = { boost: 'self', freeze: 'other', slow: 'other', rush: 'other', reverse: 'other', shield: 'self' }
 
 // The ring around an affected head, keyed by what's driving the effect, so being sped up by your own
 // boost reads differently from a rush forced on you.
 export const EFFECT_COLORS: Record<EffectKind, string> = {
   boost: '#FFC107', // gold: your own speed-up
   freeze: '#29B6F6', // ice blue: frozen
+  slow: '#A1662F', // mud brown: stuck in the mud
   rush: '#E53935', // red: danger, forced on you
   reverse: '#AB47BC', // violet: your steering's been tampered with
   shield: '#26C6DA' // bright cyan: protected
 }
 
 // The held powerup's icon in its holder's badge (MDI names). The box on the board never shows it.
-export const EFFECT_ICONS: Record<EffectKind, string> = { boost: 'speedometer', freeze: 'pause-circle-outline', rush: 'chip', reverse: 'swap-horizontal-bold', shield: 'shield-outline' }
+export const EFFECT_ICONS: Record<EffectKind, string> = { boost: 'speedometer', freeze: 'pause-circle-outline', slow: 'snail', rush: 'chip', reverse: 'swap-horizontal-bold', shield: 'shield-outline' }
 
 // An effect lasts through the tick `expiresAtTick` and is gone after it.
 export interface TimedEffect {
@@ -53,13 +55,26 @@ export const NO_EFFECTS = (): Effects => ({ speed: null, reverse: null, shield: 
 
 export const isActive = (effect: TimedEffect | null, tick: number) => effect !== null && tick <= effect.expiresAtTick
 
-// How many times its usual pace a rider rides on tick `tick`: 0 frozen, 2 boosted or rushed, else 1.
-export function speedMultiplier(effects: Effects, tick: number): 0 | 1 | 2 {
+const MULTIPLIERS: Record<SpeedKind, 0 | 0.5 | 2> = { freeze: 0, slow: 0.5, boost: 2, rush: 2 }
+
+// How many times its usual pace a rider rides on tick `tick`: 0 frozen, a half slowed, 2 boosted or
+// rushed, else 1.
+export function speedMultiplier(effects: Effects, tick: number): 0 | 0.5 | 1 | 2 {
   if (!effects.speed || !isActive(effects.speed, tick)) return 1
-  return effects.speed.kind === 'freeze' ? 0 : 2
+  return MULTIPLIERS[effects.speed.kind]
+}
+
+// Whole cells a rider covers on tick `tick`, for a game that moves a cell at a time: 0 frozen, 2
+// boosted or rushed, and slowed, one every other tick (on the even ticks), else 1.
+export function cellsOnTick(effects: Effects, tick: number): number {
+  const m = speedMultiplier(effects, tick)
+  return Math.floor(tick * m) - Math.floor((tick - 1) * m)
 }
 
 export const isFrozen = (effects: Effects, tick: number) => speedMultiplier(effects, tick) === 0
+
+// Frozen or slowed: riding below its usual pace.
+export const isSlowed = (effects: Effects, tick: number) => speedMultiplier(effects, tick) < 1
 
 export const isShielded = (effects: Effects, tick: number) => isActive(effects.shield, tick)
 
@@ -190,13 +205,14 @@ export function newPickup<T extends string>(tick: number, cell: GridCell, poweru
 // ─── The CPU ────────────────────────────────────────────────────────────────
 
 // Ticks for a rider to cover `steps` cells after tick `tick`: a freeze still to run out comes first,
-// and a boost or rush covers two cells a tick while it lasts. No way there (-1) stays -1.
+// a slow covers half a cell a tick while it lasts, and a boost or rush two. No way there (-1) stays -1.
 export function ticksFor(steps: number, effects: Effects, tick: number): number {
   if (steps < 0) return -1
   const speed = effects.speed
   const left = ticksLeft(speed, tick)
   if (!speed || left <= 0) return steps
   if (speed.kind === 'freeze') return left + steps
+  if (speed.kind === 'slow') return steps <= left / 2 ? steps * 2 : left + (steps - left / 2)
   const fast = Math.min(left, Math.ceil(steps / 2))
   return fast + Math.max(0, steps - 2 * fast)
 }

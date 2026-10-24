@@ -1,4 +1,4 @@
-import { activateEffect, addEffect, compensatesForReverse, type Effects, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, type Pickup, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, pickupCell, pickupFootprint, pickupRadiusPx, speedMultiplier, takePickup, ticksFor, ticksLeft } from '../powerups'
+import { activateEffect, addEffect, cellsOnTick, compensatesForReverse, type Effects, expireEffects, isFrozen, isShielded, isSlowed, newPickup, NO_EFFECTS, type Pickup, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, pickupCell, pickupFootprint, pickupRadiusPx, speedMultiplier, takePickup, ticksFor, ticksLeft } from '../powerups'
 
 const grid = { cols: 30, rows: 30 }
 const steps = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
@@ -11,6 +11,18 @@ describe('effects', () => {
     expect(speedMultiplier(addEffect(NO_EFFECTS(), 'rush', 5), 3)).toBe(2)
     expect(isFrozen(addEffect(NO_EFFECTS(), 'freeze', 5), 3)).toBe(true)
     expect(speedMultiplier(NO_EFFECTS(), 3)).toBe(1)
+    const muddy = addEffect(NO_EFFECTS(), 'slow', 5)
+    expect(speedMultiplier(muddy, 3)).toBe(0.5)
+    expect(isSlowed(muddy, 3)).toBe(true)
+    expect(isFrozen(muddy, 3)).toBe(false)
+  })
+
+  it('moves a whole-cell rider every other tick while slowed, twice a tick while boosted', () => {
+    const cells = (effects: Effects) => [1, 2, 3, 4, 5, 6].map((t) => cellsOnTick(effects, t))
+    expect(cells(addEffect(NO_EFFECTS(), 'slow', 100))).toEqual([0, 1, 0, 1, 0, 1])
+    expect(cells(addEffect(NO_EFFECTS(), 'boost', 100))).toEqual([2, 2, 2, 2, 2, 2])
+    expect(cells(addEffect(NO_EFFECTS(), 'freeze', 100))).toEqual([0, 0, 0, 0, 0, 0])
+    expect(cells(NO_EFFECTS())).toEqual([1, 1, 1, 1, 1, 1])
   })
 
   it('lets a speed effect replace another, and keeps the other sorts apart', () => {
@@ -101,6 +113,9 @@ describe('the CPU’s sums', () => {
     // Three ticks of boost cover six cells, then four more at the usual pace.
     expect(ticksFor(10, addEffect(NO_EFFECTS(), 'rush', 3), 0)).toBe(7)
     expect(ticksFor(10, addEffect(NO_EFFECTS(), 'freeze', 4), 0)).toBe(14)
+    // Ten ticks of Mud cover five cells; three cells take six of them.
+    expect(ticksFor(3, addEffect(NO_EFFECTS(), 'slow', 10), 0)).toBe(6)
+    expect(ticksFor(8, addEffect(NO_EFFECTS(), 'slow', 10), 0)).toBe(13)
   })
 
   it('makes up for reversed steering always on hard, never on easy, sometimes on normal', () => {

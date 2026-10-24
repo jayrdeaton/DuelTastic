@@ -26,11 +26,12 @@ export type TagArena = 'open' | 'pillars'
 // colors and icons everywhere; TAG_POWERUP_EFFECTS in constants.ts says which is which):
 // - Dash (yours): double speed.
 // - Freeze (theirs): they stand still, and a frozen It can't tag.
+// - Mud (theirs): half speed for a while, a longer, softer Freeze (a slowed It can still tag).
 // - Safe (yours): nobody can tag you for a while. Only while you're running: tapped as It, it stays
 //   held for when you're not.
 // - Tangle (theirs): their steering is reversed.
 // No forced speed-up (Turf's Gust): with nothing to crash into, it would only ever help its target.
-export type TagPowerup = 'dash' | 'freeze' | 'safe' | 'tangle'
+export type TagPowerup = 'dash' | 'freeze' | 'mud' | 'safe' | 'tangle'
 
 export interface TagOptions {
   rule: TagRule

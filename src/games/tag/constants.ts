@@ -42,17 +42,18 @@ export const TAG_PILLAR_MARGIN = 3
 
 // ─── Powerups ───────────────────────────────────────────────────────────────
 
-export const TAG_POWERUPS: TagPowerup[] = ['dash', 'freeze', 'safe', 'tangle']
+export const TAG_POWERUPS: TagPowerup[] = ['dash', 'freeze', 'mud', 'safe', 'tangle']
 
 // What each of Tag's powerups does.
-export const TAG_POWERUP_EFFECTS: Record<TagPowerup, EffectKind> = { dash: 'boost', freeze: 'freeze', safe: 'shield', tangle: 'reverse' }
+export const TAG_POWERUP_EFFECTS: Record<TagPowerup, EffectKind> = { dash: 'boost', freeze: 'freeze', mud: 'slow', safe: 'shield', tangle: 'reverse' }
 
 // Ticks each lasts, at about 9 ticks a second on the normal speed.
 export const TAG_EFFECT_TICKS: Record<TagPowerup, number> = {
   dash: 22, // about 2.5s
   freeze: 13, // about 1.5s, like the freeze after a tag
+  mud: 26, // about 3s at half speed
   safe: 26, // about 3s
   tangle: 17 // about 2s
 }
 
-export const TAG_POWERUP_ICONS: Record<TagPowerup, string> = { dash: EFFECT_ICONS.boost, freeze: EFFECT_ICONS.freeze, safe: EFFECT_ICONS.shield, tangle: EFFECT_ICONS.reverse }
+export const TAG_POWERUP_ICONS: Record<TagPowerup, string> = { dash: EFFECT_ICONS.boost, freeze: EFFECT_ICONS.freeze, mud: EFFECT_ICONS.slow, safe: EFFECT_ICONS.shield, tangle: EFFECT_ICONS.reverse }

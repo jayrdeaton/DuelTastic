@@ -93,6 +93,14 @@ describe('the CPU with powerups', () => {
     expect(shouldTagCpuActivate(holding(far, 1, 'safe'), 1, 'hard', NO_WOBBLE)).toBe(false)
   })
 
+  it('uses Mud as It from further off than Freeze (normal and hard)', () => {
+    // Fourteen steps apart: too far for Freeze, near enough for Mud.
+    const s = setup({ head: { x: 10, y: 2 }, direction: 'up' }, { head: { x: 10, y: 16 }, direction: 'up' })
+    expect(shouldTagCpuActivate(holding(s, 2, 'mud'), 2, 'normal', NO_WOBBLE)).toBe(true)
+    expect(shouldTagCpuActivate(holding(s, 2, 'freeze'), 2, 'normal', NO_WOBBLE)).toBe(false)
+    expect(shouldTagCpuActivate(holding(closeCall(), 1, 'mud'), 1, 'easy', NO_WOBBLE)).toBe(true)
+  })
+
   it('never spends Safe as It', () => {
     expect(shouldTagCpuActivate(holding(closeCall(), 2, 'safe'), 2, 'normal', () => 0)).toBe(false)
   })

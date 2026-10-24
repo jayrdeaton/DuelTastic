@@ -2,7 +2,7 @@ import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDir
 import { applyControlInversion } from '@tastic/input'
 
 import { distanceField } from '../shared/distanceField'
-import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '../shared/powerups'
+import { compensatesForReverse, isShielded, isSlowed, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '../shared/powerups'
 import { TURF_EFFECT_TICKS } from './constants'
 import { applyTurfActivation, applyTurfTurn, cellIndex } from './engine'
 import { DEFAULT_TURF_RULES, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
@@ -178,7 +178,7 @@ export interface TurfCpuMove {
 // Out on a loop, it heads home as soon as the other rider could reach its trail before (or about as
 // soon as) it gets home, or once its trail is as long as it allows. It goes for the other rider's
 // trail whenever it can get there before that rider gets home, on a loop marked aggressive or while
-// that rider is frozen. Normal and hard ride out for a pickup in reach when they're holding nothing.
+// that rider is frozen or stuck in Mud. Normal and hard ride out for a pickup in reach when they're holding nothing.
 // Every pick is filtered for safety first, over every cell it covers this tick (two under Dash or
 // Gust): never off the board or into its own trail, never into a cell the other rider's head could
 // take next unless that cell is its own ground (where it wins a head-on) or it's fenced, and never
@@ -196,9 +196,9 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   if (plan && outside && !plan.started) plan = { ...plan, started: true }
 
   // Frozen, it still picks the heading it'll take once it thaws.
-  const mySteps = Math.max(1, speedMultiplier(me.effects, nextTick))
+  const mySteps = Math.max(1, Math.ceil(speedMultiplier(me.effects, nextTick)))
   const fenced = isShielded(me.effects, nextTick)
-  const theirSteps = speedMultiplier(them.effects, nextTick)
+  const theirSteps = Math.ceil(speedMultiplier(them.effects, nextTick))
   const threatened = new Set([at(them.head)])
   for (const d of [them.direction, LEFT_OF[them.direction], RIGHT_OF[them.direction]]) {
     let cell = them.head
@@ -238,7 +238,7 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   // What it's riding toward this tick: a distance field to walk down, or a heading from the plan.
   let field: Int32Array | null = null
   let wanted: Direction | null = null
-  if (r.cut && (plan?.aggressive || isFrozen(them.effects, nextTick))) field = r.cut
+  if (r.cut && (plan?.aggressive || isSlowed(them.effects, nextTick))) field = r.cut
   else if (outside && (danger || me.trail.length >= params.maxTrail)) field = r.home
   else if (seek) field = seek
   else if (outside) {
@@ -271,10 +271,10 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
 
 // Whether the CPU uses the powerup it's holding this tick.
 //
-// Every level uses Fence, Sod, Frost or Dash to get out of trouble: out on a trail the other rider
-// could cut before it gets home. Normal and hard also wait for each one's moment: Sod on a long trail
-// (it brings the trail home), Dash on a long ride home, Frost when the other rider's trail is close
-// enough to cut while they're frozen, Tangle while they're out (a wrong turn costs most then), and
+// Every level uses Fence, Sod, Frost, Mud or Dash to get out of trouble: out on a trail the other
+// rider could cut before it gets home. Normal and hard also wait for each one's moment: Sod on a long
+// trail (it brings the trail home), Dash on a long ride home, Frost or Mud when the other rider's
+// trail is close enough to cut while they're frozen or slowed, Tangle while they're out (a wrong turn costs most then), and
 // Gust when they're heading for the edge or have a long trail of their own to run into. Otherwise
 // each level has a small chance a tick of using it anyway.
 export function shouldTurfCpuActivate(state: TurfState, seat: TurfSeat, difficulty: TurfCpuDifficulty, rules: TurfRules = DEFAULT_TURF_RULES, random: () => number = Math.random): boolean {
@@ -297,6 +297,10 @@ export function shouldTurfCpuActivate(state: TurfState, seat: TurfSeat, difficul
       break
     case 'frost':
       if (trouble || (timed && r.ticksToCut > 0 && r.ticksToCut <= TURF_EFFECT_TICKS.frost)) return true
+      break
+    case 'mud':
+      // Half speed for a while: about as long to cut them as Frost gives, with time to spare.
+      if (trouble || (timed && r.ticksToCut > 0 && r.ticksToCut <= TURF_EFFECT_TICKS.mud / 2)) return true
       break
     case 'tangle':
       if (timed && them.trail.length >= 4) return true

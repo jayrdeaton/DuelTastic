@@ -24,7 +24,7 @@ export const TURF_RESULT_HOLD_MS = 900
 
 // ─── Powerups ───────────────────────────────────────────────────────────────
 
-export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'fence', 'sod', 'tangle', 'gust']
+export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'mud', 'fence', 'sod', 'tangle', 'gust']
 
 // Ticks a timed powerup lasts, at about 11 ticks a second on the normal speed (the same seconds as
 // LightCycles' for the effects both have, except Fence, which gets longer than Shield: it has to
@@ -32,6 +32,7 @@ export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'fence', 'sod', 't
 export const TURF_EFFECT_TICKS: Record<Exclude<TurfPowerup, 'sod'>, number> = {
   dash: 28, // about 2.5s
   frost: 16, // about 1.5s
+  mud: 33, // about 3s at half speed
   fence: 45, // about 4s
   tangle: 22, // about 2s
   gust: 22 // about 2s
@@ -41,12 +42,13 @@ export const TURF_EFFECT_TICKS: Record<Exclude<TurfPowerup, 'sod'>, number> = {
 export const TURF_SOD_RADIUS = 2
 
 // What each of Turf's timed powerups does (Sod is Turf's own and happens at once).
-export const TURF_POWERUP_EFFECTS: Record<Exclude<TurfPowerup, 'sod'>, EffectKind> = { dash: 'boost', frost: 'freeze', fence: 'shield', tangle: 'reverse', gust: 'rush' }
+export const TURF_POWERUP_EFFECTS: Record<Exclude<TurfPowerup, 'sod'>, EffectKind> = { dash: 'boost', frost: 'freeze', mud: 'slow', fence: 'shield', tangle: 'reverse', gust: 'rush' }
 
 // Every game's icon for its effect, and a patch of grass for Sod.
 export const TURF_POWERUP_ICONS: Record<TurfPowerup, string> = {
   dash: EFFECT_ICONS.boost,
   frost: EFFECT_ICONS.freeze,
+  mud: EFFECT_ICONS.slow,
   fence: EFFECT_ICONS.shield,
   sod: 'grass',
   tangle: EFFECT_ICONS.reverse,

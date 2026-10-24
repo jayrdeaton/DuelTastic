@@ -21,6 +21,7 @@ export const TAG_ROUND_OPTIONS: MenuOption<number>[] = TAG_ROUND_SECONDS.map((se
 export const TAG_POWERUP_OPTIONS: MenuOption<TagPowerup>[] = [
   { value: 'dash', label: 'Dash', description: 'Ride at double speed', icon: TAG_POWERUP_ICONS.dash },
   { value: 'freeze', label: 'Freeze', description: 'Freeze the other rider', icon: TAG_POWERUP_ICONS.freeze },
+  { value: 'mud', label: 'Mud', description: 'Slow the other rider down', icon: TAG_POWERUP_ICONS.mud },
   { value: 'safe', label: 'Safe', description: "Can't be tagged for a bit", icon: TAG_POWERUP_ICONS.safe },
   { value: 'tangle', label: 'Tangle', description: 'Reverse their steering', icon: TAG_POWERUP_ICONS.tangle }
 ]

@@ -117,7 +117,7 @@ function step(state: TagState, p: TagPlayer): TagPlayer | null {
 }
 
 // One tick for both riders. A rider covers a cell a tick, It a little more (TAG_IT_SPEED), twice that
-// under Dash, none under Freeze, and a newly tagged It none until its freeze is over. Whenever It
+// under Dash, half under Mud, none under Freeze, and a newly tagged It none until its freeze is over. Whenever It
 // (not frozen either way) is touching the other rider (not Safe), at the start of the tick or after
 // any step, the other rider is It: frozen for TAG_FREEZE_TICKS while the old It gets away. Passing
 // within a cell of a box picks it up, and with powerups on a new one turns up once it's taken.

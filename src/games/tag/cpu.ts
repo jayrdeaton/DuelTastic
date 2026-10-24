@@ -108,9 +108,10 @@ export function chooseTagCpuMove(state: TagState, seat: TagSeat, difficulty: Tag
 
 // Whether the CPU uses the powerup it's holding this tick.
 //
-// Every level uses Safe, Freeze or Dash to get away when It is about to tag it. Normal and hard also
-// wait for each one's moment as It: Freeze when the other rider is near enough to catch while
-// they're frozen, Dash to close a gap, and Tangle when the other rider is near (as It or running).
+// Every level uses Safe, Freeze, Mud or Dash to get away when It is about to tag it. Normal and hard
+// also wait for each one's moment as It: Freeze when the other rider is near enough to catch while
+// they're frozen, Mud from a little further, Dash to close a gap, and Tangle when the other rider is
+// near (as It or running).
 // Otherwise each level has a small chance a tick of using it anyway, except Safe as It, which would
 // do nothing.
 export function shouldTagCpuActivate(state: TagState, seat: TagSeat, difficulty: TagCpuDifficulty, random: () => number = Math.random): boolean {
@@ -134,6 +135,9 @@ export function shouldTagCpuActivate(state: TagState, seat: TagSeat, difficulty:
       break
     case 'freeze':
       if (trouble || (chasing && apart <= 12)) return true
+      break
+    case 'mud':
+      if (trouble || (chasing && apart <= 16)) return true
       break
     case 'dash':
       if (trouble || (chasing && apart <= 10)) return true
