@@ -1,4 +1,4 @@
-import { activateEffect, addEffect, compensatesForReverse, type Effects, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, type Pickup, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, pickupCell, pickupFootprint, speedMultiplier, takePickup, ticksFor, ticksLeft } from '../powerups'
+import { activateEffect, addEffect, compensatesForReverse, type Effects, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, type Pickup, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, pickupCell, pickupFootprint, pickupRadiusPx, speedMultiplier, takePickup, ticksFor, ticksLeft } from '../powerups'
 
 const grid = { cols: 30, rows: 30 }
 const steps = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
@@ -46,6 +46,13 @@ describe('pickups', () => {
     const pickups: Pickup<'dash'>[] = [{ id: 'a', type: 'dash', cell: { x: 5, y: 5 } }]
     expect(takePickup(pickups, { x: 6, y: 4 })).toEqual({ taken: pickups[0], rest: [] })
     expect(takePickup(pickups, { x: 7, y: 5 })).toBeNull()
+  })
+
+  it('is drawn about as wide as its footprint, within 9 to 26px', () => {
+    expect(pickupRadiusPx(8)).toBeCloseTo(14.4)
+    expect(pickupRadiusPx(14)).toBeCloseTo(25.2)
+    expect(pickupRadiusPx(3)).toBe(9)
+    expect(pickupRadiusPx(22)).toBe(26)
   })
 
   it('has a footprint of the cells round it, on the board', () => {

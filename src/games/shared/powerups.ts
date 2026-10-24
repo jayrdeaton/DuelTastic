@@ -105,10 +105,12 @@ export interface Pickup<T extends string> {
 // drawn wider than a cell.
 export const PICKUP_RADIUS_CELLS = 1
 
-// The box on the board: never smaller than this, however small the cells, and animated in when it
-// turns up, then pulsing until it's picked up.
+// The box on the board: about as wide as the cells it's picked up from, but never smaller than 9px
+// however small the cells (LightCycles' and Turf's are 5 to 14px), nor bigger than 26px however big
+// (Tag's are 16 to 30px, where 1.8 cells would cover the pillars round it). Animated in when it turns
+// up, then pulsing until it's picked up.
 export function pickupRadiusPx(cellPx: number): number {
-  return Math.max(cellPx * 1.8, 9)
+  return Math.min(Math.max(cellPx * 1.8, 9), 26)
 }
 export const PICKUP_SPAWN_FADE_MS = 260
 export const PICKUP_PULSE_DURATION_MS = 900
