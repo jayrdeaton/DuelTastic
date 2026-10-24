@@ -6,6 +6,7 @@
       "@/app/*": ["./src/app/*"],
       "@/components/*": ["./src/components/*"],
       "@/constants/*": ["./src/constants/*"],
+      "@/games/*": ["./src/games/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/redux/*": ["./src/redux/*"],
       "@/types": ["./src/types/index.ts"],

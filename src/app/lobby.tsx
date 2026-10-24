@@ -20,9 +20,15 @@ import { liveplayActions } from '@/redux/liveplaySlice'
 import { seatColorsActions } from '@/redux/seatColorsSlice'
 import { DEFAULT_SETTINGS } from '@/redux/settingsSlice'
 import { type AppDispatch, type RootState } from '@/redux/store'
-import { ArenaVariant, CpuDifficulty, GridSizeTier, KeyScheme, Player, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
+import { ArenaVariant, CpuDifficulty, GameChoice, GridSizeTier, KeyScheme, Player, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 import { humanPlayersFor, parseGameMode } from '@/utils/gameParams'
 import { safeBack } from '@/utils/navigation'
+
+// Which game the round is. Here until the DuelTastic pack, where Home lists the games instead.
+const GAME_OPTIONS: MenuOption<GameChoice>[] = [
+  { value: 'lightcycles', label: 'LightCycles', icon: 'motorbike' },
+  { value: 'turf', label: 'Turf', icon: 'vector-square' }
+]
 
 // Small -> large vehicles, echoing the game's own light-cycle theme rather than a generic S/M/L
 // badge. MDI's name for the first is 'motorbike', not 'motorcycle'.
@@ -529,6 +535,11 @@ export default function LobbyScreen() {
   const sharedControlsRow = (
     <LobbySharedControls
       host={controlsHost}
+      game={settings.game}
+      gameOptions={GAME_OPTIONS}
+      onGameChange={(value) => setSettings({ game: value })}
+      turf={settings.turf}
+      onTurfChange={(patch) => setSettings({ turf: { ...settings.turf, ...patch } })}
       gridSizeTier={settings.gridSizeTier}
       gridSizeOptions={GRID_SIZE_OPTIONS}
       onGridSizeChange={(value) => setSettings({ gridSizeTier: value })}

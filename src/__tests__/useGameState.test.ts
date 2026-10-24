@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native'
 
 import { SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_TIER_INTERVAL_MS } from '@/constants/game'
+import { DEFAULT_TURF_OPTIONS } from '@/games/turf/constants'
 import { useGameState } from '@/hooks/useGameState'
 import { Settings } from '@/types'
 
@@ -20,7 +21,7 @@ function installFakeRaf() {
   }
 }
 
-const SETTINGS: Settings = { speedTier: 'fast', speedRampEnabled: false, gameMode: 'twoPlayer', cpuDifficulty: 'normal', gridSizeTier: 'medium', trailSpeedTier: 'off', keyScheme: { 1: 'wasd', 2: 'arrows' }, lockOrientation: false, enabledPowerups: [], arenaVariant: 'open', extendIntoSafeArea: false, wrapEdges: false, deferBottomEdgeGestures: false }
+const SETTINGS: Settings = { speedTier: 'fast', speedRampEnabled: false, gameMode: 'twoPlayer', cpuDifficulty: 'normal', gridSizeTier: 'medium', trailSpeedTier: 'off', keyScheme: { 1: 'wasd', 2: 'arrows' }, lockOrientation: false, enabledPowerups: [], arenaVariant: 'open', extendIntoSafeArea: false, wrapEdges: false, deferBottomEdgeGestures: false, game: 'lightcycles', turf: DEFAULT_TURF_OPTIONS }
 const CPU_SETTINGS: Settings = { ...SETTINGS, gameMode: 'vsCpu', cpuDifficulty: 'hard' }
 const COLORS = { 1: '#3B82F6', 2: '#EF4444' }
 const ORIENTATION = 'faceToFace'

@@ -2,6 +2,8 @@ import { AchievementDefinition as BaseAchievementDefinition, DayStreakState, Out
 import type { ViewRotation } from '@tastic/core'
 import type { GridCell, GridSize } from '@tastic/grid'
 
+import type { TurfOptions } from '@/games/turf/types'
+
 export type { GridCell, GridSize }
 
 export type Player = 1 | 2
@@ -177,7 +179,15 @@ export interface Settings {
   // Providers.tsx's EdgeGuardBridge) for @tastic/edge-guard's own config plugin swizzle of
   // preferredScreenEdgesDeferringSystemGestures to read at runtime.
   deferBottomEdgeGestures: boolean
+  // Which game the lobby sets up: LightCycles itself or Turf (see src/games/turf). Here only until
+  // the DuelTastic pack, where each game has its own loadout and saved settings.
+  game: GameChoice
+  // Turf's rules and round length (see src/games/turf/types.ts); its speed, grid size, CPU level and
+  // controls are the fields above.
+  turf: TurfOptions
 }
+
+export type GameChoice = 'lightcycles' | 'turf'
 
 export interface GameState {
   phase: GamePhase

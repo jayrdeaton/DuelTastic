@@ -1,6 +1,7 @@
 import { createSettingsSlice } from '@rific/core'
 
 import { DEFAULT_GRID_SIZE_TIER } from '@/constants/game'
+import { DEFAULT_TURF_OPTIONS } from '@/games/turf/constants'
 import type { Settings } from '@/types'
 
 // The persisted settings: a Redux slice like every other persisted value in this app, read and
@@ -21,7 +22,9 @@ export const DEFAULT_SETTINGS: Settings = {
   arenaVariant: 'open',
   extendIntoSafeArea: false,
   wrapEdges: false,
-  deferBottomEdgeGestures: false
+  deferBottomEdgeGestures: false,
+  game: 'lightcycles',
+  turf: DEFAULT_TURF_OPTIONS
 }
 
 const { actions, reducer } = createSettingsSlice<Settings, 'merge', never>('settings', {

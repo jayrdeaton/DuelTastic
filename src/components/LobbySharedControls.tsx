@@ -2,7 +2,9 @@ import { IconButton } from '@rific/feedback-press'
 import { MenuOption, PopoverHost, SectionedDropdown, usePopoverHost } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 
-import { ArenaVariant, GridSizeTier, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
+import { TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_ROUND_OPTIONS } from '@/games/turf/loadoutOptions'
+import type { TurfOptions } from '@/games/turf/types'
+import { ArenaVariant, GameChoice, GridSizeTier, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 
 interface Props {
   // Shared popover host - see @tastic/hud's PlayerSetupPanel's identical `host` prop. Passed in
@@ -11,6 +13,13 @@ interface Props {
   // simultaneity across every picker just adds clutter). Omit to fall back to this component's own
   // independent host.
   host?: PopoverHost
+  // Which game the round is: LightCycles or Turf. Turf swaps LightCycles' arena, trail speed and
+  // powerups for its own rules and round length; grid size and speed are shared.
+  game: GameChoice
+  gameOptions: MenuOption<GameChoice>[]
+  onGameChange: (value: GameChoice) => void
+  turf: TurfOptions
+  onTurfChange: (patch: Partial<TurfOptions>) => void
   gridSizeTier: GridSizeTier
   gridSizeOptions: MenuOption<GridSizeTier>[]
   onGridSizeChange: (value: GridSizeTier) => void
@@ -71,9 +80,9 @@ interface Props {
 // the host", since a shared host (vs-CPU) also carries the player panels' own popover ids. Exported
 // so lobby.tsx's own showMetaInSharedBand wrapper (sharedColumn) can run this same membership check
 // on itself - see that wrapper's own comment for why it needs to.
-export const LOBBY_SHARED_CONTROLS_IDS = ['gridSize', 'arena', 'speed', 'trailSpeed', 'powerups']
+export const LOBBY_SHARED_CONTROLS_IDS = ['game', 'gridSize', 'arena', 'speed', 'trailSpeed', 'powerups', 'turfRules', 'turfRound']
 
-export function LobbySharedControls({ host: sharedHost, gridSizeTier, gridSizeOptions, onGridSizeChange, speedTier, speedOptions, onSpeedChange, trailSpeedTier, trailSpeedOptions, onTrailSpeedChange, arenaVariant, arenaOptions, onArenaChange, extendIntoSafeArea, extendIntoSafeAreaOption, onExtendIntoSafeAreaChange, wrapEdges, wrapEdgesOption, onWrapEdgesChange, enabledPowerups, powerupOptions, onPowerupsChange, onRandomize, onReset, accentColor, mutedColor, onAccentColor, dark }: Props) {
+export function LobbySharedControls({ host: sharedHost, game, gameOptions, onGameChange, turf, onTurfChange, gridSizeTier, gridSizeOptions, onGridSizeChange, speedTier, speedOptions, onSpeedChange, trailSpeedTier, trailSpeedOptions, onTrailSpeedChange, arenaVariant, arenaOptions, onArenaChange, extendIntoSafeArea, extendIntoSafeAreaOption, onExtendIntoSafeAreaChange, wrapEdges, wrapEdgesOption, onWrapEdgesChange, enabledPowerups, powerupOptions, onPowerupsChange, onRandomize, onReset, accentColor, mutedColor, onAccentColor, dark }: Props) {
   const ownHost = usePopoverHost()
   const host = sharedHost ?? ownHost
   // See @tastic/hud's PlayerSetupPanel's identical ownPopoverOpen comment - elevating this row for
@@ -96,6 +105,26 @@ export function LobbySharedControls({ host: sharedHost, gridSizeTier, gridSizeOp
       )}
 
       <View style={styles.row}>
+        <SectionedDropdown id='game' host={host} icon='gamepad-variant-outline' accessibilityLabel='Game' sections={[{ kind: 'single', id: 'game', options: gameOptions, value: game, onChange: onGameChange }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />
+
+        {game === 'turf' && (
+          <SectionedDropdown
+            id='turfRules'
+            host={host}
+            icon='gavel'
+            accessibilityLabel='Rules'
+            sections={[
+              { kind: 'single', id: 'turfCrash', options: TURF_CRASH_OPTIONS, value: turf.crash, onChange: (crash) => onTurfChange({ crash }) },
+              { kind: 'multi', id: 'turfOwnTrail', options: [TURF_OWN_TRAIL_SAFE_OPTION], value: turf.ownTrailDeadly ? [] : [TURF_OWN_TRAIL_SAFE_OPTION.value], onChange: (value) => onTurfChange({ ownTrailDeadly: !value.includes(TURF_OWN_TRAIL_SAFE_OPTION.value) }) }
+            ]}
+            accentColor={accentColor}
+            mutedColor={mutedColor}
+            onAccentColor={onAccentColor}
+            dark={dark}
+          />
+        )}
+        {game === 'turf' && <SectionedDropdown id='turfRound' host={host} icon='timer-outline' accessibilityLabel='Round length' sections={[{ kind: 'single', id: 'turfRound', options: TURF_ROUND_OPTIONS, value: turf.roundSeconds, onChange: (roundSeconds) => onTurfChange({ roundSeconds }) }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
+
         {/* Board/map settings first, size second - matches BoxHockey's LoadoutSharedControls,
       whose own board+rink dropdown leads its row the same way, ahead of anything that just tunes
       an already-chosen board. Bundled popover: a single-select section for the arena layout
@@ -103,29 +132,31 @@ export function LobbySharedControls({ host: sharedHost, gridSizeTier, gridSizeOp
       similarly board-shape-ish) extend-into-safe-area and wrap-edges toggles - same technique the
       powerups row below uses for its own array<->boolean semantics, just two possible members
       instead of six. */}
-        <SectionedDropdown
-          id='arena'
-          host={host}
-          icon='crop-square'
-          accessibilityLabel='Arena'
-          sections={[
-            { kind: 'single', id: 'arenaVariant', options: arenaOptions, value: arenaVariant, onChange: onArenaChange },
-            {
-              kind: 'multi',
-              id: 'boardToggles',
-              options: [extendIntoSafeAreaOption, wrapEdgesOption],
-              value: [...(extendIntoSafeArea ? [extendIntoSafeAreaOption.value] : []), ...(wrapEdges ? [wrapEdgesOption.value] : [])],
-              onChange: (value) => {
-                onExtendIntoSafeAreaChange(value.includes(extendIntoSafeAreaOption.value))
-                onWrapEdgesChange(value.includes(wrapEdgesOption.value))
+        {game !== 'turf' && (
+          <SectionedDropdown
+            id='arena'
+            host={host}
+            icon='crop-square'
+            accessibilityLabel='Arena'
+            sections={[
+              { kind: 'single', id: 'arenaVariant', options: arenaOptions, value: arenaVariant, onChange: onArenaChange },
+              {
+                kind: 'multi',
+                id: 'boardToggles',
+                options: [extendIntoSafeAreaOption, wrapEdgesOption],
+                value: [...(extendIntoSafeArea ? [extendIntoSafeAreaOption.value] : []), ...(wrapEdges ? [wrapEdgesOption.value] : [])],
+                onChange: (value) => {
+                  onExtendIntoSafeAreaChange(value.includes(extendIntoSafeAreaOption.value))
+                  onWrapEdgesChange(value.includes(wrapEdgesOption.value))
+                }
               }
-            }
-          ]}
-          accentColor={accentColor}
-          mutedColor={mutedColor}
-          onAccentColor={onAccentColor}
-          dark={dark}
-        />
+            ]}
+            accentColor={accentColor}
+            mutedColor={mutedColor}
+            onAccentColor={onAccentColor}
+            dark={dark}
+          />
+        )}
 
         <SectionedDropdown id='gridSize' host={host} icon='grid' accessibilityLabel='Grid size' sections={[{ kind: 'single', id: 'gridSize', options: gridSizeOptions, value: gridSizeTier, onChange: onGridSizeChange }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />
 
@@ -135,9 +166,9 @@ export function LobbySharedControls({ host: sharedHost, gridSizeTier, gridSizeOp
       gameEngine/validation/useGameState and defaults to false, so this is a pure UI hide, not a
       feature removal. Re-add the toggle here (and its props above) to bring it back. */}
 
-        <SectionedDropdown id='trailSpeed' host={host} icon='chart-line' accessibilityLabel='Trail speed' sections={[{ kind: 'single', id: 'trailSpeed', options: trailSpeedOptions, value: trailSpeedTier, onChange: onTrailSpeedChange }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />
+        {game !== 'turf' && <SectionedDropdown id='trailSpeed' host={host} icon='chart-line' accessibilityLabel='Trail speed' sections={[{ kind: 'single', id: 'trailSpeed', options: trailSpeedOptions, value: trailSpeedTier, onChange: onTrailSpeedChange }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
 
-        <SectionedDropdown id='powerups' host={host} icon='flash' accessibilityLabel={`Powerups ${enabledPowerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'powerups', options: powerupOptions, value: enabledPowerups, onChange: onPowerupsChange, allClear: true }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />
+        {game !== 'turf' && <SectionedDropdown id='powerups' host={host} icon='flash' accessibilityLabel={`Powerups ${enabledPowerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'powerups', options: powerupOptions, value: enabledPowerups, onChange: onPowerupsChange, allClear: true }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
       </View>
     </View>
   )
