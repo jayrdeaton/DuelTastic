@@ -51,7 +51,7 @@ export function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidt
   const humanPlayers = useMemo(() => humanPlayersFor(settings), [settings])
   const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: state.players[1].direction, 2: state.players[2].direction }), [state.players])
   // Tangle reverses a person's swipes and keys in the input layer, as Hack does in LightCycles.
-  const tangled = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.tangle !== null, 2: state.players[2].effects.tangle !== null }), [state.players])
+  const tangled = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.reverse !== null, 2: state.players[2].effects.reverse !== null }), [state.players])
   const held = useMemo(() => ({ 1: state.players[1].held, 2: state.players[2].held }), [state.players])
   const { settings: userSettings, setSettings: setUserSettings } = useSettings()
   const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs: () => TURF_RESULT_HOLD_MS })

@@ -1,5 +1,7 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
+import type { Effects, Pickup } from '../shared/powerups'
+
 // Turf: two riders on one board, each starting on a small square of their own ground. Leaving it lays
 // a trail; getting back to it claims the trail and everything the trail encloses, the other rider's
 // ground included. A round ends on a crash, when one rider's ground is all taken (suffocated), or when
@@ -18,8 +20,8 @@ export type TurfLayout = 'faceToFace' | 'sideBySide'
 // round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
 
-// Turf's powerups, Turf's names for the effects LightCycles and Snake share (same colors and icons in
-// every game, see constants.ts):
+// Turf's powerups, Turf's names for the effects every game shares (src/games/shared/powerups.ts:
+// same colors and icons everywhere; TURF_POWERUP_EFFECTS in constants.ts says which is which):
 // - Dash (yours): double speed. LightCycles' Overdrive.
 // - Frost (theirs): frozen in place. LightCycles' Stasis.
 // - Fence (yours): for a while nothing but the board's edge crashes you: nobody can cut your trail,
@@ -49,21 +51,6 @@ export type TurfEndReason = 'crash' | 'suffocation' | 'time'
 
 export type TurfOutcome = { type: 'win'; winner: TurfSeat; reason: TurfEndReason } | { type: 'draw'; reason: TurfEndReason }
 
-// A timed effect lasts through the tick `expiresAtTick` and is gone after it. Speed effects replace
-// each other: one Dash cancels a Gust or a Frost on the same rider.
-export interface TurfEffects {
-  speed: { type: 'dash' | 'gust' | 'frost'; expiresAtTick: number } | null
-  tangle: { expiresAtTick: number } | null
-  fence: { expiresAtTick: number } | null
-}
-
-// A powerup waiting on the board. What it is stays hidden until someone picks it up.
-export interface TurfPickup {
-  id: string
-  type: TurfPowerup
-  cell: GridCell
-}
-
 export interface TurfPlayer {
   head: GridCell
   direction: Direction
@@ -81,7 +68,7 @@ export interface TurfPlayer {
   // The powerup they're holding, used with a tap or their powerup key. One at a time: picking up
   // another swaps it.
   held: TurfPowerup | null
-  effects: TurfEffects
+  effects: Effects
 }
 
 // What happened on the last tick, for sounds, haptics and flashes. Reset every tick.
@@ -104,7 +91,7 @@ export interface TurfState {
   ground: Record<TurfSeat, number>
   players: Record<TurfSeat, TurfPlayer>
   // At most one, when powerups are on.
-  pickups: TurfPickup[]
+  pickups: Pickup<TurfPowerup>[]
   outcome: TurfOutcome | null
   tick: number
   events: TurfEvents

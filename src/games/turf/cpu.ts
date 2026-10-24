@@ -1,14 +1,11 @@
 import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDirection, stepCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
-// Shared with LightCycles: how often a CPU with its steering reversed (Hack there, Tangle here)
-// notices and steers to make up for it, and how close a rider has to pass to pick up a powerup.
-import { CPU_HACK_COMPENSATION_CHANCE, POWERUP_COLLECT_RADIUS_CELLS } from '@/constants/game'
-
 import { distanceField } from '../shared/distanceField'
+import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '../shared/powerups'
 import { TURF_EFFECT_TICKS } from './constants'
-import { applyTurfActivation, applyTurfTurn, cellIndex, turfFenced, turfStepsFor } from './engine'
-import { DEFAULT_TURF_RULES, type TurfEffects, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
+import { applyTurfActivation, applyTurfTurn, cellIndex } from './engine'
+import { DEFAULT_TURF_RULES, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
 
 export type TurfCpuDifficulty = 'easy' | 'normal' | 'hard'
 
@@ -98,20 +95,6 @@ function roomAhead(grid: GridSize, from: GridCell, direction: Direction): number
   return room
 }
 
-// Ticks for a rider to cover `steps` cells, starting after tick `tick`: a freeze still to run out comes
-// first, and Dash or Gust covers two cells a tick while it lasts. No way there (-1) stays -1.
-function ticksFor(steps: number, effects: TurfEffects, tick: number): number {
-  if (steps < 0) return -1
-  const speed = effects.speed
-  const left = speed ? speed.expiresAtTick - tick : 0
-  if (!speed || left <= 0) return steps
-  if (speed.type === 'frost') return left + steps
-  const fast = Math.min(left, Math.ceil(steps / 2))
-  return fast + Math.max(0, steps - 2 * fast)
-}
-
-const fenceTicksLeft = (effects: TurfEffects, tick: number) => (effects.fence ? Math.max(0, effects.fence.expiresAtTick - tick) : 0)
-
 // What the CPU reads off the board before deciding anything, in ticks rather than cells, so a rider
 // under Dash, Gust or Frost counts at its real speed.
 interface Reading {
@@ -146,7 +129,7 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
   const home = distanceField(grid, groundCells(owner, seat), myBlocked)
   const ticksHome = ticksFor(stepsFrom(home, grid, me.head, me.direction), me.effects, tick)
   const reach = outside ? ticksFor(stepsFrom(distanceField(grid, me.trail.map(at), theirBlocked), grid, them.head, them.direction), them.effects, tick) : -1
-  const threat = reach < 0 ? -1 : Math.max(reach, fenceTicksLeft(me.effects, tick))
+  const threat = reach < 0 ? -1 : Math.max(reach, ticksLeft(me.effects.shield, tick))
 
   let cut: Int32Array | null = null
   let ticksToCut = -1
@@ -154,7 +137,7 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
     const toTheirTrail = distanceField(grid, them.trail.map(at), myBlocked)
     ticksToCut = ticksFor(stepsFrom(toTheirTrail, grid, me.head, me.direction), me.effects, tick)
     const theirHome = ticksFor(stepsFrom(distanceField(grid, groundCells(owner, other(seat)), theirBlocked), grid, them.head, them.direction), them.effects, tick)
-    if (ticksToCut > fenceTicksLeft(them.effects, tick) && (theirHome < 0 || ticksToCut < theirHome) && (threat < 0 || ticksToCut < threat)) cut = toTheirTrail
+    if (ticksToCut > ticksLeft(them.effects.shield, tick) && (theirHome < 0 || ticksToCut < theirHome) && (threat < 0 || ticksToCut < threat)) cut = toTheirTrail
   }
   return { me, them, outside, myBlocked, theirTrail, home, ticksHome, threat, cut, ticksToCut }
 }
@@ -213,9 +196,9 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   if (plan && outside && !plan.started) plan = { ...plan, started: true }
 
   // Frozen, it still picks the heading it'll take once it thaws.
-  const mySteps = Math.max(1, turfStepsFor(me.effects, nextTick))
-  const fenced = turfFenced(me.effects, nextTick)
-  const theirSteps = turfStepsFor(them.effects, nextTick)
+  const mySteps = Math.max(1, speedMultiplier(me.effects, nextTick))
+  const fenced = isShielded(me.effects, nextTick)
+  const theirSteps = speedMultiplier(them.effects, nextTick)
   const threatened = new Set([at(them.head)])
   for (const d of [them.direction, LEFT_OF[them.direction], RIGHT_OF[them.direction]]) {
     let cell = them.head
@@ -246,15 +229,7 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
 
   let seek: Int32Array | null = null
   if (params.seekRange > 0 && !me.held && state.pickups.length > 0 && !danger) {
-    const targets: number[] = []
-    for (const { cell } of state.pickups) {
-      for (let dy = -POWERUP_COLLECT_RADIUS_CELLS; dy <= POWERUP_COLLECT_RADIUS_CELLS; dy++) {
-        for (let dx = -POWERUP_COLLECT_RADIUS_CELLS; dx <= POWERUP_COLLECT_RADIUS_CELLS; dx++) {
-          const c = { x: cell.x + dx, y: cell.y + dy }
-          if (isInBounds(c, grid) && !r.myBlocked[at(c)]) targets.push(at(c))
-        }
-      }
-    }
+    const targets = state.pickups.flatMap(({ cell }) => pickupFootprint(cell, grid)).filter((i) => !r.myBlocked[i])
     const field = distanceField(grid, targets, r.myBlocked)
     const steps = stepsFrom(field, grid, me.head, me.direction)
     if (steps > 0 && steps <= params.seekRange && me.trail.length + steps <= params.maxTrail) seek = field
@@ -263,7 +238,7 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   // What it's riding toward this tick: a distance field to walk down, or a heading from the plan.
   let field: Int32Array | null = null
   let wanted: Direction | null = null
-  if (r.cut && (plan?.aggressive || them.effects.speed?.type === 'frost')) field = r.cut
+  if (r.cut && (plan?.aggressive || isFrozen(them.effects, nextTick))) field = r.cut
   else if (outside && (danger || me.trail.length >= params.maxTrail)) field = r.home
   else if (seek) field = seek
   else if (outside) {
@@ -333,15 +308,6 @@ export function shouldTurfCpuActivate(state: TurfState, seat: TurfSeat, difficul
   return random() < params.useAnyway
 }
 
-// Whether a CPU with its steering reversed steers to make up for it this tick. Chances of exactly 0
-// or 1 skip the roll, as in LightCycles.
-function compensatesForTangle(difficulty: TurfCpuDifficulty, random: () => number): boolean {
-  const chance = CPU_HACK_COMPENSATION_CHANCE[difficulty]
-  if (chance <= 0) return false
-  if (chance >= 1) return true
-  return random() < chance
-}
-
 // The CPU's turn before a tick: uses its powerup when it's time, then queues its heading (a no-op
 // when it's going straight on). Under Tangle, a heading it doesn't make up for comes out reversed,
 // like a person's swipe.
@@ -354,6 +320,6 @@ export function applyTurfCpu(state: TurfState, seat: TurfSeat, difficulty: TurfC
     if (s.phase !== 'playing') return { state: s, plan }
   }
   const move = chooseTurfCpuMove(s, seat, difficulty, plan, rules, random)
-  const tangled = s.players[seat].effects.tangle !== null && !compensatesForTangle(difficulty, random)
+  const tangled = s.players[seat].effects.reverse !== null && !compensatesForReverse(difficulty, random)
   return { state: applyTurfTurn(s, seat, applyControlInversion(move.direction, tangled)), plan: move.plan }
 }

@@ -1,14 +1,11 @@
 import { Canvas, Circle, Path, Skia, type SkPath } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
-import { MysteryPickup } from '@tastic/sprites/shapes'
 import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-// Shared with LightCycles: every game draws a pickup the same way.
-import { POWERUP_PULSE_DURATION_MS, POWERUP_PULSE_SCALE, POWERUP_SPAWN_FADE_MS, powerupPickupRadiusPx } from '@/constants/game'
-
-import { TURF_EFFECT_COLORS } from './constants'
-import type { TurfPhase, TurfPickup, TurfPlayer, TurfSeat } from './types'
+import { EffectRings, PickupGlyph } from '../shared/BoardPowerups'
+import type { Pickup } from '../shared/powerups'
+import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
 
 export interface TurfBoardProps {
   grid: GridSize
@@ -21,7 +18,7 @@ export interface TurfBoardProps {
   background: string
   // The board's edge, which is deadly.
   edgeColor: string
-  pickups: TurfPickup[]
+  pickups: Pickup<TurfPowerup>[]
   pickupColor: string
 }
 
@@ -32,10 +29,6 @@ const TRAIL_WIDTH = 0.6
 const HEAD_RADIUS = 0.72
 const HEAD_RING = 0.22
 const EDGE_STROKE_WIDTH = 1.5
-// A ring around the head per kind of effect it's under, at LightCycles' sizes relative to the head:
-// speed (Dash, Gust or Frost) innermost, then Tangle, then Fence.
-const EFFECT_RING_SCALE = { speed: 1.35, tangle: 1.7, fence: 2.05 }
-const EFFECT_RING_WIDTH = 2
 
 function cellCenter(cell: GridCell, cellPx: number) {
   const { x, y } = cellToPixel(cell, cellPx)
@@ -87,26 +80,6 @@ function CrashMark({ cell, grid, cellPx, color }: { cell: GridCell; grid: GridSi
   )
 }
 
-// What a pickup is stays hidden on the board (the holder's badge shows it once it's picked up), the
-// same mystery box as LightCycles'.
-function Pickup({ pickup, cellPx, color }: { pickup: TurfPickup; cellPx: number; color: string }) {
-  const { x, y } = cellCenter(pickup.cell, cellPx)
-  return <MysteryPickup x={x} y={y} radius={powerupPickupRadiusPx(cellPx)} color={color} spawnFadeMs={POWERUP_SPAWN_FADE_MS} pulseDurationMs={POWERUP_PULSE_DURATION_MS} pulseScale={POWERUP_PULSE_SCALE} />
-}
-
-function EffectRings({ player, cellPx }: { player: TurfPlayer; cellPx: number }) {
-  const { x, y } = cellCenter(player.head, cellPx)
-  const r = cellPx * HEAD_RADIUS
-  const { speed, tangle, fence } = player.effects
-  return (
-    <>
-      {speed && <Circle cx={x} cy={y} r={r * EFFECT_RING_SCALE.speed} style='stroke' strokeWidth={EFFECT_RING_WIDTH} color={TURF_EFFECT_COLORS[speed.type]} />}
-      {tangle && <Circle cx={x} cy={y} r={r * EFFECT_RING_SCALE.tangle} style='stroke' strokeWidth={EFFECT_RING_WIDTH} color={TURF_EFFECT_COLORS.tangle} />}
-      {fence && <Circle cx={x} cy={y} r={r * EFFECT_RING_SCALE.fence} style='stroke' strokeWidth={EFFECT_RING_WIDTH} color={TURF_EFFECT_COLORS.fence} />}
-    </>
-  )
-}
-
 export function TurfBoard({ grid, cellPx, owner, players, colors, phase, background, edgeColor, pickups, pickupColor }: TurfBoardProps) {
   const ground = useMemo(() => SEATS.map((seat) => groundPath(owner, grid, cellPx, seat)), [owner, grid, cellPx])
   const trails = useMemo(() => SEATS.map((seat) => trailPath(players[seat], cellPx)), [players, cellPx])
@@ -126,7 +99,7 @@ export function TurfBoard({ grid, cellPx, owner, players, colors, phase, backgro
         ))}
         <Path path={edge} style='stroke' strokeWidth={EDGE_STROKE_WIDTH} color={edgeColor} />
         {pickups.map((pickup) => (
-          <Pickup key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
+          <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
         {SEATS.map((seat, i) => (
           <Path key={`trail-${seat}`} path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} />
@@ -141,7 +114,12 @@ export function TurfBoard({ grid, cellPx, owner, players, colors, phase, backgro
           const { x, y } = cellCenter(p.head, cellPx)
           return p.alive ? <Circle key={`ring-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null
         })}
-        {SEATS.map((seat) => (players[seat].alive ? <EffectRings key={`effects-${seat}`} player={players[seat]} cellPx={cellPx} /> : null))}
+        {SEATS.map((seat) => {
+          const p = players[seat]
+          if (!p.alive) return null
+          const { x, y } = cellCenter(p.head, cellPx)
+          return <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={cellPx * HEAD_RADIUS} effects={p.effects} />
+        })}
         {phase !== 'onboarding' && SEATS.map((seat) => (players[seat].crashCell ? <CrashMark key={`crash-${seat}`} cell={players[seat].crashCell!} grid={grid} cellPx={cellPx} color={colors[seat]} /> : null))}
       </Canvas>
     </View>

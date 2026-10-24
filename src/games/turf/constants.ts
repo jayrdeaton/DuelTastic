@@ -1,5 +1,4 @@
-import { POWERUP_EFFECT_COLORS, POWERUP_ICONS } from '@/constants/game'
-
+import { EFFECT_ICONS, type EffectKind } from '../shared/powerups'
 import type { TurfOptions, TurfPowerup } from './types'
 
 // Milliseconds per cell at LightCycles' medium cell size (8px), scaled to the round's real cell size
@@ -30,7 +29,7 @@ export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'fence', 'sod', 't
 // Ticks a timed powerup lasts, at about 11 ticks a second on the normal speed (the same seconds as
 // LightCycles' for the effects both have, except Fence, which gets longer than Shield: it has to
 // cover a loop home).
-export const TURF_EFFECT_TICKS: Record<'dash' | 'frost' | 'fence' | 'tangle' | 'gust', number> = {
+export const TURF_EFFECT_TICKS: Record<Exclude<TurfPowerup, 'sod'>, number> = {
   dash: 28, // about 2.5s
   frost: 16, // about 1.5s
   fence: 45, // about 4s
@@ -41,34 +40,15 @@ export const TURF_EFFECT_TICKS: Record<'dash' | 'frost' | 'fence' | 'tangle' | '
 // Sod claims the square this many cells out from the head: 2 gives 5 x 5.
 export const TURF_SOD_RADIUS = 2
 
-// A pickup turns up at least this many cells (in a straight or diagonal line) from either head, so
-// it's never handed to whoever happens to be next to it.
-export const TURF_PICKUP_MIN_DISTANCE = 4
+// What each of Turf's timed powerups does (Sod is Turf's own and happens at once).
+export const TURF_POWERUP_EFFECTS: Record<Exclude<TurfPowerup, 'sod'>, EffectKind> = { dash: 'boost', frost: 'freeze', fence: 'shield', tangle: 'reverse', gust: 'rush' }
 
-// How much nearer one rider a pickup may turn up than the other, in steps.
-export const TURF_PICKUP_FAIR_SLACK = 2
-
-// How much further from the riders than the nearest fair cell a pickup may turn up, in steps, so it's
-// somewhere between them rather than anywhere along the line that's as far from each.
-export const TURF_PICKUP_SPREAD = 12
-
-// Cells kept clear of pickups along each edge: the glyph is wider than a cell.
-export const TURF_PICKUP_EDGE_MARGIN = 2
-
-// The same colors and icons as LightCycles' and Snake's effects; only the names are Turf's.
-export const TURF_EFFECT_COLORS: Record<'dash' | 'frost' | 'fence' | 'tangle' | 'gust', string> = {
-  dash: POWERUP_EFFECT_COLORS.overdrive,
-  frost: POWERUP_EFFECT_COLORS.stasis,
-  fence: POWERUP_EFFECT_COLORS.shield,
-  tangle: POWERUP_EFFECT_COLORS.hack,
-  gust: POWERUP_EFFECT_COLORS.overclock
-}
-
+// Every game's icon for its effect, and a patch of grass for Sod.
 export const TURF_POWERUP_ICONS: Record<TurfPowerup, string> = {
-  dash: POWERUP_ICONS.overdrive,
-  frost: POWERUP_ICONS.stasis,
-  fence: POWERUP_ICONS.shield,
+  dash: EFFECT_ICONS.boost,
+  frost: EFFECT_ICONS.freeze,
+  fence: EFFECT_ICONS.shield,
   sod: 'grass',
-  tangle: POWERUP_ICONS.hack,
-  gust: POWERUP_ICONS.overclock
+  tangle: EFFECT_ICONS.reverse,
+  gust: EFFECT_ICONS.rush
 }

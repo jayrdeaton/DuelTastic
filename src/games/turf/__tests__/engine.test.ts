@@ -1,8 +1,9 @@
 import type { Direction, GridCell } from '@tastic/grid'
 
-import { TURF_EFFECT_TICKS, TURF_PICKUP_EDGE_MARGIN, TURF_PICKUP_FAIR_SLACK, TURF_PICKUP_MIN_DISTANCE, TURF_PICKUP_SPREAD } from '../constants'
-import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS, turfStepsFor } from '../engine'
-import { DEFAULT_TURF_RULES, type TurfEffects, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
+import { type Effects, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, PICKUP_SPREAD, speedMultiplier } from '../../shared/powerups'
+import { TURF_EFFECT_TICKS } from '../constants'
+import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS } from '../engine'
+import { DEFAULT_TURF_RULES, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
 
 const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
 
@@ -294,7 +295,7 @@ function holding(state: TurfState, seat: TurfSeat, held: TurfPowerup): TurfState
   return { ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }
 }
 
-function withEffects(state: TurfState, seat: TurfSeat, effects: Partial<TurfEffects>): TurfState {
+function withEffects(state: TurfState, seat: TurfSeat, effects: Partial<Effects>): TurfState {
   const p = state.players[seat]
   return { ...state, players: { ...state.players, [seat]: { ...p, effects: { ...p.effects, ...effects } } } }
 }
@@ -316,9 +317,9 @@ describe('pickups', () => {
       const { cell, type } = s.pickups[0]
       expect(POWERUPS_ON.powerups).toContain(type)
       expect(ownerAt(s, cell.x, cell.y)).toBe(0)
-      for (const seat of [1, 2] as const) expect(chebyshev(cell, s.players[seat].head)).toBeGreaterThanOrEqual(TURF_PICKUP_MIN_DISTANCE)
-      expect(Math.abs(steps(cell, s.players[1].head) - steps(cell, s.players[2].head))).toBeLessThanOrEqual(TURF_PICKUP_FAIR_SLACK)
-      expect(Math.min(cell.x, cell.y, s.grid.cols - 1 - cell.x, s.grid.rows - 1 - cell.y)).toBeGreaterThanOrEqual(TURF_PICKUP_EDGE_MARGIN)
+      for (const seat of [1, 2] as const) expect(chebyshev(cell, s.players[seat].head)).toBeGreaterThanOrEqual(PICKUP_MIN_DISTANCE)
+      expect(Math.abs(steps(cell, s.players[1].head) - steps(cell, s.players[2].head))).toBeLessThanOrEqual(PICKUP_FAIR_SLACK)
+      expect(Math.min(cell.x, cell.y, s.grid.cols - 1 - cell.x, s.grid.rows - 1 - cell.y)).toBeGreaterThanOrEqual(PICKUP_EDGE_MARGIN)
     }
   })
 
@@ -327,7 +328,7 @@ describe('pickups', () => {
     // row 10, but the pickup stays near the middle.
     for (const r of [0, 0.5, 0.99]) {
       const s = tickTurf(setup({ head: { x: 50, y: 21 }, direction: 'left' }, { head: { x: 50, y: 1 }, direction: 'left' }, { cols: 101, rows: 25 }), POWERUPS_ON, () => r)
-      expect(Math.abs(s.pickups[0].cell.x - 49)).toBeLessThanOrEqual(TURF_PICKUP_SPREAD)
+      expect(Math.abs(s.pickups[0].cell.x - 49)).toBeLessThanOrEqual(PICKUP_SPREAD)
     }
   })
 
@@ -378,9 +379,9 @@ describe('using a powerup', () => {
   it('lets a speed effect replace another: Dash thaws a frozen rider', () => {
     let s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR)
     s = use(s, 2, 'frost')
-    expect(s.players[1].effects.speed?.type).toBe('frost')
+    expect(s.players[1].effects.speed?.kind).toBe('freeze')
     s = use(s, 1, 'dash')
-    expect(s.players[1].effects.speed?.type).toBe('dash')
+    expect(s.players[1].effects.speed?.kind).toBe('boost')
   })
 })
 
@@ -418,7 +419,7 @@ describe('Frost', () => {
     s = run(s, TURF_EFFECT_TICKS.frost)
     expect(s.players[2].head).toEqual(FAR.head)
     expect(s.players[2].pendingDirection).toBe('left')
-    expect(turfStepsFor(s.players[2].effects, s.tick + 1)).toBe(1)
+    expect(speedMultiplier(s.players[2].effects, s.tick + 1)).toBe(1)
     s = run(s, 1)
     expect(s.players[2].head).toEqual({ x: 14, y: 2 })
   })
@@ -439,10 +440,10 @@ describe('Frost', () => {
 describe('Tangle', () => {
   it('lands on the other rider for its run', () => {
     let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'tangle')
-    expect(s.players[2].effects.tangle).toEqual({ expiresAtTick: TURF_EFFECT_TICKS.tangle })
-    expect(s.players[1].effects.tangle).toBeNull()
+    expect(s.players[2].effects.reverse).toEqual({ expiresAtTick: TURF_EFFECT_TICKS.tangle })
+    expect(s.players[1].effects.reverse).toBeNull()
     s = run(s, TURF_EFFECT_TICKS.tangle)
-    expect(s.players[2].effects.tangle).toBeNull()
+    expect(s.players[2].effects.reverse).toBeNull()
   })
 })
 
@@ -473,9 +474,9 @@ describe('Fence', () => {
   it('runs out', () => {
     let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'fence')
     s = run(s, TURF_EFFECT_TICKS.fence - 1)
-    expect(s.players[1].effects.fence).not.toBeNull()
+    expect(s.players[1].effects.shield).not.toBeNull()
     s = run(s, 1)
-    expect(s.players[1].effects.fence).toBeNull()
+    expect(s.players[1].effects.shield).toBeNull()
   })
 })
 
@@ -524,7 +525,7 @@ describe('powerups on the home rule', () => {
     let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, FAR, { radius: 1 }), 1, {}, HOME)
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
     expect(s.players[1].trail).toEqual([])
-    s = withEffects(s, 1, { speed: { type: 'dash', expiresAtTick: s.tick + 5 } })
+    s = withEffects(s, 1, { speed: { kind: 'boost', expiresAtTick: s.tick + 5 } })
     s = run(s, 1, {}, HOME)
     expect(s.events.sentHome).toEqual([1])
     expect(s.players[1].crashCell).toEqual({ x: 5, y: -1 })

@@ -1,10 +1,11 @@
 import { type Direction, type GridCell, isInBounds, stepCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
+import { type Effects, NO_EFFECTS } from '../../shared/powerups'
 import { TURF_POWERUPS } from '../constants'
 import { applyTurfCpu, chooseTurfCpuMove, shouldTurfCpuActivate, type TurfCpuDifficulty, type TurfCpuPlan } from '../cpu'
 import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, startTurf, tickTurf } from '../engine'
-import type { TurfEffects, TurfPlayer, TurfRules, TurfSeat, TurfState } from '../types'
+import type { TurfPlayer, TurfRules, TurfSeat, TurfState } from '../types'
 
 const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
 
@@ -75,7 +76,7 @@ describe('chooseTurfCpuMove', () => {
   })
 })
 
-const effects = (patch: Partial<TurfEffects>): TurfEffects => ({ speed: null, tangle: null, fence: null, ...patch })
+const effects = (patch: Partial<Effects>): Effects => ({ ...NO_EFFECTS(), ...patch })
 const LONG = 1000
 
 describe('the CPU with powerups', () => {
@@ -87,14 +88,14 @@ describe('the CPU with powerups', () => {
     // Ten steps from its trail: far enough at their normal speed, not at double.
     const far = { head: { x: 15, y: 12 }, direction: 'left' as const }
     expect(chooseTurfCpuMove(outOnALoop(far), 1, 'normal', keepGoingUp, HOME, seeded(1)).direction).toBe('up')
-    const gusted = outOnALoop({ ...far, effects: effects({ speed: { type: 'gust', expiresAtTick: LONG } }) })
+    const gusted = outOnALoop({ ...far, effects: effects({ speed: { kind: 'rush', expiresAtTick: LONG } }) })
     expect(chooseTurfCpuMove(gusted, 1, 'normal', keepGoingUp, HOME, seeded(1)).direction).not.toBe('up')
   })
 
   it('looks two cells ahead while it covers two a tick', () => {
-    const nearTheTop = (speed: TurfEffects['speed']) => board(20, 20, { 1: rect(4, 8, 6, 10), 2: [{ x: 18, y: 18 }] }, { 1: { head: { x: 5, y: 1 }, direction: 'up', trail: column(5, 7, 1), leftFrom: { x: 5, y: 8 }, effects: effects({ speed }) }, 2: { head: { x: 18, y: 18 }, direction: 'left' } })
+    const nearTheTop = (speed: Effects['speed']) => board(20, 20, { 1: rect(4, 8, 6, 10), 2: [{ x: 18, y: 18 }] }, { 1: { head: { x: 5, y: 1 }, direction: 'up', trail: column(5, 7, 1), leftFrom: { x: 5, y: 8 }, effects: effects({ speed }) }, 2: { head: { x: 18, y: 18 }, direction: 'left' } })
     expect(chooseTurfCpuMove(nearTheTop(null), 1, 'hard', keepGoingUp, HOME, seeded(1)).direction).toBe('up')
-    expect(['left', 'right']).toContain(chooseTurfCpuMove(nearTheTop({ type: 'dash', expiresAtTick: LONG }), 1, 'hard', keepGoingUp, HOME, seeded(1)).direction)
+    expect(['left', 'right']).toContain(chooseTurfCpuMove(nearTheTop({ kind: 'boost', expiresAtTick: LONG }), 1, 'hard', keepGoingUp, HOME, seeded(1)).direction)
   })
 
   it('uses a Fence when its trail could be cut before it gets home, at every level', () => {
@@ -128,7 +129,7 @@ describe('the CPU with powerups', () => {
   })
 
   it('steers the wrong way under Tangle unless it makes up for it (hard always does, easy never)', () => {
-    const tangled = board(20, 20, { 1: rect(3, 0, 7, 4), 2: [{ x: 15, y: 15 }] }, { 1: { head: { x: 5, y: 0 }, direction: 'up', effects: effects({ tangle: { expiresAtTick: LONG } }) }, 2: { head: { x: 15, y: 15 }, direction: 'down' } })
+    const tangled = board(20, 20, { 1: rect(3, 0, 7, 4), 2: [{ x: 15, y: 15 }] }, { 1: { head: { x: 5, y: 0 }, direction: 'up', effects: effects({ reverse: { expiresAtTick: LONG } }) }, 2: { head: { x: 15, y: 15 }, direction: 'down' } })
     for (const level of ['easy', 'hard'] as const) {
       const wanted = chooseTurfCpuMove(tangled, 1, level, null, HOME, seeded(5)).direction
       const queued = applyTurfCpu(tangled, 1, level, null, HOME, seeded(5)).state.players[1].pendingDirection
@@ -212,7 +213,7 @@ function playWithPowerups(levels: Record<TurfSeat, TurfCpuDifficulty>, rules: Tu
       const p = before.players[seat]
       const at = s.players[seat].crashCell!
       const own = p.trail.some((c) => c.x === at.x && c.y === at.y) && !(at.x === p.head.x && at.y === p.head.y)
-      if (p.effects.tangle === null && (!isInBounds(at, s.grid) || own)) selfCrashes++
+      if (p.effects.reverse === null && (!isInBounds(at, s.grid) || own)) selfCrashes++
     }
   }
   return { selfCrashes, used }

@@ -1,7 +1,7 @@
 import { MONO_FONT } from '@tastic/hud'
 import { StyleSheet, Text, View } from 'react-native'
-import { Icon } from 'react-native-paper'
 
+import { HeldPowerup } from '../shared/HeldPowerup'
 import { TURF_POWERUP_ICONS } from './constants'
 import type { TurfPowerup, TurfSeat } from './types'
 
@@ -32,10 +32,7 @@ function clock(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-// The held powerup's icon, or an empty slot, so the badge doesn't change size when one's picked up.
-function Held({ powerup }: { powerup: TurfPowerup | null }) {
-  return <View style={styles.held}>{powerup && <Icon source={TURF_POWERUP_ICONS[powerup]} size={14} color='rgba(255,255,255,0.9)' />}</View>
-}
+const Held = ({ powerup }: { powerup: TurfPowerup | null }) => <HeldPowerup icon={powerup && TURF_POWERUP_ICONS[powerup]} />
 
 function Badge({ seat, ground, totalCells, timeLeftMs, colors, held, powerupsOn }: Omit<TurfHudProps, 'humanPlayers'> & { seat: TurfSeat }) {
   const them: TurfSeat = seat === 1 ? 2 : 1
@@ -92,7 +89,6 @@ const styles = StyleSheet.create({
   bottom: { alignItems: 'center', bottom: 8, left: 0, position: 'absolute', right: 0 },
   clock: { marginLeft: 6, opacity: 0.8 },
   dot: { borderRadius: 4, height: 8, width: 8 },
-  held: { alignItems: 'center', borderColor: 'rgba(255,255,255,0.3)', borderRadius: 10, borderWidth: 1, height: 20, justifyContent: 'center', width: 20 },
   own: { fontWeight: '700' },
   text: { color: 'rgba(255,255,255,0.9)', fontFamily: MONO_FONT, fontSize: 13 },
   top: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 8, transform: [{ rotate: '180deg' }] }

@@ -1,3 +1,4 @@
+import { EFFECT_COLORS, EFFECT_ICONS, PICKUP_PULSE_DURATION_MS, PICKUP_PULSE_SCALE, PICKUP_RADIUS_CELLS, PICKUP_SPAWN_FADE_MS, pickupRadiusPx, REVERSE_COMPENSATION_CHANCE } from '@/games/shared/powerups'
 import { CpuDifficulty, GridSizeTier, type KeyboardScheme, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 
 // The key that uses a held powerup, per scheme (desktop web), matched against KeyboardEvent.key.
@@ -218,46 +219,48 @@ export const TRAIL_SEVER_EAT_MAX_MS = 900
 
 // Visual sizing for the on-board "mystery box" pickup glyph (see GameBoard.tsx's Powerups layer,
 // which intentionally renders every pickup identically regardless of type) - floors above trail
-// width so a pickup stays legible even on the 'small' grid tier's tiny cells.
-export function powerupPickupRadiusPx(cellPx: number): number {
-  return Math.max(cellPx * 1.8, 9)
-}
+// width so a pickup stays legible even on the 'small' grid tier's tiny cells. The value is the
+// DuelTastic games' shared one (src/games/shared/powerups.ts), so every game's box is the same size.
+export const powerupPickupRadiusPx = pickupRadiusPx
 
 // A player collects a pickup by driving through any cell within this Chebyshev radius of its own
 // (1 = the pickup's own cell plus its full ring of 8 neighbors) - matching the glyph's own
 // rendered footprint above, which visually spans well past a single cell, rather than requiring
-// the exact cell dead-center (see gameEngine.ts's tickGame).
-export const POWERUP_COLLECT_RADIUS_CELLS = 1
+// the exact cell dead-center (see gameEngine.ts's tickGame). Shared with Turf and Tag.
+export const POWERUP_COLLECT_RADIUS_CELLS = PICKUP_RADIUS_CELLS
 
 // On-board glyph animation timing - a quick grow/fade the instant a pickup spawns (so it doesn't
 // just pop into existence), then an endless gentle pulse for as long as it sits uncollected (see
 // GameBoard.tsx's PowerupGlyph). Purely cosmetic - never affects when it's actually collectible.
-export const POWERUP_SPAWN_FADE_MS = 260
-export const POWERUP_PULSE_DURATION_MS = 900
-export const POWERUP_PULSE_SCALE = 0.16
+// Shared with Turf and Tag.
+export const POWERUP_SPAWN_FADE_MS = PICKUP_SPAWN_FADE_MS
+export const POWERUP_PULSE_DURATION_MS = PICKUP_PULSE_DURATION_MS
+export const POWERUP_PULSE_SCALE = PICKUP_PULSE_SCALE
 
 // On-board head-effect-tell ring colors, keyed by what's actually driving the effect (not just its
 // axis) so Overdrive/Stasis/Overclock read as visually distinct despite Overdrive and Overclock
 // sharing the same 2x multiplier - a player should be able to tell "sped up because I chose to" from
-// "sped up/frozen because my opponent did this to me" at a glance.
+// "sped up/frozen because my opponent did this to me" at a glance. The colors are every game's
+// (src/games/shared/powerups.ts's EFFECT_COLORS); only the names here are LightCycles'.
 export const POWERUP_EFFECT_COLORS: Record<'overdrive' | 'stasis' | 'overclock' | 'hack' | 'shield', string> = {
-  overdrive: '#FFC107', // gold - self speed-up
-  stasis: '#29B6F6', // ice blue - frozen
-  overclock: '#E53935', // red - danger, forced on you
-  hack: '#AB47BC', // violet - control-axis interference
-  shield: '#26C6DA' // bright cyan - invincible
+  overdrive: EFFECT_COLORS.boost,
+  stasis: EFFECT_COLORS.freeze,
+  overclock: EFFECT_COLORS.rush,
+  hack: EFFECT_COLORS.reverse,
+  shield: EFFECT_COLORS.shield
 }
 
 // Held-item HUD badge icon per type (MDI names, matching the icon set already used throughout
 // SettingsDialog/LobbySharedControls) - shown only once a pickup is collected, since the on-board
-// glyph itself never reveals type (see powerupPickupRadiusPx's own comment).
+// glyph itself never reveals type (see powerupPickupRadiusPx's own comment). Every game's icons
+// (EFFECT_ICONS), plus Prune's, which is LightCycles' own.
 export const POWERUP_ICONS: Record<PowerupType, string> = {
-  overdrive: 'speedometer',
-  stasis: 'pause-circle-outline',
-  shield: 'shield-outline',
+  overdrive: EFFECT_ICONS.boost,
+  stasis: EFFECT_ICONS.freeze,
+  shield: EFFECT_ICONS.shield,
   prune: 'content-cut',
-  hack: 'swap-horizontal-bold',
-  overclock: 'chip'
+  hack: EFFECT_ICONS.reverse,
+  overclock: EFFECT_ICONS.rush
 }
 
 // CPU powerup-awareness knobs, one config per difficulty tier - layered onto the existing
@@ -290,5 +293,5 @@ export const POWERUP_CPU_OFFENSIVE_FALLBACK_CHANCE = 0.02 // per-tick chance to 
 // models here - see chooseCpuDirection's own comment), so Hack stops being a steering handicap
 // against it specifically, same as a genuinely sharp human opponent would shrug it off; 'normal'
 // sometimes still gets caught out; 'easy' never adapts, same as its existing, deliberately weaker
-// tier.
-export const CPU_HACK_COMPENSATION_CHANCE: Record<CpuDifficulty, number> = { easy: 0, normal: 0.6, hard: 1 }
+// tier. The same for every game's reversed steering (Turf's and Tag's Tangle).
+export const CPU_HACK_COMPENSATION_CHANCE: Record<CpuDifficulty, number> = REVERSE_COMPENSATION_CHANCE
