@@ -5,6 +5,7 @@ import { applyControlInversion } from '@tastic/input'
 // notices and steers to make up for it, and how close a rider has to pass to pick up a powerup.
 import { CPU_HACK_COMPENSATION_CHANCE, POWERUP_COLLECT_RADIUS_CELLS } from '@/constants/game'
 
+import { distanceField } from '../shared/distanceField'
 import { TURF_EFFECT_TICKS } from './constants'
 import { applyTurfActivation, applyTurfTurn, cellIndex, turfFenced, turfStepsFor } from './engine'
 import { DEFAULT_TURF_RULES, type TurfEffects, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
@@ -60,36 +61,6 @@ const RIGHT_OF: Record<Direction, Direction> = { up: 'right', right: 'down', dow
 const DIRECTIONS: readonly Direction[] = ['up', 'right', 'down', 'left']
 
 const other = (seat: TurfSeat): TurfSeat => (seat === 1 ? 2 : 1)
-
-// Steps from the nearest source cell to every cell, moving up, down, left or right around blocked
-// cells; -1 where there's no way through. One fill answers "how far is X" for every cell at once.
-function distanceField(grid: GridSize, sources: Iterable<number>, blocked: Uint8Array): Int32Array {
-  const { cols } = grid
-  const size = cols * grid.rows
-  const distance = new Int32Array(size).fill(-1)
-  const queue = new Int32Array(size)
-  let tail = 0
-  for (const i of sources) {
-    if (distance[i] !== -1) continue
-    distance[i] = 0
-    queue[tail++] = i
-  }
-  for (let head = 0; head < tail; head++) {
-    const i = queue[head]
-    const x = i % cols
-    const d = distance[i] + 1
-    const visit = (j: number) => {
-      if (distance[j] !== -1 || blocked[j]) return
-      distance[j] = d
-      queue[tail++] = j
-    }
-    if (x > 0) visit(i - 1)
-    if (x < cols - 1) visit(i + 1)
-    if (i >= cols) visit(i - cols)
-    if (i < size - cols) visit(i + cols)
-  }
-  return distance
-}
 
 // Steps for a rider at `head`, heading `direction`, to reach the field's sources. Read off its next
 // cells rather than its own: a rider out on a loop stands on its own trail, which the field treats as
