@@ -1,8 +1,10 @@
 import type { Direction, GridCell } from '@tastic/grid'
+import { applyControlInversion } from '@tastic/input'
 
-import { applyTagCpu, chooseTagCpuMove, type TagCpuDifficulty } from '../cpu'
+import { addEffect, NO_EFFECTS } from '../../shared/powerups'
+import { applyTagCpu, chooseTagCpuMove, shouldTagCpuActivate, type TagCpuDifficulty } from '../cpu'
 import { createTagState, startTag, tickTag } from '../engine'
-import type { TagArena, TagSeat, TagState } from '../types'
+import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
 
 // A small seeded random, so every run of these tests plays the same games.
 function seeded(seed: number): () => number {
@@ -74,6 +76,50 @@ describe('applyTagCpu', () => {
   it('does nothing before the round starts', () => {
     const s = createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace' })
     expect(applyTagCpu(s, 2, 'hard')).toBe(s)
+  })
+})
+
+const holding = (state: TagState, seat: TagSeat, held: TagPowerup): TagState => ({ ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } })
+
+describe('the CPU with powerups', () => {
+  // Seat 1 running, It (seat 2) two cells behind it.
+  const closeCall = () => setup({ head: { x: 10, y: 10 }, direction: 'up' }, { head: { x: 10, y: 12 }, direction: 'up' })
+
+  it('uses Safe, Freeze or Dash to get away when It is about to tag it, at every level', () => {
+    for (const held of ['safe', 'freeze', 'dash'] as const) {
+      for (const level of ['easy', 'normal', 'hard'] as const) expect(shouldTagCpuActivate(holding(closeCall(), 1, held), 1, level, NO_WOBBLE)).toBe(true)
+    }
+    const far = setup({ head: { x: 10, y: 2 }, direction: 'up' }, { head: { x: 10, y: 18 }, direction: 'up' })
+    expect(shouldTagCpuActivate(holding(far, 1, 'safe'), 1, 'hard', NO_WOBBLE)).toBe(false)
+  })
+
+  it('never spends Safe as It', () => {
+    expect(shouldTagCpuActivate(holding(closeCall(), 2, 'safe'), 2, 'normal', () => 0)).toBe(false)
+  })
+
+  it('freezes the other rider as It when it can catch them, not while its own freeze is on', () => {
+    const s = holding(closeCall(), 2, 'freeze')
+    expect(shouldTagCpuActivate(s, 2, 'normal', NO_WOBBLE)).toBe(true)
+    expect(shouldTagCpuActivate({ ...s, frozenThrough: s.tick + 5 }, 2, 'normal', NO_WOBBLE)).toBe(false)
+    expect(shouldTagCpuActivate(s, 2, 'easy', NO_WOBBLE)).toBe(false)
+  })
+
+  it('rides for a box it can reach well before It (normal and hard, not easy)', () => {
+    // Running up the middle with It far below; a box off to the right.
+    let s = setup({ head: { x: 10, y: 10 }, direction: 'up' }, { head: { x: 10, y: 19 }, direction: 'up' })
+    s = { ...s, pickups: [{ id: 'p', type: 'dash', cell: { x: 16, y: 10 } }] }
+    expect(chooseTagCpuMove(s, 1, 'normal', NO_WOBBLE)).toBe('right')
+    expect(chooseTagCpuMove(s, 1, 'easy', NO_WOBBLE)).not.toBe('right')
+  })
+
+  it('steers the wrong way under Tangle unless it makes up for it (hard always does, easy never)', () => {
+    const s0 = setup({ head: { x: 10, y: 15 }, direction: 'right' }, { head: { x: 4, y: 15 }, direction: 'up' })
+    const s: TagState = { ...s0, players: { ...s0.players, 2: { ...s0.players[2], effects: addEffect(NO_EFFECTS(), 'reverse', 1000) } } }
+    for (const level of ['easy', 'hard'] as const) {
+      const wanted = chooseTagCpuMove(s, 2, level, NO_WOBBLE)
+      const queued = applyTagCpu(s, 2, level, NO_WOBBLE).players[2].pendingDirection
+      expect(queued).toBe(level === 'hard' ? wanted : applyControlInversion(wanted, true))
+    }
   })
 })
 

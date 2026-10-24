@@ -94,6 +94,23 @@ describe('useTagState', () => {
     expect(result.current.state.tags).toBeGreaterThan(0)
   })
 
+  it('turns up a box once playing with powerups on, and uses a held one on a tap', async () => {
+    const { result } = await renderHook(() => useTagState({ ...PARAMS, options: { ...DEFAULT_TAG_OPTIONS, powerups: ['tangle'] } }))
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(100)
+    })
+    expect(result.current.state.pickups).toHaveLength(1)
+    const before = result.current.state
+    await act(async () => {
+      result.current.activate(1)
+    })
+    // Nothing held yet: nothing happens.
+    expect(result.current.state).toBe(before)
+  })
+
   it('starts over on rematch, with whoever the round screen says is It', async () => {
     const { result, rerender } = await renderHook((props: UseTagStateParams) => useTagState(props), { initialProps: PARAMS })
     await act(async () => {

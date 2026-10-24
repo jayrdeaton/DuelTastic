@@ -1,7 +1,9 @@
 import { MONO_FONT } from '@tastic/hud'
 import { StyleSheet, Text, View } from 'react-native'
 
-import type { TagRule, TagSeat } from './types'
+import { HeldPowerup } from '../shared/HeldPowerup'
+import { TAG_POWERUP_ICONS } from './constants'
+import type { TagPowerup, TagRule, TagSeat } from './types'
 
 export interface TagHudProps {
   it: TagSeat
@@ -14,14 +16,22 @@ export interface TagHudProps {
   // The seats with a person in them: each gets a badge at its own edge of the board, seat 2's turned
   // to face it across the table. Against the CPU only seat 1 has one.
   humanPlayers: TagSeat[]
+  // What each rider is holding, shown while powerups are on: in a person's badge, and on its own at
+  // the CPU's edge.
+  held: Record<TagSeat, TagPowerup | null>
+  powerupsOn: boolean
 }
+
+const SEATS: readonly TagSeat[] = [1, 2]
+
+const Held = ({ powerup }: { powerup: TagPowerup | null }) => <HeldPowerup icon={powerup && TAG_POWERUP_ICONS[powerup]} />
 
 function clock(ms: number) {
   const seconds = Math.ceil(ms / 1000)
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors }: Omit<TagHudProps, 'humanPlayers'> & { seat: TagSeat }) {
+function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors, held, powerupsOn }: Omit<TagHudProps, 'humanPlayers'> & { seat: TagSeat }) {
   const them: TagSeat = seat === 1 ? 2 : 1
   const seconds = (s: TagSeat) => `${Math.round((itTicks[s] * intervalMs) / 1000)}s`
   const isIt = seat === it
@@ -39,20 +49,32 @@ function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors }: Omit
         </>
       )}
       <Text style={[styles.text, styles.clock]}>{clock(timeLeftMs)}</Text>
+      {powerupsOn && <Held powerup={held[seat]} />}
     </View>
   )
 }
 
-// Whether each player is It or running, the clock, and on Least Time It each one's time as It, at the
-// player's own edge. Drawn over the board but never in the way of a swipe.
+// Whether each player is It or running, the clock, on Least Time It each one's time as It, and what
+// they're holding, at the player's own edge. Drawn over the board but never in the way of a swipe.
 export function TagHud({ humanPlayers, ...rest }: TagHudProps) {
   return (
     <>
-      {humanPlayers.map((seat) => (
-        <View key={seat} pointerEvents='none' style={seat === 1 ? styles.bottom : styles.top}>
-          <Badge seat={seat} {...rest} />
-        </View>
-      ))}
+      {SEATS.map((seat) => {
+        const human = humanPlayers.includes(seat)
+        if (!human && !rest.powerupsOn) return null
+        return (
+          <View key={seat} pointerEvents='none' style={seat === 1 ? styles.bottom : styles.top}>
+            {human ? (
+              <Badge seat={seat} {...rest} />
+            ) : (
+              <View style={styles.badge}>
+                <View style={[styles.dot, { backgroundColor: rest.colors[seat] }]} />
+                <Held powerup={rest.held[seat]} />
+              </View>
+            )}
+          </View>
+        )
+      })}
     </>
   )
 }
@@ -68,11 +90,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     height: 28,
-    paddingLeft: 4,
-    paddingRight: 10
+    paddingHorizontal: 4
   },
   bottom: { alignItems: 'center', bottom: 8, left: 0, position: 'absolute', right: 0 },
-  clock: { marginLeft: 4, opacity: 0.8 },
+  clock: { marginHorizontal: 4, opacity: 0.8 },
   dot: { borderRadius: 4, height: 8, width: 8 },
   own: { fontWeight: '700' },
   // "IT" fills with the player's color; "RUN" sits on the badge's own background.

@@ -4,12 +4,13 @@ import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } fr
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/utils/grid'
 
-import { TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_PILLAR_MARGIN, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_TAIL_CELLS } from './constants'
-import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagRule, TagSeat, TagState } from './types'
+import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '../shared/powerups'
+import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_PILLAR_MARGIN, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_POWERUP_EFFECTS, TAG_TAIL_CELLS } from './constants'
+import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState } from './types'
 
 const SEATS: readonly TagSeat[] = [1, 2]
 
-const NO_EVENTS = (): TagEvents => ({ tagged: null, blocked: [] })
+const NO_EVENTS = (): TagEvents => ({ tagged: null, blocked: [], collected: [] })
 
 export const otherSeat = (seat: TagSeat): TagSeat => (seat === 1 ? 2 : 1)
 
@@ -84,9 +85,9 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
   }
   const player = (seat: TagSeat): TagPlayer => {
     const { head, direction } = start(seat)
-    return { head, direction, pendingDirection: null, recent: [head], stride: 0 }
+    return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS() }
   }
-  return { phase: 'onboarding', grid, pillars, blocked, players: { 1: player(1), 2: player(2) }, it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, events: NO_EVENTS() }
+  return { phase: 'onboarding', grid, pillars, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, events: NO_EVENTS() }
 }
 
 export function startTag(state: TagState): TagState {
@@ -115,17 +116,20 @@ function step(state: TagState, p: TagPlayer): TagPlayer | null {
   return isOpen(state, next) ? { ...p, head: next, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS) } : null
 }
 
-// One tick for both riders. A rider covers a cell a tick, It a little more (TAG_IT_SPEED), and a
-// frozen It none. Whenever It (not frozen) is touching the other rider, at the start of the tick or
-// after any step, the other rider is It: frozen for TAG_FREEZE_TICKS while the old It gets away.
-export function tickTag(state: TagState): TagState {
+// One tick for both riders. A rider covers a cell a tick, It a little more (TAG_IT_SPEED), twice that
+// under Dash, none under Freeze, and a newly tagged It none until its freeze is over. Whenever It
+// (not frozen either way) is touching the other rider (not Safe), at the start of the tick or after
+// any step, the other rider is It: frozen for TAG_FREEZE_TICKS while the old It gets away. Passing
+// within a cell of a box picks it up, and with powerups on a new one turns up once it's taken.
+export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], random: () => number = Math.random): TagState {
   if (state.phase !== 'playing') return state
   const tick = state.tick + 1
   const players: Record<TagSeat, TagPlayer> = { 1: state.players[1], 2: state.players[2] }
-  let { it, frozenThrough, tags } = state
+  let { it, frozenThrough, tags, pickups } = state
   const events = NO_EVENTS()
   const tagIfTouching = () => {
-    if (tick > frozenThrough && touching(players[1].head, players[2].head)) {
+    const runner = otherSeat(it)
+    if (tick > frozenThrough && !isFrozen(players[it].effects, tick) && !isShielded(players[runner].effects, tick) && touching(players[1].head, players[2].head)) {
       it = otherSeat(it)
       frozenThrough = tick + TAG_FREEZE_TICKS
       tags++
@@ -138,7 +142,7 @@ export function tickTag(state: TagState): TagState {
   for (const seat of SEATS) {
     if (seat === it && tick <= frozenThrough) continue
     // In hundredths of a cell, so the sums stay exact.
-    const stride = players[seat].stride + (seat === it ? Math.round(TAG_IT_SPEED * 100) : 100)
+    const stride = players[seat].stride + (seat === it ? Math.round(TAG_IT_SPEED * 100) : 100) * speedMultiplier(players[seat].effects, tick)
     steps[seat] = Math.floor(stride / 100)
     players[seat] = { ...players[seat], stride: stride % 100 }
   }
@@ -149,14 +153,40 @@ export function tickTag(state: TagState): TagState {
       // A rider tagged this tick stands still from then on.
       if (i >= steps[seat] || (seat === it && tick <= frozenThrough)) continue
       const moved = step(state, players[seat])
-      if (moved) players[seat] = moved
-      else if (!events.blocked.includes(seat)) events.blocked.push(seat)
+      if (!moved) {
+        if (!events.blocked.includes(seat)) events.blocked.push(seat)
+        continue
+      }
+      players[seat] = moved
+      const took = takePickup(pickups, moved.head)
+      if (took) {
+        players[seat] = { ...players[seat], held: took.taken.type }
+        pickups = took.rest
+        events.collected.push(seat)
+      }
     }
     tagIfTouching()
   }
 
+  if (powerups.length > 0 && pickups.length === 0) {
+    // Its footprint clear of pillars, so it can be reached from every side.
+    const cell = pickupCell({ grid: state.grid, heads: [players[1].head, players[2].head], blocked: (i) => state.blocked[i] === 1 }, random)
+    if (cell) pickups = [newPickup(tick, cell, powerups, random)]
+  }
+  for (const seat of SEATS) players[seat] = { ...players[seat], effects: expireEffects(players[seat].effects, tick) }
+
   const itTicks = { ...state.itTicks, [it]: state.itTicks[it] + 1 }
-  return { ...state, tick, players, it, frozenThrough, tags, itTicks, events }
+  return { ...state, tick, players, pickups, it, frozenThrough, tags, itTicks, events }
+}
+
+// Uses the rider's held powerup, for a tap, their powerup key or the CPU: Dash and Safe on the rider,
+// Freeze and Tangle on the other one (a speed effect replaces whatever speed effect its target
+// already had). Safe only works for the rider being chased; It keeps holding it.
+export function applyTagActivation(state: TagState, seat: TagSeat): TagState {
+  if (state.phase !== 'playing') return state
+  const { held } = state.players[seat]
+  if (!held || (held === 'safe' && state.it === seat)) return state
+  return { ...state, players: activateEffect(state.players, seat, TAG_POWERUP_EFFECTS[held], state.tick + TAG_EFFECT_TICKS[held]) }
 }
 
 // Ends a round on the clock. Hot Potato: whoever's It loses. Least Time It: whoever spent less of the

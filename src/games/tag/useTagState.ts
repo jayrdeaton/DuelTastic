@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { TAG_MAX_CLOCK_STEP_MS } from './constants'
 import { applyTagCpu, type TagCpuDifficulty } from './cpu'
-import { applyTagTurn, createTagState, finishTagOnTime, startTag, tickTag } from './engine'
+import { applyTagActivation, applyTagTurn, createTagState, finishTagOnTime, startTag, tickTag } from './engine'
 import type { TagLayout, TagOptions, TagSeat, TagState } from './types'
 
 export interface UseTagStateParams {
@@ -31,14 +31,19 @@ interface RoundState {
 }
 
 // One Tag round on screen: the engine stepped on an animation-frame loop by elapsed time (so its pace
-// doesn't depend on the display's refresh rate), the CPU's turn decided right before each step, and
-// the clock run alongside, ending the round when it's up.
+// doesn't depend on the display's refresh rate), the CPU's turn (and its powerup) decided right
+// before each step, and the clock run alongside, ending the round when it's up.
 export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, startingIt, cpu, paused }: UseTagStateParams) {
   const fresh = useCallback((): RoundState => ({ round: createTagState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena, it: startingIt }), elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena, startingIt])
   const [state, setState] = useState(fresh)
 
   const turn = useCallback((seat: TagSeat, direction: Direction) => {
     setState((s) => ({ ...s, round: applyTagTurn(s.round, seat, direction) }))
+  }, [])
+
+  // A person using their powerup (a tap or their powerup key).
+  const activate = useCallback((seat: TagSeat) => {
+    setState((s) => ({ ...s, round: applyTagActivation(s.round, seat) }))
   }, [])
 
   const beginPlaying = useCallback(() => {
@@ -70,7 +75,7 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
           let { round } = s
           for (let i = 0; i < steps && round.phase === 'playing'; i++) {
             if (cpu) round = applyTagCpu(round, 2, cpu)
-            round = tickTag(round)
+            round = tickTag(round, options.powerups)
           }
           const elapsedMs = s.elapsedMs + dt
           if (round.phase === 'playing' && elapsedMs >= roundMs) round = finishTagOnTime(round, options.rule)
@@ -87,5 +92,5 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
   }, [phase, paused, intervalMs, options, cpu])
 
   const timeLeftMs = Math.max(0, options.roundSeconds * 1000 - state.elapsedMs)
-  return { state: state.round, turn, beginPlaying, rematch, timeLeftMs }
+  return { state: state.round, turn, activate, beginPlaying, rematch, timeLeftMs }
 }

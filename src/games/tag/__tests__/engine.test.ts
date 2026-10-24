@@ -1,8 +1,8 @@
 import type { Direction, GridCell } from '@tastic/grid'
 
-import { TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_TAIL_CELLS } from '../constants'
-import { applyTagTurn, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
-import type { TagArena, TagSeat, TagState } from '../types'
+import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_TAIL_CELLS } from '../constants'
+import { applyTagActivation, applyTagTurn, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
+import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
 
 interface Start {
   head: GridCell
@@ -224,5 +224,91 @@ describe('the clock', () => {
     const over = finishTagOnTime(s, 'hotPotato')
     expect(finishTagOnTime(over, 'leastIt')).toBe(over)
     expect(tickTag(over)).toBe(over)
+  })
+})
+
+// Gives a seat a powerup and uses it straight away.
+const use = (state: TagState, seat: TagSeat, held: TagPowerup) => applyTagActivation({ ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }, seat)
+const ON: TagPowerup[] = ['dash', 'freeze']
+
+describe('pickups', () => {
+  it('turn up between the riders with powerups on, clear of pillars, and none with them off', () => {
+    const s0 = setup({ head: { x: 8, y: 30 }, direction: 'up' }, { head: { x: 8, y: 5 }, direction: 'down' }, { cols: 17, rows: 38, arena: 'pillars' })
+    for (const r of [0, 0.5, 0.99]) {
+      const s = tickTag(s0, ON, () => r)
+      expect(s.pickups).toHaveLength(1)
+      const { cell } = s.pickups[0]
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) expect(s.blocked[(cell.y + dy) * 17 + cell.x + dx]).toBe(0)
+    }
+    expect(tickTag(s0).pickups).toEqual([])
+  })
+
+  it('is picked up from the next cell over, and another turns up', () => {
+    let s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED)
+    s = { ...s, pickups: [{ id: 'test', type: 'freeze', cell: { x: 6, y: 12 } }] }
+    s = tickTag(
+      tickTag(s, ON, () => 0),
+      ON,
+      () => 0
+    )
+    expect(s.players[1].held).toBe('freeze')
+    expect(s.events.collected).toEqual([1])
+    expect(s.pickups).toHaveLength(1)
+    expect(s.pickups[0].id).not.toBe('test')
+  })
+})
+
+describe('powerups', () => {
+  it('does nothing with nothing held', () => {
+    const s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED)
+    expect(applyTagActivation(s, 1)).toBe(s)
+  })
+
+  it('Dash doubles a rider’s pace, It’s included', () => {
+    const s = run(use(use(setup({ head: { x: 2, y: 40 }, direction: 'up' }, { head: { x: 18, y: 40 }, direction: 'up' }, { rows: 60 }), 1, 'dash'), 2, 'dash'), 10)
+    expect(40 - s.players[1].head.y).toBe(20)
+    expect(40 - s.players[2].head.y).toBe(Math.floor(10 * 2 * TAG_IT_SPEED))
+  })
+
+  it('Freeze holds the other rider still, and a frozen It can’t tag', () => {
+    // Seat 1 freezes It, then rides up the next column past it.
+    let s = use(setup({ head: { x: 5, y: 12 }, direction: 'up' }, { head: { x: 6, y: 8 }, direction: 'down' }), 1, 'freeze')
+    s = run(s, 4)
+    expect(s.players[2].head).toEqual({ x: 6, y: 8 })
+    expect(s.players[1].head).toEqual({ x: 5, y: 8 })
+    expect(s.it).toBe(2)
+    s = run(s, TAG_EFFECT_TICKS.freeze)
+    expect(s.players[1].head.y).toBeLessThan(8)
+  })
+
+  it('Safe keeps the runner from being tagged until it runs out', () => {
+    // It parked against the edge right beside the runner, who's parked against it too.
+    let s = use(setup({ head: { x: 5, y: 0 }, direction: 'up' }, { head: { x: 6, y: 0 }, direction: 'up' }), 1, 'safe')
+    s = run(s, TAG_EFFECT_TICKS.safe)
+    expect(s.it).toBe(2)
+    s = run(s, 1)
+    expect(s.it).toBe(1)
+  })
+
+  it('Safe does nothing for It, which keeps holding it', () => {
+    const s0 = setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED)
+    const s = use(s0, 2, 'safe')
+    expect(s.players[2].held).toBe('safe')
+    expect(s.players[2].effects.shield).toBeNull()
+  })
+
+  it('Tangle lands on the other rider for its run', () => {
+    let s = use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED), 1, 'tangle')
+    expect(s.players[2].effects.reverse).toEqual({ expiresAtTick: TAG_EFFECT_TICKS.tangle })
+    expect(s.players[1].held).toBeNull()
+    s = run(s, TAG_EFFECT_TICKS.tangle)
+    expect(s.players[2].effects.reverse).toBeNull()
+  })
+
+  it('lets Dash thaw a frozen rider', () => {
+    let s = use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED), 2, 'freeze')
+    expect(s.players[1].effects.speed?.kind).toBe('freeze')
+    s = use(s, 1, 'dash')
+    expect(s.players[1].effects.speed?.kind).toBe('boost')
   })
 })

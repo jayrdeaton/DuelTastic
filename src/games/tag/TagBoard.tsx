@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 
-import type { TagPhase, TagPillar, TagPlayer, TagSeat } from './types'
+import { EffectRings, PickupGlyph } from '../shared/BoardPowerups'
+import type { Pickup } from '../shared/powerups'
+import type { TagPhase, TagPillar, TagPlayer, TagPowerup, TagSeat } from './types'
 
 export interface TagBoardProps {
   grid: GridSize
@@ -23,6 +25,8 @@ export interface TagBoardProps {
   background: string
   // The edge and the pillars: what stops a rider.
   structureColor: string
+  pickups: Pickup<TagPowerup>[]
+  pickupColor: string
 }
 
 const SEATS: readonly TagSeat[] = [1, 2]
@@ -109,13 +113,14 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
       {last && <Line p1={vec(last.x, last.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TAIL_WIDTH} strokeCap='round' color={color} opacity={TAIL_OPACITY} />}
       <Circle cx={x} cy={y} r={radius} color={color} opacity={frozen ? FROZEN_OPACITY : 1} />
       <Circle cx={x} cy={y} r={radius} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} />
+      <EffectRings x={x} y={y} headRadius={radius} effects={player.effects} />
       {isIt && !frozen && <Circle cx={x} cy={y} r={ringRadius} style='stroke' strokeWidth={IT_RING_WIDTH} color={color} />}
       {frozen && <FreezeRing x={x} y={y} cellPx={cellPx} left={freezeLeft} />}
     </>
   )
 }
 
-export function TagBoard({ grid, cellPx, pillars, players, it, freezeLeft, colors, phase, tick, intervalMs, background, structureColor }: TagBoardProps) {
+export function TagBoard({ grid, cellPx, pillars, players, it, freezeLeft, colors, phase, tick, intervalMs, background, structureColor, pickups, pickupColor }: TagBoardProps) {
   const edge = useMemo(
     () =>
       Skia.PathBuilder.Make()
@@ -135,6 +140,9 @@ export function TagBoard({ grid, cellPx, pillars, players, it, freezeLeft, color
         <Path path={edge} style='stroke' strokeWidth={EDGE_STROKE_WIDTH} color={structureColor} />
         {pillars.map((p) => (
           <RoundedRect key={`${p.x},${p.y}`} x={p.x * cellPx} y={p.y * cellPx} width={p.width * cellPx} height={p.height * cellPx} r={cellPx * PILLAR_CORNER} color={structureColor} />
+        ))}
+        {pickups.map((pickup) => (
+          <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
         {SEATS.map((seat) => (
           <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} background={background} />
