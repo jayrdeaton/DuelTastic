@@ -11,9 +11,10 @@ import GameBoardHost from '@/components/GameBoardHost'
 import { MatchOverlays } from '@/components/MatchOverlays'
 import { PowerupHud } from '@/components/PowerupHud'
 import TouchInputLayer from '@/components/TouchInputLayer'
-import { deathAnimationDurationMs, MAX_BOARD_CONTENT_WIDTH, TRAIL_SPEED_RATE } from '@/constants/game'
+import { deathAnimationDurationMs, DESKTOP_CHIP_BAND, MAX_BOARD_CONTENT_WIDTH, TRAIL_SPEED_RATE } from '@/constants/game'
 import { TagRound } from '@/games/tag/TagRound'
 import { TurfRound } from '@/games/turf/TurfRound'
+import { useDesktopWeb } from '@/hooks/useDesktopWeb'
 import { useGameState } from '@/hooks/useGameState'
 import { useGameStats } from '@/hooks/useGameStats'
 import { useMatchControls, useMatchFlow } from '@/hooks/useMatchFlow'
@@ -159,7 +160,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
       powerup's badge is UI chrome, not part of the rendered world, and needs to stay a legible,
       comfortably-tappable fixed size (see PowerupHud's own 12px corner insets) regardless of
       whatever size the board itself is currently scaled to. */}
-      {state.phase === 'playing' && settings.enabledPowerups.length > 0 && <PowerupHud players={state.players} orientationMode={orientationMode} p1OnRight={p1OnRight} />}
+      {state.phase === 'playing' && settings.enabledPowerups.length > 0 && <PowerupHud players={state.players} orientationMode={orientationMode} p1OnRight={p1OnRight} desktopWeb={flow.isDesktopWeb} />}
 
       {/* Every floating dialog, and the back and settings chips, live in MatchOverlays, the board's
       sibling, so their live rotation tracking can never re-render the board/touch subtree above (see
@@ -205,6 +206,16 @@ export default function GameScreen() {
   const insets = useSafeAreaInsets()
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const { gutterWidth } = computeContentBounds(windowWidth, MAX_BOARD_CONTENT_WIDTH)
+  // On desktop web the back and settings chips stay up through play, in boardArea's top corners
+  // (MatchOverlays), so there boardArea spans the whole safe area (the chips land in the page's own
+  // corners, where the lobby's are) and is padded in to the board, which keeps at least a
+  // DESKTOP_CHIP_BAND clear down each side for them, taken out of the gutter when the window has one.
+  // boardSideInset is how far the board sits from the safe area's side edges (the window's, full
+  // bleed); boardPadding is how much of that is boardArea's padding rather than its position.
+  const desktopWeb = useDesktopWeb()
+  const chipBand = desktopWeb ? DESKTOP_CHIP_BAND : 0
+  const boardSideInset = settings?.extendIntoSafeArea ? chipBand : Math.max(gutterWidth, chipBand)
+  const boardPadding = desktopWeb ? boardSideInset : 0
   const { colors: themeColors, dark } = useAutoPaperTheme()
   const colors = useMemo<Record<Player, string>>(() => ({ 1: themeColors.primary, 2: themeColors.secondary }), [themeColors.primary, themeColors.secondary])
 
@@ -299,14 +310,18 @@ export default function GameScreen() {
   // the real world the moment gutterWidth made plain window resizing (always possible on web, no
   // rotation involved at all) something worth reacting to.
   const [designSize, setDesignSize] = useState<{ width: number; height: number } | null>(null)
-  const onBoardLayout = useCallback((e: LayoutChangeEvent) => {
-    // Captured eagerly, not read off `e` inside the updater below - React can invoke a functional
-    // setState updater more than once (e.g. StrictMode's double-invoke), and by a second call
-    // React Native's synthetic LayoutChangeEvent may already be pooled/recycled, leaving
-    // e.nativeEvent null and crashing this on "Cannot read property 'layout' of null".
-    const { width, height } = e.nativeEvent.layout
-    setDesignSize((prev) => prev ?? { width, height })
-  }, [])
+  const onBoardLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      // Captured eagerly, not read off `e` inside the updater below - React can invoke a functional
+      // setState updater more than once (e.g. StrictMode's double-invoke), and by a second call
+      // React Native's synthetic LayoutChangeEvent may already be pooled/recycled, leaving
+      // e.nativeEvent null and crashing this on "Cannot read property 'layout' of null".
+      // The board gets boardArea's content box: its measured size less the padding.
+      const { width, height } = e.nativeEvent.layout
+      setDesignSize((prev) => prev ?? { width: width - 2 * boardPadding, height })
+    },
+    [boardPadding]
+  )
 
   const bg = dark ? '#000000' : '#FFFFFF'
 
@@ -326,7 +341,7 @@ export default function GameScreen() {
   // RN-Web a reason to re-measure. Computing it directly here sidesteps that reliability gap
   // entirely, at the cost of duplicating this one arithmetic expression rather than measuring it
   // once.
-  const liveWidth = settings.extendIntoSafeArea ? windowWidth : windowWidth - insets.left - insets.right - 2 * gutterWidth
+  const liveWidth = settings.extendIntoSafeArea ? windowWidth - 2 * boardSideInset : windowWidth - insets.left - insets.right - 2 * boardSideInset
   const liveHeight = settings.extendIntoSafeArea ? windowHeight : windowHeight - insets.top - insets.bottom
   // All-zero unless the board is actually bleeding under the real insets (extendIntoSafeArea) - see
   // GameRoundProps' own safeAreaInsetsPx comment for why: the non-full-bleed boardArea style below
@@ -339,7 +354,7 @@ export default function GameScreen() {
       whole time a match is in progress, regardless of whether the board itself is bleeding under
       the safe area - full-screen immersion during actual play, not just when there'd otherwise be
       a visible clash. */}
-      <View style={[styles.boardArea, settings.extendIntoSafeArea ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + gutterWidth, right: insets.right + gutterWidth }]} onLayout={onBoardLayout}>
+      <View style={[styles.boardArea, settings.extendIntoSafeArea ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + boardSideInset - boardPadding, right: insets.right + boardSideInset - boardPadding }, { paddingHorizontal: boardPadding }]} onLayout={onBoardLayout}>
         {designSize &&
           (settings.game === 'tag' ? <TagRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} /> : settings.game === 'turf' ? <TurfRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} /> : <GameRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} safeAreaInsetsPx={safeAreaInsetsPx} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} />)}
       </View>
@@ -351,7 +366,10 @@ const styles = StyleSheet.create({
   // alignItems/justifyContent center the design-resolution board (see GameRound's own boardScale
   // comment) inside these live bounds - MatchOverlays/PowerupHud's own children are all
   // position:'absolute' internally (see their own styles), so centering this container has no
-  // effect on them; only the board's normal-flow scaled View is actually being centered.
+  // effect on them; only the board's normal-flow scaled View is actually being centered. Those
+  // absolute children are laid out against the padding box, so on desktop web (see boardPadding)
+  // they span the whole safe area, the chips in its corners, while the board is centered in the
+  // content box between.
   boardArea: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'absolute' },
   boardAreaFullBleed: { bottom: 0, left: 0, right: 0, top: 0 },
   root: { flex: 1 }

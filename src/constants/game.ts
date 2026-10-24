@@ -36,6 +36,12 @@ export const MAX_BOARD_CONTENT_WIDTH = 1000
 // page's top corners for the whole match instead of hiding them while a round is live.
 export const DESKTOP_WEB_MIN_WIDTH = 768
 
+// How much of each side of the board game.tsx keeps clear on desktop web, for the back and settings
+// chips: they sit 8px in from the page's top corners (MatchOverlays) and are 38px across. Taken out of
+// the gutter when the window has one (MAX_BOARD_CONTENT_WIDTH), so a wide window's board doesn't
+// shrink for it.
+export const DESKTOP_CHIP_BAND = 56
+
 // Every ms-per-tick constant below is tuned at GRID_CELL_PX.medium (this app's original fixed
 // CELL_SIZE) - see scaleMsForCellPx, which rescales them to whichever tier is actually active so
 // the cycle's on-screen (px/sec) pace stays constant across grid-size tiers instead of silently

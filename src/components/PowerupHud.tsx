@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native'
 import { Icon } from 'react-native-paper'
 
-import { POWERUP_ICONS } from '@/constants/game'
+import { DESKTOP_CHIP_BAND, POWERUP_ICONS } from '@/constants/game'
 import { OrientationMode, Player, PlayerState } from '@/types'
 
 export interface PowerupHudProps {
@@ -9,6 +9,9 @@ export interface PowerupHudProps {
   orientationMode: OrientationMode
   // Only meaningful when orientationMode === 'sideBySide' - see GameBoard.tsx's identical prop.
   p1OnRight: boolean
+  // Desktop web, where the back and settings chips stay up in the top corners through play: the top
+  // badge drops below them.
+  desktopWeb?: boolean
 }
 
 const BADGE_SIZE = 30
@@ -30,7 +33,7 @@ function HeldItemBadge({ heldPowerup }: { heldPowerup: PlayerState['heldPowerup'
 // than a side fixed regardless of which way the device was rotated. In faceToFace, column doesn't
 // matter (each player's zone spans the full width), so player 1 stays bottom and player 2 stays
 // top regardless of p1OnRight.
-export function PowerupHud({ players, orientationMode, p1OnRight }: PowerupHudProps) {
+export function PowerupHud({ players, orientationMode, p1OnRight, desktopWeb = false }: PowerupHudProps) {
   const p1OnRightSide = orientationMode === 'sideBySide' && p1OnRight
   const p2OnLeftSide = orientationMode === 'sideBySide' && !p1OnRight
   return (
@@ -38,7 +41,7 @@ export function PowerupHud({ players, orientationMode, p1OnRight }: PowerupHudPr
       <View pointerEvents='none' style={p1OnRightSide ? styles.bottomRight : styles.bottomLeft}>
         <HeldItemBadge heldPowerup={players[1].heldPowerup} />
       </View>
-      <View pointerEvents='none' style={p2OnLeftSide ? styles.topLeft : styles.topRight}>
+      <View pointerEvents='none' style={[p2OnLeftSide ? styles.topLeft : styles.topRight, desktopWeb && styles.belowChips]}>
         <HeldItemBadge heldPowerup={players[2].heldPowerup} />
       </View>
     </>
@@ -57,6 +60,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     width: BADGE_SIZE
   },
+  belowChips: { top: DESKTOP_CHIP_BAND },
   bottomLeft: { bottom: 12, left: 12, position: 'absolute' },
   bottomRight: { bottom: 12, position: 'absolute', right: 12 },
   topLeft: { left: 12, position: 'absolute', top: 12 },

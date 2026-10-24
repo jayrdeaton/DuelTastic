@@ -4,10 +4,10 @@ import { useToast } from '@rific/toaster'
 import { useBackgroundPause } from '@tastic/core'
 import { useQuitConfirmation } from '@tastic/hud'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Platform, useWindowDimensions } from 'react-native'
 import { useDispatch } from 'react-redux'
 
-import { DESKTOP_WEB_MIN_WIDTH, ROUND_OVER_DIALOG_HOLD_MS } from '@/constants/game'
+import { ROUND_OVER_DIALOG_HOLD_MS } from '@/constants/game'
+import { useDesktopWeb } from '@/hooks/useDesktopWeb'
 import { useGameSound } from '@/hooks/useGameSound'
 import { liveplayActions } from '@/redux/liveplaySlice'
 import type { AppDispatch } from '@/redux/store'
@@ -141,8 +141,7 @@ export function useMatchFlow({ controls, phase, outcome, humanPlayers, rematch, 
   // On a desktop-web page the back and settings chips stay up in the page's top corners for the
   // whole match, so there's always a way out or into Settings; anywhere narrower they only show
   // between rounds.
-  const { width: windowWidth } = useWindowDimensions()
-  const isDesktopWeb = Platform.OS === 'web' && windowWidth >= DESKTOP_WEB_MIN_WIDTH
+  const isDesktopWeb = useDesktopWeb()
   const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'roundOver' && showResultDialog) || matchOver
 
   // Live, unpaused play, for Providers.tsx's EdgeGuardBridge (the one useEdgeGestureGuard call).
