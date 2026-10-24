@@ -12,6 +12,10 @@ export const TURF_ROUND_SECONDS = [60, 120, 180] as const
 
 export const DEFAULT_TURF_OPTIONS: TurfOptions = { crash: 'out', ownTrailDeadly: true, powerups: [], roundSeconds: 120 }
 
+// Saved options with every field filled in. Read them through this: options saved before a field
+// existed don't have it, and the settings slice only fills in missing top-level settings.
+export const withTurfDefaults = (saved: Partial<TurfOptions> | undefined): TurfOptions => ({ ...DEFAULT_TURF_OPTIONS, ...saved })
+
 // The most a single frame may count toward the round clock, so a stalled frame (the app pausing on a
 // slow device, a debugger) can't eat seconds off the clock in one go.
 export const TURF_MAX_CLOCK_STEP_MS = 250
@@ -40,6 +44,16 @@ export const TURF_SOD_RADIUS = 2
 // A pickup turns up at least this many cells (in a straight or diagonal line) from either head, so
 // it's never handed to whoever happens to be next to it.
 export const TURF_PICKUP_MIN_DISTANCE = 4
+
+// How much nearer one rider a pickup may turn up than the other, in steps.
+export const TURF_PICKUP_FAIR_SLACK = 2
+
+// How much further from the riders than the nearest fair cell a pickup may turn up, in steps, so it's
+// somewhere between them rather than anywhere along the line that's as far from each.
+export const TURF_PICKUP_SPREAD = 12
+
+// Cells kept clear of pickups along each edge: the glyph is wider than a cell.
+export const TURF_PICKUP_EDGE_MARGIN = 2
 
 // The same colors and icons as LightCycles' and Snake's effects; only the names are Turf's.
 export const TURF_EFFECT_COLORS: Record<'dash' | 'frost' | 'fence' | 'tangle' | 'gust', string> = {

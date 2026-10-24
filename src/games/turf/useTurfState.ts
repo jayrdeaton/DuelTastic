@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { TURF_MAX_CLOCK_STEP_MS } from './constants'
 import { applyTurfCpu, type TurfCpuDifficulty, type TurfCpuPlan } from './cpu'
-import { applyTurfTurn, createTurfState, finishTurfOnTime, startTurf, tickTurf } from './engine'
+import { applyTurfActivation, applyTurfTurn, createTurfState, finishTurfOnTime, startTurf, tickTurf } from './engine'
 import type { TurfLayout, TurfOptions, TurfSeat, TurfState } from './types'
 
 export interface UseTurfStateParams {
@@ -31,14 +31,20 @@ interface RoundState {
   elapsedMs: number
 }
 
-// One Turf round on screen: the engine stepped on an animation-frame loop, the CPU's turn decided
-// right before each step it plays in, and the clock run alongside, ending the round when it's up.
+// One Turf round on screen: the engine stepped on an animation-frame loop, the CPU's turn (and its
+// powerup) decided right before each step it plays in, and the clock run alongside, ending the round
+// when it's up.
 export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, cpu, paused }: UseTurfStateParams) {
   const fresh = useCallback((): RoundState => ({ round: createTurfState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight }), plan: null, elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight])
   const [state, setState] = useState(fresh)
 
   const turn = useCallback((seat: TurfSeat, direction: Direction) => {
     setState((s) => ({ ...s, round: applyTurfTurn(s.round, seat, direction) }))
+  }, [])
+
+  // A person using their powerup (a tap or their powerup key).
+  const activate = useCallback((seat: TurfSeat) => {
+    setState((s) => ({ ...s, round: applyTurfActivation(s.round, seat) }))
   }, [])
 
   const beginPlaying = useCallback(() => {
@@ -91,5 +97,5 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
   }, [phase, paused, intervalMs, options, cpu])
 
   const timeLeftMs = Math.max(0, options.roundSeconds * 1000 - state.elapsedMs)
-  return { state: state.round, turn, beginPlaying, rematch, timeLeftMs }
+  return { state: state.round, turn, activate, beginPlaying, rematch, timeLeftMs }
 }

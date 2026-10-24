@@ -7,7 +7,7 @@ import { POWERUP_COLLECT_RADIUS_CELLS } from '@/constants/game'
 import { startingStateFor } from '@/utils/grid'
 
 import { claimedCells } from './capture'
-import { TURF_EFFECT_TICKS, TURF_PICKUP_MIN_DISTANCE, TURF_SOD_RADIUS } from './constants'
+import { TURF_EFFECT_TICKS, TURF_PICKUP_EDGE_MARGIN, TURF_PICKUP_FAIR_SLACK, TURF_PICKUP_MIN_DISTANCE, TURF_PICKUP_SPREAD, TURF_SOD_RADIUS } from './constants'
 import { DEFAULT_TURF_RULES, type TurfEffects, type TurfEvents, type TurfLayout, type TurfOutcome, type TurfPlayer, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from './types'
 
 const SEATS: readonly TurfSeat[] = [1, 2]
@@ -142,31 +142,36 @@ function applyClaims(owner: Uint8Array, ground: Record<TurfSeat, number>, captur
   }
 }
 
-// A pickup's cell for the next powerup: away from both heads, with no trail in the cells around it
-// (the ones a rider picks it up from), on nobody's ground when there's any such cell left, so going
-// for it means leaving home. Null when nowhere fits.
-function pickupCell(grid: GridSize, owner: Uint8Array, trails: Uint8Array, heads: GridCell[], random: () => number): GridCell | null {
-  const open: GridCell[] = []
-  const any: GridCell[] = []
+// A pickup's cell for the next powerup: about as far from one head as the other, so neither rider is
+// handed it, and not much further from them than it has to be, never right next to either, never at
+// the edge (where its glyph would hang off the board), and with no trail in the cells around it (the
+// ones a rider picks it up from). On nobody's ground when there's such a cell, so going for it means
+// leaving home. Falls back to any cell that fits; null when none does.
+function pickupCell(grid: GridSize, owner: Uint8Array, trails: Uint8Array, heads: [GridCell, GridCell], random: () => number): GridCell | null {
   const r = POWERUP_COLLECT_RADIUS_CELLS
-  for (let y = 0; y < grid.rows; y++) {
-    for (let x = 0; x < grid.cols; x++) {
+  const m = TURF_PICKUP_EDGE_MARGIN
+  // Best first: fair and open, fair, open, anywhere. Each cell with its steps from the nearer head.
+  const pools: { cell: GridCell; steps: number }[][] = [[], [], [], []]
+  for (let y = m; y < grid.rows - m; y++) {
+    for (let x = m; x < grid.cols - m; x++) {
       if (heads.some((h) => Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) < TURF_PICKUP_MIN_DISTANCE)) continue
       let clear = true
       for (let dy = -r; dy <= r && clear; dy++) {
-        for (let dx = -r; dx <= r && clear; dx++) {
-          const nx = x + dx
-          const ny = y + dy
-          if (nx >= 0 && ny >= 0 && nx < grid.cols && ny < grid.rows && trails[ny * grid.cols + nx]) clear = false
-        }
+        for (let dx = -r; dx <= r && clear; dx++) if (isInBounds({ x: x + dx, y: y + dy }, grid) && trails[(y + dy) * grid.cols + x + dx]) clear = false
       }
       if (!clear) continue
-      any.push({ x, y })
-      if (owner[y * grid.cols + x] === 0) open.push({ x, y })
+      const a = Math.abs(heads[0].x - x) + Math.abs(heads[0].y - y)
+      const b = Math.abs(heads[1].x - x) + Math.abs(heads[1].y - y)
+      const fair = Math.abs(a - b) <= TURF_PICKUP_FAIR_SLACK
+      const open = owner[y * grid.cols + x] === 0
+      pools[fair ? (open ? 0 : 1) : open ? 2 : 3].push({ cell: { x, y }, steps: Math.min(a, b) })
     }
   }
-  const pool = open.length > 0 ? open : any
-  return pool.length > 0 ? pool[Math.floor(random() * pool.length)] : null
+  const pool = pools.find((p) => p.length > 0)
+  if (!pool) return null
+  const nearest = Math.min(...pool.map((c) => c.steps))
+  const near = pool.filter((c) => c.steps <= nearest + TURF_PICKUP_SPREAD)
+  return near[Math.floor(random() * near.length)].cell
 }
 
 // One tick for both riders at once, in steps: a rider covers one cell a tick, two under Dash or Gust

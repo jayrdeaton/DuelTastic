@@ -98,6 +98,32 @@ describe('useTurfState', () => {
     expect(result.current.state.ground[2]).toBeGreaterThan(49)
   })
 
+  it('turns up a pickup once playing with powerups on, and none with them off', async () => {
+    const on = await renderHook(() => useTurfState({ ...PARAMS, options: { ...DEFAULT_TURF_OPTIONS, powerups: ['dash'] } }))
+    const off = await renderHook(() => useTurfState(PARAMS))
+    await act(async () => {
+      on.result.current.beginPlaying()
+      off.result.current.beginPlaying()
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(200)
+    })
+    expect(on.result.current.state.pickups).toHaveLength(1)
+    expect(off.result.current.state.pickups).toEqual([])
+  })
+
+  it('leaves the round alone when a player with nothing held taps', async () => {
+    const { result } = await renderHook(() => useTurfState(PARAMS))
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    const before = result.current.state
+    await act(async () => {
+      result.current.activate(1)
+    })
+    expect(result.current.state).toBe(before)
+  })
+
   it('starts over on rematch', async () => {
     const { result } = await renderHook(() => useTurfState(PARAMS))
     const start = result.current.state

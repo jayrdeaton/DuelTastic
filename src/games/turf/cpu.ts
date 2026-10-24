@@ -48,8 +48,8 @@ interface CpuParams {
 
 const PARAMS: Record<TurfCpuDifficulty, CpuParams> = {
   easy: { depth: [2, 5], width: [2, 5], margin: -1, attack: 0, wobble: 0.08, maxTrail: 16, seekRange: 0, timesPowerups: false, useAnyway: 0.01 },
-  normal: { depth: [4, 9], width: [3, 8], margin: 1, attack: 0.5, wobble: 0.02, maxTrail: 32, seekRange: 12, timesPowerups: true, useAnyway: 0.02 },
-  hard: { depth: [5, 14], width: [4, 12], margin: 3, attack: 1, wobble: 0, maxTrail: 48, seekRange: 20, timesPowerups: true, useAnyway: 0.01 }
+  normal: { depth: [4, 9], width: [3, 8], margin: 1, attack: 0.5, wobble: 0.02, maxTrail: 32, seekRange: 24, timesPowerups: true, useAnyway: 0.02 },
+  hard: { depth: [5, 14], width: [4, 12], margin: 3, attack: 1, wobble: 0, maxTrail: 48, seekRange: 36, timesPowerups: true, useAnyway: 0.01 }
 }
 
 // It uses a powerup to get out of trouble this many ticks before it would turn for home.

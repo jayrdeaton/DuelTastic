@@ -1,6 +1,6 @@
 import type { Direction, GridCell } from '@tastic/grid'
 
-import { TURF_EFFECT_TICKS, TURF_PICKUP_MIN_DISTANCE } from '../constants'
+import { TURF_EFFECT_TICKS, TURF_PICKUP_EDGE_MARGIN, TURF_PICKUP_FAIR_SLACK, TURF_PICKUP_MIN_DISTANCE, TURF_PICKUP_SPREAD } from '../constants'
 import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS, turfStepsFor } from '../engine'
 import { DEFAULT_TURF_RULES, type TurfEffects, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
 
@@ -308,7 +308,8 @@ const POWERUPS_ON: TurfRules = { ...DEFAULT_TURF_RULES, powerups: ['dash', 'fros
 const chebyshev = (a: GridCell, b: GridCell) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
 
 describe('pickups', () => {
-  it('turns one up on nobody’s ground, away from both heads, when powerups are on', () => {
+  it('turns one up on nobody’s ground, about as far from one head as the other, when powerups are on', () => {
+    const steps = (a: GridCell, b: GridCell) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
     for (const r of [0, 0.37, 0.99]) {
       const s = tickTurf(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR, { radius: 2 }), POWERUPS_ON, () => r)
       expect(s.pickups).toHaveLength(1)
@@ -316,6 +317,17 @@ describe('pickups', () => {
       expect(POWERUPS_ON.powerups).toContain(type)
       expect(ownerAt(s, cell.x, cell.y)).toBe(0)
       for (const seat of [1, 2] as const) expect(chebyshev(cell, s.players[seat].head)).toBeGreaterThanOrEqual(TURF_PICKUP_MIN_DISTANCE)
+      expect(Math.abs(steps(cell, s.players[1].head) - steps(cell, s.players[2].head))).toBeLessThanOrEqual(TURF_PICKUP_FAIR_SLACK)
+      expect(Math.min(cell.x, cell.y, s.grid.cols - 1 - cell.x, s.grid.rows - 1 - cell.y)).toBeGreaterThanOrEqual(TURF_PICKUP_EDGE_MARGIN)
+    }
+  })
+
+  it('turns up somewhere between the riders, not anywhere along the line as far from each', () => {
+    // Heads 20 apart down the middle column of a wide board: the fair cells run the whole width of
+    // row 10, but the pickup stays near the middle.
+    for (const r of [0, 0.5, 0.99]) {
+      const s = tickTurf(setup({ head: { x: 50, y: 21 }, direction: 'left' }, { head: { x: 50, y: 1 }, direction: 'left' }, { cols: 101, rows: 25 }), POWERUPS_ON, () => r)
+      expect(Math.abs(s.pickups[0].cell.x - 49)).toBeLessThanOrEqual(TURF_PICKUP_SPREAD)
     }
   })
 

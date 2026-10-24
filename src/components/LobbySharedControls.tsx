@@ -2,7 +2,7 @@ import { IconButton } from '@rific/feedback-press'
 import { MenuOption, PopoverHost, SectionedDropdown, usePopoverHost } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 
-import { TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_ROUND_OPTIONS } from '@/games/turf/loadoutOptions'
+import { TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_POWERUP_OPTIONS, TURF_ROUND_OPTIONS } from '@/games/turf/loadoutOptions'
 import type { TurfOptions } from '@/games/turf/types'
 import { ArenaVariant, GameChoice, GridSizeTier, PowerupType, SpeedTier, TrailSpeedTier } from '@/types'
 
@@ -14,7 +14,7 @@ interface Props {
   // independent host.
   host?: PopoverHost
   // Which game the round is: LightCycles or Turf. Turf swaps LightCycles' arena, trail speed and
-  // powerups for its own rules and round length; grid size and speed are shared.
+  // powerups for its own rules, round length and powerups; grid size and speed are shared.
   game: GameChoice
   gameOptions: MenuOption<GameChoice>[]
   onGameChange: (value: GameChoice) => void
@@ -80,7 +80,7 @@ interface Props {
 // the host", since a shared host (vs-CPU) also carries the player panels' own popover ids. Exported
 // so lobby.tsx's own showMetaInSharedBand wrapper (sharedColumn) can run this same membership check
 // on itself - see that wrapper's own comment for why it needs to.
-export const LOBBY_SHARED_CONTROLS_IDS = ['game', 'gridSize', 'arena', 'speed', 'trailSpeed', 'powerups', 'turfRules', 'turfRound']
+export const LOBBY_SHARED_CONTROLS_IDS = ['game', 'gridSize', 'arena', 'speed', 'trailSpeed', 'powerups', 'turfRules', 'turfRound', 'turfPowerups']
 
 export function LobbySharedControls({ host: sharedHost, game, gameOptions, onGameChange, turf, onTurfChange, gridSizeTier, gridSizeOptions, onGridSizeChange, speedTier, speedOptions, onSpeedChange, trailSpeedTier, trailSpeedOptions, onTrailSpeedChange, arenaVariant, arenaOptions, onArenaChange, extendIntoSafeArea, extendIntoSafeAreaOption, onExtendIntoSafeAreaChange, wrapEdges, wrapEdgesOption, onWrapEdgesChange, enabledPowerups, powerupOptions, onPowerupsChange, onRandomize, onReset, accentColor, mutedColor, onAccentColor, dark }: Props) {
   const ownHost = usePopoverHost()
@@ -169,6 +169,7 @@ export function LobbySharedControls({ host: sharedHost, game, gameOptions, onGam
         {game !== 'turf' && <SectionedDropdown id='trailSpeed' host={host} icon='chart-line' accessibilityLabel='Trail speed' sections={[{ kind: 'single', id: 'trailSpeed', options: trailSpeedOptions, value: trailSpeedTier, onChange: onTrailSpeedChange }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
 
         {game !== 'turf' && <SectionedDropdown id='powerups' host={host} icon='flash' accessibilityLabel={`Powerups ${enabledPowerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'powerups', options: powerupOptions, value: enabledPowerups, onChange: onPowerupsChange, allClear: true }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
+        {game === 'turf' && <SectionedDropdown id='turfPowerups' host={host} icon='flash' accessibilityLabel={`Powerups ${turf.powerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'turfPowerups', options: TURF_POWERUP_OPTIONS, value: turf.powerups, onChange: (powerups) => onTurfChange({ powerups }), allClear: true }]} accentColor={accentColor} mutedColor={mutedColor} onAccentColor={onAccentColor} dark={dark} />}
       </View>
     </View>
   )

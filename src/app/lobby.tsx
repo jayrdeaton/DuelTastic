@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { LOBBY_SHARED_CONTROLS_IDS, LobbySharedControls } from '@/components/LobbySharedControls'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { DEFAULT_P1_COLOR, DEFAULT_P2_COLOR, LOBBY_PANEL_SWAP_FADE_MS, POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/constants/game'
+import { withTurfDefaults } from '@/games/turf/constants'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useSettings } from '@/hooks/useSettings'
 import { liveplayActions } from '@/redux/liveplaySlice'
@@ -538,8 +539,8 @@ export default function LobbyScreen() {
       game={settings.game}
       gameOptions={GAME_OPTIONS}
       onGameChange={(value) => setSettings({ game: value })}
-      turf={settings.turf}
-      onTurfChange={(patch) => setSettings({ turf: { ...settings.turf, ...patch } })}
+      turf={withTurfDefaults(settings.turf)}
+      onTurfChange={(patch) => setSettings({ turf: { ...withTurfDefaults(settings.turf), ...patch } })}
       gridSizeTier={settings.gridSizeTier}
       gridSizeOptions={GRID_SIZE_OPTIONS}
       onGridSizeChange={(value) => setSettings({ gridSizeTier: value })}
