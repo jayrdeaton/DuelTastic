@@ -26,6 +26,11 @@ export interface TurfRules {
 
 export const DEFAULT_TURF_RULES: TurfRules = { crash: 'out', ownTrailDeadly: true }
 
+// A round's options as the loadout picks them: the rules plus the clock.
+export interface TurfOptions extends TurfRules {
+  roundSeconds: number
+}
+
 export type TurfEndReason = 'crash' | 'suffocation' | 'time'
 
 export type TurfOutcome = { type: 'win'; winner: TurfSeat; reason: TurfEndReason } | { type: 'draw'; reason: TurfEndReason }
