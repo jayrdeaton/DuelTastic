@@ -18,13 +18,27 @@ export type TurfLayout = 'faceToFace' | 'sideBySide'
 // round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
 
+// Turf's powerups, Turf's names for the effects LightCycles and Snake share (same colors and icons in
+// every game, see constants.ts):
+// - Dash (yours): double speed. LightCycles' Overdrive.
+// - Frost (theirs): frozen in place. LightCycles' Stasis.
+// - Fence (yours): for a while nothing but the board's edge crashes you: nobody can cut your trail,
+//   you can cross your own, and a head-on never takes you out. LightCycles' Shield.
+// - Sod (yours): the ground around your head becomes yours at once, which brings you home if you're
+//   out, claiming your trail.
+// - Tangle (theirs): their steering is reversed. LightCycles' Hack.
+// - Gust (theirs): forced double speed. LightCycles' Overclock.
+export type TurfPowerup = 'dash' | 'frost' | 'fence' | 'sod' | 'tangle' | 'gust'
+
 export interface TurfRules {
   crash: TurfCrashRule
   // Whether riding into your own trail is a crash. When it isn't, a trail may cross itself.
   ownTrailDeadly: boolean
+  // The powerups that can turn up on the board. None: powerups are off.
+  powerups: TurfPowerup[]
 }
 
-export const DEFAULT_TURF_RULES: TurfRules = { crash: 'out', ownTrailDeadly: true }
+export const DEFAULT_TURF_RULES: TurfRules = { crash: 'out', ownTrailDeadly: true, powerups: [] }
 
 // A round's options as the loadout picks them: the rules plus the clock.
 export interface TurfOptions extends TurfRules {
@@ -34,6 +48,21 @@ export interface TurfOptions extends TurfRules {
 export type TurfEndReason = 'crash' | 'suffocation' | 'time'
 
 export type TurfOutcome = { type: 'win'; winner: TurfSeat; reason: TurfEndReason } | { type: 'draw'; reason: TurfEndReason }
+
+// A timed effect lasts through the tick `expiresAtTick` and is gone after it. Speed effects replace
+// each other: one Dash cancels a Gust or a Frost on the same rider.
+export interface TurfEffects {
+  speed: { type: 'dash' | 'gust' | 'frost'; expiresAtTick: number } | null
+  tangle: { expiresAtTick: number } | null
+  fence: { expiresAtTick: number } | null
+}
+
+// A powerup waiting on the board. What it is stays hidden until someone picks it up.
+export interface TurfPickup {
+  id: string
+  type: TurfPowerup
+  cell: GridCell
+}
 
 export interface TurfPlayer {
   head: GridCell
@@ -49,6 +78,10 @@ export interface TurfPlayer {
   // Where the rider crashed (null when they didn't): the cell they hit, which is off the board for a
   // wall.
   crashCell: GridCell | null
+  // The powerup they're holding, used with a tap or their powerup key. One at a time: picking up
+  // another swaps it.
+  held: TurfPowerup | null
+  effects: TurfEffects
 }
 
 // What happened on the last tick, for sounds, haptics and flashes. Reset every tick.
@@ -58,6 +91,8 @@ export interface TurfEvents {
   crashed: TurfSeat[]
   // Seats a crash sent back to their ground (the 'home' rule).
   sentHome: TurfSeat[]
+  // Seats that picked up a powerup.
+  collected: TurfSeat[]
 }
 
 export interface TurfState {
@@ -68,6 +103,8 @@ export interface TurfState {
   // How many cells each seat owns, kept in step with `owner`.
   ground: Record<TurfSeat, number>
   players: Record<TurfSeat, TurfPlayer>
+  // At most one, when powerups are on.
+  pickups: TurfPickup[]
   outcome: TurfOutcome | null
   tick: number
   events: TurfEvents

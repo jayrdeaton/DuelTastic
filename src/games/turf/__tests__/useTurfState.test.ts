@@ -72,7 +72,7 @@ describe('useTurfState', () => {
 
   it('ends the round on the clock', async () => {
     // 'home' so nobody's crash ends it first: both riders just keep going.
-    const options: TurfOptions = { crash: 'home', ownTrailDeadly: true, roundSeconds: 1 }
+    const options: TurfOptions = { crash: 'home', ownTrailDeadly: true, powerups: [], roundSeconds: 1 }
     const { result } = await renderHook(() => useTurfState({ ...PARAMS, options }))
     await act(async () => {
       result.current.beginPlaying()

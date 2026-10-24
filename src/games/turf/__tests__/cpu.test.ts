@@ -4,7 +4,7 @@ import { applyTurfCpu, chooseTurfCpuMove, type TurfCpuDifficulty, type TurfCpuPl
 import { applyTurfTurn, countGround, createTurfState, startTurf, tickTurf } from '../engine'
 import type { TurfPlayer, TurfRules, TurfSeat, TurfState } from '../types'
 
-const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true }
+const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
 
 // A small seeded random, so every run of these tests plays the same games.
 function seeded(seed: number): () => number {

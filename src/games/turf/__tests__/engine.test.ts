@@ -1,9 +1,10 @@
 import type { Direction, GridCell } from '@tastic/grid'
 
-import { applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS } from '../engine'
-import { DEFAULT_TURF_RULES, type TurfRules, type TurfSeat, type TurfState } from '../types'
+import { TURF_EFFECT_TICKS, TURF_PICKUP_MIN_DISTANCE } from '../constants'
+import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS, turfStepsFor } from '../engine'
+import { DEFAULT_TURF_RULES, type TurfEffects, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
 
-const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true }
+const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
 
 interface Start {
   head: GridCell
@@ -176,7 +177,7 @@ describe('crashing (out)', () => {
   })
 
   it('lets a trail cross itself when your own trail is safe', () => {
-    const s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, { crash: 'out', ownTrailDeadly: false })
+    const s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, { crash: 'out', ownTrailDeadly: false, powerups: [] })
     expect(s.phase).toBe('playing')
     expect(s.players[1].head).toEqual({ x: 5, y: 13 })
   })
@@ -285,5 +286,237 @@ describe('groundShare', () => {
   it('is the share of the whole board', () => {
     const s = setup({ head: { x: 5, y: 5 }, direction: 'up' }, { head: { x: 8, y: 1 }, direction: 'down' }, { cols: 10, rows: 10, radius: 0 })
     expect(groundShare(s, 1)).toBeCloseTo(0.01)
+  })
+})
+
+// Gives a seat a powerup to use.
+function holding(state: TurfState, seat: TurfSeat, held: TurfPowerup): TurfState {
+  return { ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }
+}
+
+function withEffects(state: TurfState, seat: TurfSeat, effects: Partial<TurfEffects>): TurfState {
+  const p = state.players[seat]
+  return { ...state, players: { ...state.players, [seat]: { ...p, effects: { ...p.effects, ...effects } } } }
+}
+
+// Holds the powerup and uses it straight away.
+const use = (state: TurfState, seat: TurfSeat, type: TurfPowerup) => applyTurfActivation(holding(state, seat, type), seat)
+
+const withPickup = (state: TurfState, type: TurfPowerup, cell: GridCell): TurfState => ({ ...state, pickups: [{ id: 'test', type, cell }] })
+
+const POWERUPS_ON: TurfRules = { ...DEFAULT_TURF_RULES, powerups: ['dash', 'frost'] }
+const chebyshev = (a: GridCell, b: GridCell) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
+
+describe('pickups', () => {
+  it('turns one up on nobody’s ground, away from both heads, when powerups are on', () => {
+    for (const r of [0, 0.37, 0.99]) {
+      const s = tickTurf(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR, { radius: 2 }), POWERUPS_ON, () => r)
+      expect(s.pickups).toHaveLength(1)
+      const { cell, type } = s.pickups[0]
+      expect(POWERUPS_ON.powerups).toContain(type)
+      expect(ownerAt(s, cell.x, cell.y)).toBe(0)
+      for (const seat of [1, 2] as const) expect(chebyshev(cell, s.players[seat].head)).toBeGreaterThanOrEqual(TURF_PICKUP_MIN_DISTANCE)
+    }
+  })
+
+  it('never puts one next to a trail', () => {
+    // Player 1 lays a trail up column 5, then the only free cells are right of column 7.
+    let s = run(setup({ head: { x: 5, y: 19 }, direction: 'up' }, { head: { x: 19, y: 0 }, direction: 'down' }, { cols: 20, rows: 20 }), 10)
+    s = withGround(s, { 1: rect(0, 0, 3, 19), 2: rect(8, 0, 19, 19) })
+    const spawned = tickTurf(s, POWERUPS_ON, () => 0.5)
+    expect(spawned.pickups).toHaveLength(1)
+    const { cell } = spawned.pickups[0]
+    for (const t of spawned.players[1].trail) expect(chebyshev(cell, t)).toBeGreaterThan(1)
+  })
+
+  it('turns none up while powerups are off', () => {
+    expect(tickTurf(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR)).pickups).toEqual([])
+  })
+
+  it('is picked up from the next cell over, and another turns up', () => {
+    let s = withPickup(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 'frost', { x: 6, y: 12 })
+    s = tickTurf(s, POWERUPS_ON, () => 0)
+    expect(s.players[1].held).toBeNull()
+    s = tickTurf(s, POWERUPS_ON, () => 0)
+    expect(s.players[1].held).toBe('frost')
+    expect(s.events.collected).toEqual([1])
+    expect(s.pickups).toHaveLength(1)
+    expect(s.pickups[0].id).not.toBe('test')
+  })
+
+  it('swaps whatever was held', () => {
+    let s = holding(withPickup(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 'frost', { x: 5, y: 13 }), 1, 'dash')
+    s = run(s, 1)
+    expect(s.players[1].held).toBe('frost')
+  })
+})
+
+describe('using a powerup', () => {
+  it('does nothing with nothing held, or before the round starts', () => {
+    const s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR)
+    expect(applyTurfActivation(s, 1)).toBe(s)
+    const waiting = holding(createTurfState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace' }), 1, 'dash')
+    expect(applyTurfActivation(waiting, 1)).toBe(waiting)
+  })
+
+  it('empties the slot', () => {
+    expect(use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 1, 'fence').players[1].held).toBeNull()
+  })
+
+  it('lets a speed effect replace another: Dash thaws a frozen rider', () => {
+    let s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR)
+    s = use(s, 2, 'frost')
+    expect(s.players[1].effects.speed?.type).toBe('frost')
+    s = use(s, 1, 'dash')
+    expect(s.players[1].effects.speed?.type).toBe('dash')
+  })
+})
+
+describe('Dash and Gust', () => {
+  it('Dash covers two cells a tick for its run, then one', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'dash')
+    s = run(s, TURF_EFFECT_TICKS.dash)
+    expect(s.players[1].head).toEqual({ x: 5, y: 75 - 2 * TURF_EFFECT_TICKS.dash })
+    expect(s.players[1].effects.speed).toBeNull()
+    s = run(s, 1)
+    expect(s.players[1].head.y).toBe(75 - 2 * TURF_EFFECT_TICKS.dash - 1)
+  })
+
+  it('checks every cell, so a dashing rider can’t skip over a trail', () => {
+    // Player 2 lays a trail along row 10; player 1 dashes up column 5 from (5, 11) and would land on
+    // (5, 9) if its first cell went unchecked.
+    let s = run(setup({ head: { x: 5, y: 17 }, direction: 'up' }, { head: { x: 0, y: 10 }, direction: 'right' }), 6)
+    expect(s.players[1].head).toEqual({ x: 5, y: 11 })
+    s = run(use(s, 1, 'dash'), 1)
+    expect(s.outcome).toEqual({ type: 'win', winner: 1, reason: 'crash' })
+  })
+
+  it('Gust forces the other rider to two cells a tick', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'gust')
+    s = run(s, TURF_EFFECT_TICKS.gust)
+    expect(s.players[2].head).toEqual({ x: 15, y: 2 + 2 * TURF_EFFECT_TICKS.gust })
+    expect(s.players[1].head.y).toBe(75 - TURF_EFFECT_TICKS.gust)
+  })
+})
+
+describe('Frost', () => {
+  it('holds the other rider still, keeping its turn for when it thaws', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'frost')
+    s = applyTurfTurn(s, 2, 'left')
+    s = run(s, TURF_EFFECT_TICKS.frost)
+    expect(s.players[2].head).toEqual(FAR.head)
+    expect(s.players[2].pendingDirection).toBe('left')
+    expect(turfStepsFor(s.players[2].effects, s.tick + 1)).toBe(1)
+    s = run(s, 1)
+    expect(s.players[2].head).toEqual({ x: 14, y: 2 })
+  })
+
+  it('lets you cut a frozen rider out on its trail by riding into it', () => {
+    let s = run(setup({ head: { x: 5, y: 7 }, direction: 'right' }, { head: { x: 10, y: 5 }, direction: 'down' }), 2)
+    s = run(use(s, 1, 'frost'), 3)
+    expect(s.outcome).toEqual({ type: 'win', winner: 1, reason: 'crash' })
+    expect(s.players[2].crashCell).toEqual({ x: 10, y: 7 })
+  })
+
+  it('still crashes you riding into a frozen rider on its own ground', () => {
+    const s = run(use(setup({ head: { x: 5, y: 7 }, direction: 'right' }, { head: { x: 10, y: 7 }, direction: 'down' }, { radius: 0 }), 1, 'frost'), 5)
+    expect(s.outcome).toEqual({ type: 'win', winner: 2, reason: 'crash' })
+  })
+})
+
+describe('Tangle', () => {
+  it('lands on the other rider for its run', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'tangle')
+    expect(s.players[2].effects.tangle).toEqual({ expiresAtTick: TURF_EFFECT_TICKS.tangle })
+    expect(s.players[1].effects.tangle).toBeNull()
+    s = run(s, TURF_EFFECT_TICKS.tangle)
+    expect(s.players[2].effects.tangle).toBeNull()
+  })
+})
+
+describe('Fence', () => {
+  it('lets you ride over your own trail', () => {
+    const s = run(use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 1, 'fence'), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } })
+    expect(s.phase).toBe('playing')
+    expect(s.players[1].head).toEqual({ x: 5, y: 13 })
+  })
+
+  it('keeps your trail from being cut', () => {
+    const s = run(use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, { head: { x: 2, y: 10 }, direction: 'right' }), 2, 'fence'), 5)
+    expect(s.phase).toBe('playing')
+    expect(s.players[2].alive).toBe(true)
+    expect(s.players[1].head).toEqual({ x: 5, y: 10 })
+  })
+
+  it('never loses a head-on', () => {
+    const s = run(use(setup({ head: { x: 5, y: 14 }, direction: 'up' }, { head: { x: 5, y: 6 }, direction: 'down' }), 1, 'fence'), 4)
+    expect(s.outcome).toEqual({ type: 'win', winner: 1, reason: 'crash' })
+  })
+
+  it('still crashes at the edge', () => {
+    const s = run(use(setup({ head: { x: 5, y: 2 }, direction: 'up' }, FAR), 1, 'fence'), 3)
+    expect(s.outcome).toEqual({ type: 'win', winner: 2, reason: 'crash' })
+  })
+
+  it('runs out', () => {
+    let s = use(setup({ head: { x: 5, y: 75 }, direction: 'up' }, FAR, { rows: 80 }), 1, 'fence')
+    s = run(s, TURF_EFFECT_TICKS.fence - 1)
+    expect(s.players[1].effects.fence).not.toBeNull()
+    s = run(s, 1)
+    expect(s.players[1].effects.fence).toBeNull()
+  })
+})
+
+describe('Sod', () => {
+  it('claims the square around your head', () => {
+    const s = use(setup({ head: { x: 10, y: 10 }, direction: 'up' }, FAR), 1, 'sod')
+    expect(s.ground[1]).toBe(25)
+    for (const [x, y] of [
+      [8, 8],
+      [12, 12],
+      [8, 12]
+    ]) {
+      expect(ownerAt(s, x, y)).toBe(1)
+    }
+    expect(s.events.captured[1]).toBe(24)
+  })
+
+  it('brings you home when you’re out, claiming your trail and what it closes off', () => {
+    // Up column 5 from a 3 x 3 home, right along row 10, down column 13 and left along row 17: Sod at
+    // (8, 17) reaches back to the home square and closes the loop.
+    let s = setup({ head: { x: 5, y: 20 }, direction: 'up' }, { head: { x: 25, y: 2 }, direction: 'down' }, { cols: 30, rows: 40, radius: 1 })
+    s = run(s, 30, { 10: { 1: 'right' }, 18: { 1: 'down' }, 25: { 1: 'left' } })
+    expect(s.players[1].head).toEqual({ x: 8, y: 17 })
+    const trail = s.players[1].trail
+    s = use(s, 1, 'sod')
+    expect(s.players[1].trail).toEqual([])
+    expect(s.players[1].leftFrom).toBeNull()
+    for (const cell of trail) expect(ownerAt(s, cell.x, cell.y)).toBe(1)
+    expect(ownerAt(s, 9, 12)).toBe(1)
+    expect(ownerAt(s, 11, 18)).toBe(0)
+  })
+
+  it('suffocates a rider whose last ground it covers', () => {
+    let s = setup({ head: { x: 5, y: 10 }, direction: 'up' }, FAR)
+    s = withGround(s, { 1: [{ x: 5, y: 10 }], 2: [{ x: 6, y: 11 }] })
+    s = use(s, 1, 'sod')
+    expect(s.outcome).toEqual({ type: 'win', winner: 1, reason: 'suffocation' })
+    expect(s.players[2].alive).toBe(false)
+  })
+})
+
+describe('powerups on the home rule', () => {
+  it('holds a rider sent home mid-dash there for the rest of the tick', () => {
+    // At the top edge of its home square, dashing up: off the board on the tick's first cell, back to
+    // (5, 0) facing along its ground, and not moving on for the second.
+    let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, FAR, { radius: 1 }), 1, {}, HOME)
+    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
+    expect(s.players[1].trail).toEqual([])
+    s = withEffects(s, 1, { speed: { type: 'dash', expiresAtTick: s.tick + 5 } })
+    s = run(s, 1, {}, HOME)
+    expect(s.events.sentHome).toEqual([1])
+    expect(s.players[1].crashCell).toEqual({ x: 5, y: -1 })
+    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
+    expect(s.players[1].direction).toBe('right')
   })
 })
