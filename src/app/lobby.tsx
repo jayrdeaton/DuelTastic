@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { LOBBY_SHARED_CONTROLS_IDS, LobbySharedControls } from '@/components/LobbySharedControls'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { DEFAULT_P1_COLOR, DEFAULT_P2_COLOR, LOBBY_PANEL_SWAP_FADE_MS, POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/constants/game'
+import { withTagDefaults } from '@/games/tag/constants'
 import { withTurfDefaults } from '@/games/turf/constants'
 import { useProfiles } from '@/hooks/useProfiles'
 import { useSettings } from '@/hooks/useSettings'
@@ -28,7 +29,8 @@ import { safeBack } from '@/utils/navigation'
 // Which game the round is. Here until the DuelTastic pack, where Home lists the games instead.
 const GAME_OPTIONS: MenuOption<GameChoice>[] = [
   { value: 'lightcycles', label: 'LightCycles', icon: 'motorbike' },
-  { value: 'turf', label: 'Turf', icon: 'vector-square' }
+  { value: 'turf', label: 'Turf', icon: 'vector-square' },
+  { value: 'tag', label: 'Tag', icon: 'run-fast' }
 ]
 
 // Small -> large vehicles, echoing the game's own light-cycle theme rather than a generic S/M/L
@@ -541,6 +543,8 @@ export default function LobbyScreen() {
       onGameChange={(value) => setSettings({ game: value })}
       turf={withTurfDefaults(settings.turf)}
       onTurfChange={(patch) => setSettings({ turf: { ...withTurfDefaults(settings.turf), ...patch } })}
+      tag={withTagDefaults(settings.tag)}
+      onTagChange={(patch) => setSettings({ tag: { ...withTagDefaults(settings.tag), ...patch } })}
       gridSizeTier={settings.gridSizeTier}
       gridSizeOptions={GRID_SIZE_OPTIONS}
       onGridSizeChange={(value) => setSettings({ gridSizeTier: value })}

@@ -12,6 +12,7 @@ import { MatchOverlays } from '@/components/MatchOverlays'
 import { PowerupHud } from '@/components/PowerupHud'
 import TouchInputLayer from '@/components/TouchInputLayer'
 import { deathAnimationDurationMs, MAX_BOARD_CONTENT_WIDTH, TRAIL_SPEED_RATE } from '@/constants/game'
+import { TagRound } from '@/games/tag/TagRound'
 import { TurfRound } from '@/games/turf/TurfRound'
 import { useGameState } from '@/hooks/useGameState'
 import { useGameStats } from '@/hooks/useGameStats'
@@ -250,9 +251,9 @@ export default function GameScreen() {
       // the time a round can actually finish and report an outcome here, GameRound (which requires
       // non-null settings as a prop) is already what's rendering it.
       if (!settings) return
-      // A Turf round counts toward the match on screen but not LightCycles' stats or achievements:
-      // Turf gets its own with the DuelTastic pack.
-      if (settings.game === 'turf') return
+      // A Turf or Tag round counts toward the match on screen but not LightCycles' stats or
+      // achievements: each gets its own with the DuelTastic pack.
+      if (settings.game !== 'lightcycles') return
       const result = recordRoundOutcome(outcome, { gameMode: settings.gameMode, cpuDifficulty: settings.cpuDifficulty, colors, profileIds })
       // Each human seat's own unlocks plus the device-wide ones that are really that seat's (all of
       // them for a guest, only scope: 'device' ones for a profile; see @tastic/achievements'
@@ -339,7 +340,8 @@ export default function GameScreen() {
       the safe area - full-screen immersion during actual play, not just when there'd otherwise be
       a visible clash. */}
       <View style={[styles.boardArea, settings.extendIntoSafeArea ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + gutterWidth, right: insets.right + gutterWidth }]} onLayout={onBoardLayout}>
-        {designSize && (settings.game === 'turf' ? <TurfRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} /> : <GameRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} safeAreaInsetsPx={safeAreaInsetsPx} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} />)}
+        {designSize &&
+          (settings.game === 'tag' ? <TagRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} /> : settings.game === 'turf' ? <TurfRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} /> : <GameRound width={designSize.width} height={designSize.height} liveWidth={liveWidth} liveHeight={liveHeight} safeAreaInsetsPx={safeAreaInsetsPx} settings={settings} colors={colors} profileNames={profileNames} orientationMode={orientationMode} p1OnRight={p1OnRight} roundHistory={roundHistory} onRoundOutcome={handleRoundOutcome} />)}
       </View>
     </View>
   )

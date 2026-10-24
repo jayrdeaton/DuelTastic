@@ -1,6 +1,7 @@
 import { createSettingsSlice } from '@rific/core'
 
 import { DEFAULT_GRID_SIZE_TIER } from '@/constants/game'
+import { DEFAULT_TAG_OPTIONS } from '@/games/tag/constants'
 import { DEFAULT_TURF_OPTIONS } from '@/games/turf/constants'
 import type { Settings } from '@/types'
 
@@ -24,7 +25,8 @@ export const DEFAULT_SETTINGS: Settings = {
   wrapEdges: false,
   deferBottomEdgeGestures: false,
   game: 'lightcycles',
-  turf: DEFAULT_TURF_OPTIONS
+  turf: DEFAULT_TURF_OPTIONS,
+  tag: DEFAULT_TAG_OPTIONS
 }
 
 const { actions, reducer } = createSettingsSlice<Settings, 'merge', never>('settings', {

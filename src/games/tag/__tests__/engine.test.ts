@@ -1,7 +1,7 @@
 import type { Direction, GridCell } from '@tastic/grid'
 
 import { TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_TAIL_CELLS } from '../constants'
-import { applyTagTurn, createTagState, finishTagOnTime, pillarsFor, startTag, tickTag, touching } from '../engine'
+import { applyTagTurn, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
 import type { TagArena, TagSeat, TagState } from '../types'
 
 interface Start {
@@ -171,6 +171,17 @@ describe('tagging', () => {
     expect(s.players[1].head).toEqual(frozenAt)
     expect(s.it).toBe(1)
     expect(s.players[2].head.x).toBeLessThan(5)
+  })
+
+  it('counts the freeze down for the board', () => {
+    let s = headOn()
+    expect(freezeLeft(s)).toBe(0)
+    while (s.it === 2) s = tickTag(s)
+    expect(freezeLeft(s)).toBe(1)
+    s = run(s, TAG_FREEZE_TICKS - 1)
+    expect(freezeLeft(s)).toBeCloseTo(1 / TAG_FREEZE_TICKS)
+    s = run(s, 1)
+    expect(freezeLeft(s)).toBe(0)
   })
 
   it('tags back once the freeze is over', () => {

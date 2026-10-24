@@ -28,9 +28,9 @@ export function touching(a: GridCell, b: GridCell): boolean {
   return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1
 }
 
-// Whether It is frozen (and can't tag) on tick `tick`.
-export function itFrozen(state: TagState, tick: number = state.tick + 1): boolean {
-  return tick <= state.frozenThrough
+// How much of It's freeze is left before the next tick, 1 just tagged to 0 free to move.
+export function freezeLeft(state: TagState): number {
+  return Math.max(0, state.frozenThrough - state.tick) / TAG_FREEZE_TICKS
 }
 
 // Where pillars go along one side of the board: evenly spaced, centered, and mirrored end to end so
