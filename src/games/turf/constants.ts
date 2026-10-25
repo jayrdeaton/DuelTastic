@@ -1,4 +1,5 @@
-import { EFFECT_ICONS, type EffectKind } from '../shared/powerups'
+import { EFFECT_ICONS, type EffectKind } from '@/shared/powerups'
+
 import type { TurfOptions, TurfPowerup } from './types'
 
 // Milliseconds per cell at LightCycles' medium cell size (8px), scaled to the round's real cell size
@@ -10,10 +11,6 @@ export const TURF_SPEED_INTERVAL_MS = { slow: 120, normal: 90, fast: 66 } as con
 export const TURF_ROUND_SECONDS = [60, 120, 180] as const
 
 export const DEFAULT_TURF_OPTIONS: TurfOptions = { crash: 'out', ownTrailDeadly: true, powerups: [], roundSeconds: 120 }
-
-// Saved options with every field filled in. Read them through this: options saved before a field
-// existed don't have it, and the settings slice only fills in missing top-level settings.
-export const withTurfDefaults = (saved: Partial<TurfOptions> | undefined): TurfOptions => ({ ...DEFAULT_TURF_OPTIONS, ...saved })
 
 // The most a single frame may count toward the round clock, so a stalled frame (the app pausing on a
 // slow device, a debugger) can't eat seconds off the clock in one go.

@@ -1,8 +1,9 @@
 import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDirection, stepCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
-import { distanceField } from '../shared/distanceField'
-import { compensatesForReverse, isShielded, isSlowed, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '../shared/powerups'
+import { distanceField } from '@/shared/distanceField'
+import { compensatesForReverse, isShielded, isSlowed, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '@/shared/powerups'
+
 import { TURF_EFFECT_TICKS } from './constants'
 import { applyTurfActivation, applyTurfTurn, cellIndex } from './engine'
 import { DEFAULT_TURF_RULES, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'

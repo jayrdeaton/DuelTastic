@@ -1,7 +1,8 @@
 import type { Direction, GridCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
-import { addEffect, NO_EFFECTS } from '../../shared/powerups'
+import { addEffect, NO_EFFECTS } from '@/shared/powerups'
+
 import { applyTagCpu, chooseTagCpuMove, shouldTagCpuActivate, type TagCpuDifficulty } from '../cpu'
 import { createTagState, startTag, tickTag } from '../engine'
 import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'

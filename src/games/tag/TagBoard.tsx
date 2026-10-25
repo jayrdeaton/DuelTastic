@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 
-import { EffectRings, PickupGlyph } from '../shared/BoardPowerups'
-import type { Pickup } from '../shared/powerups'
+import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import type { Pickup } from '@/shared/powerups'
+
 import type { TagPhase, TagPillar, TagPlayer, TagPowerup, TagSeat } from './types'
 
 export interface TagBoardProps {

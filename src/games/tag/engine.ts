@@ -2,9 +2,9 @@ import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } fr
 
 // Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
-import { startingStateFor } from '@/utils/grid'
+import { startingStateFor } from '@/shared/match/grid'
+import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
 
-import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '../shared/powerups'
 import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_PILLAR_MARGIN, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_POWERUP_EFFECTS, TAG_TAIL_CELLS } from './constants'
 import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState } from './types'
 

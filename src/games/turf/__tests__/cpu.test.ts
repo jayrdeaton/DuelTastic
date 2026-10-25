@@ -1,7 +1,8 @@
 import { type Direction, type GridCell, isInBounds, stepCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
-import { type Effects, NO_EFFECTS } from '../../shared/powerups'
+import { type Effects, NO_EFFECTS } from '@/shared/powerups'
+
 import { TURF_POWERUPS } from '../constants'
 import { applyTurfCpu, chooseTurfCpuMove, shouldTurfCpuActivate, type TurfCpuDifficulty, type TurfCpuPlan } from '../cpu'
 import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, startTurf, tickTurf } from '../engine'

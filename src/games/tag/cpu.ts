@@ -1,8 +1,9 @@
 import { ALL_DIRECTIONS, type Direction, type GridCell, isOppositeDirection, stepCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
-import { distanceField } from '../shared/distanceField'
-import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, ticksFor, ticksLeft } from '../shared/powerups'
+import { distanceField } from '@/shared/distanceField'
+import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, ticksFor, ticksLeft } from '@/shared/powerups'
+
 import { TAG_IT_SPEED } from './constants'
 import { applyTagActivation, applyTagTurn, cellIndex, isOpen, otherSeat } from './engine'
 import type { TagSeat, TagState } from './types'

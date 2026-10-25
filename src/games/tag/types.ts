@@ -1,6 +1,7 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
-import type { Effects, Pickup } from '../shared/powerups'
+import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
+import type { Effects, Pickup } from '@/shared/powerups'
 
 // Tag: two riders on one board, one of them It. It touches the other rider (passing within a cell of
 // them) to make them It instead, and the new It stands frozen for a moment while the other gets away
@@ -95,4 +96,13 @@ export interface TagState {
   outcome: TagOutcome | null
   tick: number
   events: TagEvents
+}
+
+// Tag's loadout, saved per player (see settings.ts): its own rules, plus the speed, grid size, CPU
+// level and controls every game in the pack has.
+export interface TagSettings extends TagOptions {
+  speedTier: SpeedTier
+  gridSizeTier: GridSizeTier
+  cpuDifficulty: CpuDifficulty
+  controlScheme: Record<TagSeat, KeyScheme>
 }

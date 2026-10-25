@@ -1,6 +1,7 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
-import type { Effects, Pickup } from '../shared/powerups'
+import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
+import type { Effects, Pickup } from '@/shared/powerups'
 
 // Turf: two riders on one board, each starting on a small square of their own ground. Leaving it lays
 // a trail; getting back to it claims the trail and everything the trail encloses, the other rider's
@@ -96,4 +97,13 @@ export interface TurfState {
   outcome: TurfOutcome | null
   tick: number
   events: TurfEvents
+}
+
+// Turf's loadout, saved per player (see settings.ts): its own rules, plus the speed, grid size, CPU
+// level and controls every game in the pack has.
+export interface TurfSettings extends TurfOptions {
+  speedTier: SpeedTier
+  gridSizeTier: GridSizeTier
+  cpuDifficulty: CpuDifficulty
+  controlScheme: Record<TurfSeat, KeyScheme>
 }

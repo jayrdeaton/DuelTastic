@@ -1,6 +1,6 @@
-import type { GridSizeTier, SpeedTier } from '@/types'
+import type { GridSizeTier, SpeedTier } from '@/shared/match/types'
+import { EFFECT_ICONS, type EffectKind } from '@/shared/powerups'
 
-import { EFFECT_ICONS, type EffectKind } from '../shared/powerups'
 import type { TagOptions, TagPowerup } from './types'
 
 // Tag's cells are much bigger than LightCycles' and Turf's: a chase wants a board a rider can cross
@@ -24,10 +24,6 @@ export const TAG_TAIL_CELLS = 5
 export const TAG_ROUND_SECONDS = [30, 60, 90] as const
 
 export const DEFAULT_TAG_OPTIONS: TagOptions = { rule: 'hotPotato', arena: 'pillars', roundSeconds: 60, powerups: [] }
-
-// Saved options with every field filled in. Read them through this: options saved before a field
-// existed don't have it, and the settings slice only fills in missing top-level settings.
-export const withTagDefaults = (saved: Partial<TagOptions> | undefined): TagOptions => ({ ...DEFAULT_TAG_OPTIONS, ...saved })
 
 // The most a single frame may count toward the round clock (a stalled frame can't eat seconds).
 export const TAG_MAX_CLOCK_STEP_MS = 250

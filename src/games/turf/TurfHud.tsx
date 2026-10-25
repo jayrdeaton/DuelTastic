@@ -1,7 +1,8 @@
 import { MONO_FONT } from '@tastic/hud'
 import { StyleSheet, Text, View } from 'react-native'
 
-import { HeldPowerup } from '../shared/HeldPowerup'
+import { HeldPowerup } from '@/shared/HeldPowerup'
+
 import { TURF_POWERUP_ICONS } from './constants'
 import type { TurfPowerup, TurfSeat } from './types'
 

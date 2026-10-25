@@ -3,8 +3,9 @@ import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
 import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 
-import { EffectRings, PickupGlyph } from '../shared/BoardPowerups'
-import type { Pickup } from '../shared/powerups'
+import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import type { Pickup } from '@/shared/powerups'
+
 import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
 
 export interface TurfBoardProps {
