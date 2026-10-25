@@ -17,7 +17,8 @@ const MODES: RoundMode[] = ['vsCpu', 'twoPlayer']
 const RULE_VARIANTS: Record<string, object[]> = {
   lightcycles: [{}],
   turf: [{ crash: 'out' }, { crash: 'home' }],
-  tag: [{ rule: 'hotPotato' }, { rule: 'leastIt' }]
+  tag: [{ rule: 'hotPotato' }, { rule: 'leastIt' }],
+  snake: [{}]
 }
 
 function cardsFor(gameId: string, touch: boolean, keys: Record<Player, KeyScheme>, variant: object, mode: RoundMode) {
@@ -45,7 +46,7 @@ describe.each(games.map((g) => [g.id]))("%s's How to Play cards", (gameId) => {
       }
   })
 
-  it('names the rider and the two-player setup on the first and last cards', () => {
+  it('names what you steer and the two-player setup on the first and last cards', () => {
     const steps = cardsFor(gameId, true, EVERY_PAIR[0], RULE_VARIANTS[gameId][0], 'vsCpu')
     expect(steps[0].title).toMatch(/^Steer Your /)
     expect(steps[steps.length - 1].title).toBe('Two Players, One Phone')

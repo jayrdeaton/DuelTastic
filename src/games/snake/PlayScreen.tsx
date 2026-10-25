@@ -1,0 +1,643 @@
+import { useAutoPaperTheme } from '@rific/auto-paper'
+import { useKeepAwake } from '@rific/core'
+import { IconButton, useVibration } from '@rific/feedback-press'
+import { useToast } from '@rific/toaster'
+import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
+import { computeContentBounds, FakeLandscapeView, getFixedZoneRotation, getViewRotation, rotateInsets, useBackgroundPause, useOrientationState, useRotation, useSettledWindowDimensions } from '@tastic/core'
+import { computeGridSize } from '@tastic/grid'
+import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
+import { needsSharedNeutralZone } from '@tastic/split-screen'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Platform, StyleSheet, View } from 'react-native'
+import { Text } from 'react-native-paper'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useDispatch } from 'react-redux'
+
+import { SeatToasters } from '@/shared/SeatToasters'
+import { SEAT_TOAST_STACKS, useUnlockToasts } from '@/shared/useUnlockToasts'
+import { SettingsDialog } from '@/shell/components/SettingsDialog'
+import { useActiveRound } from '@/shell/hooks/useActiveRound'
+import { useProfiles } from '@/shell/hooks/useProfiles'
+import { safeBack } from '@/shell/navigation'
+import { liveplayActions } from '@/shell/redux/liveplaySlice'
+
+import { GameOverDialog, type GameOverOutcome, type GameOverSeatResult } from './components/GameOverDialog'
+import KeyboardInputLayer from './components/KeyboardInputLayer'
+import OnboardingOverlay from './components/OnboardingOverlay'
+import { SnakeBoard } from './components/SnakeBoard'
+import { SnakePowerupHud } from './components/SnakePowerupHud'
+import TouchInputLayer, { TouchInputMode } from './components/TouchInputLayer'
+import { DESKTOP_WEB_MIN_WIDTH, MAX_BOARD_CONTENT_WIDTH, SNAKE_CELL_PX, SNAKE_GAME_OVER_DIALOG_HOLD_MS, snakeDeathFadeMs } from './constants/snake'
+import { useSeatSplit } from './hooks/useSeatSplit'
+import { useSnakeSounds } from './hooks/useSnakeSounds'
+import { SnakeMode, useSnakeState } from './hooks/useSnakeState'
+import { DEFAULT_SETTINGS } from './settings'
+import { snakeStats } from './stats'
+import { Direction, GamePhase, ProfileStats, SnakeId, SnakePowerupType, SnakeRoundSettings } from './types'
+import { seatToastSpots } from './utils/seatToastSpots'
+import type { SeatRoundOutcome } from './utils/statsEngine'
+import { DEFAULT_PROFILE_STATS } from './utils/statsValidation'
+
+// A stable, referentially-constant all-zero insets object - see safeAreaInsetsPx's own comment
+// below for why this is passed instead of the device's real insets whenever the board isn't
+// actually bleeding under them.
+const ZERO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 }
+// Solo and Vs CPU have one human, seat 1.
+const SOLO_SEATS: readonly SnakeId[] = [1]
+
+// Snake's play screen. The round the loadout committed (seat 2's Nobody is Solo, the CPU Vs CPU, a
+// person 2 Player), frozen at mount like every game's, so a settings change made mid-match (the
+// loadout stays mounted under this screen) only affects the next match. A direct link or a web
+// reload, with nothing committed, plays the defaults against the CPU.
+export default function PlayScreen() {
+  const activeRound = useActiveRound('snake', DEFAULT_SETTINGS)
+  const [{ mode, settings: activeRoundSettings }] = useState<{ mode: SnakeMode; settings: typeof DEFAULT_SETTINGS }>(() => activeRound)
+
+  // Each snake is its seat's color: the shell paints the theme's primary and secondary in the two
+  // seats' colors (the seat button's pick, or the profile's own), the same as every game's pieces.
+  const { colors: themeColors, dark } = useAutoPaperTheme()
+  const colors = useMemo<Record<SnakeId, string>>(() => ({ 1: themeColors.primary, 2: themeColors.secondary }), [themeColors.primary, themeColors.secondary])
+
+  const { width, height } = useSettledWindowDimensions()
+  const fullScreen = activeRoundSettings.fullScreen
+  // Resolved once here (not inside the computeGridSize useMemo below) since designWidth/
+  // designHeight and the cellPx prop passed to SnakeBoard both need the same resolved pixel size
+  // too - see constants/snake.ts's own SNAKE_CELL_PX comment for what each tier actually means.
+  const gridSizeTier = activeRoundSettings.gridSizeTier
+  const cellPx = SNAKE_CELL_PX[gridSizeTier]
+  const insets = useSafeAreaInsets()
+  const { gutterWidth } = computeContentBounds(width, MAX_BOARD_CONTENT_WIDTH)
+  // The AVAILABLE width/height computeGridSize sizes the grid from - not just a visual crop applied
+  // after the fact, so a wide desktop-web window genuinely gets a narrower board (fewer columns) and
+  // a device's notch/status bar/home indicator genuinely gets a shorter one (fewer rows), instead of
+  // a merely letterboxed view of a bigger one. Mirrors LightCycles' own Full Screen/extendIntoSafeArea
+  // setting, which also governs the actual grid a round plays on, not just its on-screen presentation:
+  // width loses both the desktop-web gutter and the left/right safe-area insets, height loses the
+  // top/bottom safe-area insets. Both ignored entirely once fullScreen is on, same as LightCycles'
+  // extendIntoSafeArea bypassing its own gutter+insets. Live (not frozen) - see boardScale's own
+  // comment below for how a live availableWidth/availableHeight and a frozen state.grid stay
+  // reconciled across a resize instead of fighting each other.
+  const availableWidth = fullScreen ? width : width - insets.left - insets.right - 2 * gutterWidth
+  const availableHeight = fullScreen ? height : height - insets.top - insets.bottom
+  const grid = useMemo(() => computeGridSize(availableWidth, availableHeight, cellPx), [availableWidth, availableHeight, cellPx])
+
+  const wrapEdges = activeRoundSettings.wrapEdges
+  const speedTier = activeRoundSettings.speedTier
+  const arenaVariant = activeRoundSettings.arenaVariant
+  const enabledPowerups = activeRoundSettings.enabledPowerups
+  // Only read in Vs CPU: Solo and 2 Player never hand it to the CPU or the stats.
+  const cpuDifficulty = activeRoundSettings.cpuDifficulty
+  const controlScheme = activeRoundSettings.controlScheme
+  const { recordRoundOutcome, stats } = snakeStats.useSnakeStats()
+  const { lastSelected, profiles } = useProfiles()
+  const { clear: clearToasts } = useToast()
+  const showUnlockToasts = useUnlockToasts()
+  const dispatch = useDispatch()
+
+  // Bundled once via useMemo: see types.ts's own SnakeRoundSettings comment for why this is
+  // just a function-signature convenience over 4 already-read round settings, not a second
+  // settings home. Memoized so useSnakeState's own retry/tick-loop callbacks (which depend on this
+  // object's identity) don't churn every render, only when one of the underlying values actually
+  // changes.
+  const roundSettings: SnakeRoundSettings = useMemo(() => ({ wrapEdges, speedTier, arenaVariant, enabledPowerups }), [wrapEdges, speedTier, arenaVariant, enabledPowerups])
+
+  // All-zero unless the board is actually bleeding under the real insets (fullScreen) - see
+  // useSnakeState's own safeAreaInsetsPx comment for why: the non-fullScreen boardArea style below
+  // already stops short of the inset on its own, so there's nothing left for food/a pickup to avoid.
+  const safeAreaInsetsPx = fullScreen ? insets : ZERO_INSETS
+
+  // useSnakeState's own outer phase (onboarding -> playing -> gameOver - see that hook's own
+  // extensive comment on why this is a different, hook-layer phase from the pure engine's inner
+  // state.phase) isn't part of what the hook returns; only state/turn/beginPlaying/retry/
+  // tickIntervalMs are. Mirrored here instead: `localPhase` tracks exactly the same
+  // onboarding<->playing transition the hook's own internal `phaseIntent` does, since both only
+  // ever flip via the same two call sites (beginPlaying / retry) this screen already owns calling.
+  // `state.phase` flipping to 'roundOver' (the engine's own one-way transition, driven by
+  // tickSnake) still drives the rest exactly the way it does inside the hook, through `phase` below
+  // useSnakeState. Declared up here, ahead of the pause hooks, because useBackgroundPause's getter
+  // reads `phase`: with this state declared after that getter, the React Compiler gives up on
+  // memoizing the whole screen (react-hooks/preserve-manual-memoization warns on handleBeginPlaying
+  // and handleRetry).
+  const [localPhase, setLocalPhase] = useState<'onboarding' | 'playing'>('onboarding')
+
+  // Mirrors BoxHockey's/AirHockey's/Pong's/LightCycles' identical onBackPress + ConfirmDialog
+  // pair (rendered near SettingsDialog below): only interrupts with a "Quit Match?" confirmation
+  // when there's an actual score to lose, so backing out of a still-scoreless round (onboarding,
+  // or a round that ended 0-0) exits immediately instead of confirming nothing. Previously this
+  // screen had no confirmation at all: its back button only ever showed during onboarding, where
+  // this same zero-score case already made it a no-op. Now backed by @tastic/hud's shared
+  // useQuitConfirmation (see that hook's own doc for why it owns only confirmVisible/requestBack/
+  // cancelBack, not the ConfirmDialog JSX/copy itself). Called above useSnakeState, like AirHockey's,
+  // because `paused` below (which useSnakeState takes) depends on confirmVisible: the getter reads
+  // humanScore/opponentScore, declared further down from useSnakeState's state, only lazily, inside
+  // a real requestBack() call. Once the round is over (gameOver) its stats are already recorded and
+  // nothing is lost, so back exits at once, the same as the result card's own Quit.
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => phase !== 'gameOver' && (humanScore > 0 || (opponentScore ?? 0) > 0), safeBack)
+  // Leaving the app mid-match (home, app switch, a phone call, Control Center) latches a pause that
+  // only the Paused dialog's Resume clears - see @tastic/core's useBackgroundPause. Skipped once the
+  // match is over, or while a dialog already holds the pause by itself.
+  const { backgroundPaused, resume } = useBackgroundPause(() => phase !== 'gameOver' && !settingsOpen && !confirmVisible)
+  // Keeps the screen from dimming and locking while a match is up, unless Keep Awake is off in
+  // Settings (read live, so the toggle applies mid-match). Expo only does this by itself in
+  // development builds, and the OS auto-lock only counts screen touches, so tilt or keyboard
+  // steering, or watching the CPU, could let a release build lock mid-match. The setting and the
+  // expo-keep-awake module are @rific/core's, from the shell's Providers.tsx KeepAwakeBridge.
+  useKeepAwake('game')
+  const paused = settingsOpen || confirmVisible || backgroundPaused
+
+  const { state, turn, activate, beginPlaying, retry, tickIntervalMs } = useSnakeState(grid, mode, roundSettings, cpuDifficulty, colors, cellPx, safeAreaInsetsPx, paused)
+
+  // See localPhase's own comment above.
+  const phase: GamePhase = state.phase === 'roundOver' ? 'gameOver' : localPhase
+
+  const handleBeginPlaying = useCallback(() => {
+    beginPlaying()
+    setLocalPhase('playing')
+  }, [beginPlaying])
+
+  const handleRetry = useCallback(() => {
+    retry()
+    setLocalPhase('onboarding')
+  }, [retry])
+
+  // Each seat's current (committed) heading, straight from game state - passed down to both
+  // TouchInputLayer and KeyboardInputLayer so each can gate its own turn sound/haptic on
+  // isEffectiveTurn, mirroring LightCycles' identical currentDirections memo (and identical prop on
+  // its own TouchInputLayer/TouchInputLayer.web) in its own play screen exactly - the feedback itself
+  // lives in the input layers there too, not here. 'up' is an arbitrary placeholder for a seat that
+  // doesn't exist yet (solo's snake 2); neither input layer ever actually looks it up for a seat no
+  // zone/key scheme is wired to.
+  const currentDirections: Record<SnakeId, Direction> = useMemo(
+    () => ({
+      1: state.snakes.find((s) => s.id === 1)?.direction ?? 'up',
+      2: state.snakes.find((s) => s.id === 2)?.direction ?? 'up'
+    }),
+    [state.snakes]
+  )
+
+  // Vs CPU: snake 2 is never human-steered. Solo and Vs CPU both run TouchInputLayer's 'solo'
+  // mode (one full-board zone that only ever reports snakeId 1, see touchMode below), and
+  // KeyboardInputLayer only maps humanPlayers' keys, so nothing should report snake 2 here. The
+  // guard stays as a backstop: the CPU splice inside useSnakeState already drives snake 2's
+  // pendingDirection every tick, and a stray `turn(2, ...)` would have human input and the CPU
+  // fighting over the same seat. 2 Player forwards both zones as-is. See useSnakeState.ts's own
+  // module comment for the full responsibility split this mirrors.
+  const handleTurn = useCallback(
+    (snakeId: SnakeId, direction: Direction) => {
+      if (mode === 'vsCpu' && snakeId !== 1) return
+      turn(snakeId, direction)
+    },
+    [mode, turn]
+  )
+
+  // Hoisted above handleActivate (which needs playActivate and selection); see the later,
+  // single-declaration comment near playGameOver's own usage for what each function maps to.
+  const { playGameOver, playActivate, playPickup } = useSnakeSounds()
+  const { notification, selection } = useVibration()
+
+  // Same vsCpu seat-gating as handleTurn above, for the identical reason: the CPU splice inside
+  // useSnakeState already decides snake 2's own activation every tick, so a stray activate(2) must
+  // never reach it (a backstop, as above: no Vs CPU input source reports seat 2). Only plays the
+  // activate sound and haptic for a MEANINGFUL activation (the seat actually had something held): a
+  // bare tap with nothing to use is silent, matching how a no-op activation already produces no
+  // visible effect.
+  const handleActivate = useCallback(
+    (snakeId: SnakeId) => {
+      if (mode === 'vsCpu' && snakeId !== 1) return
+      if (state.snakes.find((s) => s.id === snakeId)?.heldPowerup) {
+        playActivate()
+        selection()
+      }
+      activate(snakeId)
+    },
+    [mode, activate, state.snakes, playActivate, selection]
+  )
+
+  // Fires once per snake the instant its heldPowerup transitions from empty to held - a board-wide
+  // pickup-collection event, unlike activation, so this fires for a CPU's own collection too, not
+  // just a human's. Tracked via a ref (not state) purely to detect the null->non-null edge across
+  // ticks; a fresh round's snakes all start back at heldPowerup: null, so this self-heals on retry
+  // without needing an explicit reset (a stale 'held' snapshot from the previous round can never
+  // itself read as a fresh pickup - only a transition INTO holding something does).
+  const prevHeldPowerupRef = useRef<Partial<Record<SnakeId, SnakePowerupType | null>>>({})
+  useEffect(() => {
+    for (const snake of state.snakes) {
+      if (!prevHeldPowerupRef.current[snake.id] && snake.heldPowerup) playPickup()
+      prevHeldPowerupRef.current[snake.id] = snake.heldPowerup
+    }
+  }, [state.snakes, playPickup])
+
+  // Whether each seat's own controls are currently Mesmerized (see types.ts's
+  // SnakeControlEffect) - both input layers invert a mesmerized seat's resolved direction before
+  // calling onTurn. `false` for a seat that doesn't exist yet (e.g. seat 2 in Solo) rather than
+  // throwing on a missing lookup.
+  const controlInverted: Record<SnakeId, boolean> = useMemo(
+    () => ({
+      1: state.snakes.find((s) => s.id === 1)?.effects.control?.type === 'mesmerize',
+      2: state.snakes.find((s) => s.id === 2)?.effects.control?.type === 'mesmerize'
+    }),
+    [state.snakes]
+  )
+
+  // Solo/Vs CPU: only seat 1 is human (Vs CPU's seat 2 is the CPU, driven by the splice inside
+  // useSnakeState). 2 Player: both. KeyboardInputLayer's own web-only listener uses this to know
+  // which seats' control schemes to even look up, and touchMode below derives from it.
+  const humanPlayers: SnakeId[] = useMemo(() => (mode === 'twoPlayer' ? [1, 2] : [1]), [mode])
+
+  // Keyed off the number of HUMANS, not snakes: a lone human (Solo or Vs CPU) gets the whole board
+  // as one swipe/drag zone, and only 2 Player splits it into per-seat halves. Mirrors LightCycles'
+  // TouchInputLayer (`solo = humanPlayers.length === 1`) and OnboardingOverlay's identical
+  // humanPlayers-gated branch, whose full-board Vs CPU countdown tint now matches where a swipe
+  // actually registers. This used to be `mode === 'solo'`, which gave Vs CPU the two-seat split
+  // and silently dropped every swipe or drag that started in the CPU's half (2026-09-24, found
+  // while writing the how-to-play guide's "Your snake turns the way you swipe").
+  const touchMode: TouchInputMode = humanPlayers.length === 1 ? 'solo' : 'dual'
+
+  // Snake 1 is always the human in every mode (solo's only snake, or Vs CPU's human seat); snake
+  // 2 is the CPU in Vs CPU or the second human in 2 Player. See snakeEngine.ts's own spawn
+  // convention and snakeAi.ts's CPU_SNAKE_ID for why seat 2 is always the non-primary one.
+  const humanScore = state.snakes[0]?.score ?? 0
+  const opponentScore = state.snakes[1]?.score
+
+  // Each seat's own stats bucket: its selected profile's, or the device-wide one for a guest seat,
+  // mirroring how @tastic/achievements' own device-vs-profile scope split works. Each seat's "BEST"
+  // and New High Score on GameOverDialog compare against this, never the other seat's bucket. Two
+  // guest seats share the device one, so a guest's BEST can be the other guest's score.
+  const seatStats = (seat: SnakeId): ProfileStats => (lastSelected[seat] ? (stats.profiles[lastSelected[seat]!] ?? DEFAULT_PROFILE_STATS) : stats)
+
+  // The engine's {type, winnerId} RoundOutcome as the winning seat, or null for a draw (or before
+  // the round has ended).
+  const winner: SnakeId | null = state.outcome?.type === 'win' ? state.outcome.winnerId : null
+
+  // The single Vs CPU card's win/loss/draw framing, from seat 1's (the human's) perspective. Solo
+  // has no outcome at all (undefined renders the plain score framing instead), and 2 Player's
+  // per-seat cards each get their own (see the GameOverDialog call below).
+  const gameOverOutcome: GameOverOutcome | undefined = mode === 'solo' || !state.outcome ? undefined : resultFor(winner, 1)
+
+  // Records stats/achievements exactly once per round, on the onboarding/playing -> gameOver
+  // transition. hasRecordedRef (not just the phase check alone) guards against a second dispatch
+  // from an unrelated re-render while still in 'gameOver'; it resets the instant the round leaves
+  // 'gameOver' (via handleRetry above) so the next round's own transition can fire again.
+  // newHighScoreSeats is captured once at that same instant (each seat compared against its own
+  // pre-update seatStats bucket) rather than derived live every render, so it can't flip from true
+  // to false the moment recordRoundOutcome below actually lands.
+  const hasRecordedRef = useRef(false)
+  const [newHighScoreSeats, setNewHighScoreSeats] = useState<Partial<Record<SnakeId, boolean>>>({})
+  // Where each 2 Player seat's unlock toasts go (SeatToasters below): the half of the screen that's
+  // theirs, turned the way they read it, so seat 2, rotated 180° from seat 1 face to face, reads its
+  // own the right way up, and players side by side each get theirs on their own side. Lock
+  // Orientation freezes the reading this comes from, as it does the countdown's.
+  const seatSplit = useSeatSplit()
+  const orientation = useOrientationState()
+  const seatSpots = useMemo(() => seatToastSpots({ orientationMode: seatSplit.orientationMode, p1OnRight: seatSplit.p1OnRight }, { orientationMode: orientation.orientationMode, p1OnRight: orientation.p1OnRight, upsideDown: orientation.upsideDown }), [seatSplit.orientationMode, seatSplit.p1OnRight, orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown])
+
+  useEffect(() => {
+    if (phase !== 'gameOver') {
+      hasRecordedRef.current = false
+      return
+    }
+    if (hasRecordedRef.current) return
+    hasRecordedRef.current = true
+
+    // One entry per seat a human actually drives (humanPlayers): snake 2 is the CPU in Vs CPU, and
+    // doesn't exist at all in Solo, so the CPU's score and length never reach anyone's stats.
+    // peakLength, not live body.length: a Constrict can shrink a body mid-round (see
+    // types.ts's own SnakeEntity.peakLength comment), and this stat should credit the
+    // high-water mark a snake actually reached. profileIds is seat-keyed so recordRoundOutcome can
+    // bump each profile from its own seat and hand unlocks back split by seat below.
+    const seats: Partial<Record<SnakeId, SeatRoundOutcome>> = {}
+    const newHighScore: Partial<Record<SnakeId, boolean>> = {}
+    const profileIds: Partial<Record<SnakeId, string>> = {}
+    // Every guest seat shares the device-wide bucket, and only the round's top human score lands in
+    // it, so a guest seat that scored less never claims New High Score, even past the old best.
+    const topScore = Math.max(...humanPlayers.map((seat) => state.snakes.find((s) => s.id === seat)?.score ?? 0))
+    for (const seat of humanPlayers) {
+      const snake = state.snakes.find((s) => s.id === seat)
+      const score = snake?.score ?? 0
+      const profileId = lastSelected[seat]
+      seats[seat] = { score, snakeLength: snake?.peakLength ?? 0 }
+      newHighScore[seat] = score > seatStats(seat).byMode[mode].bestScore && (Boolean(profileId) || score === topScore)
+      if (profileId) profileIds[seat] = profileId
+    }
+    setNewHighScoreSeats(newHighScore)
+    const unlocked = recordRoundOutcome({ mode, seats, winner }, { cpuDifficulty, profileIds })
+
+    // Each human seat's own unlocks plus the device-wide ones that are really that seat's (all of
+    // them for a guest, only scope: 'device' ones for a profile; see @tastic/achievements'
+    // broadcastDeviceUnlocks), same as LightCycles. In 2 Player the device-wide ones go to the
+    // round's winner only, both seats on a draw (audit F037). A round where nothing unlocked comes
+    // back as {}.
+    const seatUnlocks = broadcastDeviceUnlocks(humanPlayers, unlocked.profiles, unlocked.device, profileIds, { winners: mode === 'twoPlayer' && winner !== null ? [winner] : undefined })
+
+    // Toasts, each named for its seat's profile (see useUnlockToasts). 2 Player: both seats are
+    // human and often physically opposite each other, so each seat's go to its own Toaster, in its
+    // half of the screen and turned to face it (seatSpots above). Solo/Vs CPU: only ever one human perspective to address (Solo has no
+    // seat 2 at all; Vs CPU's seat 2 is the CPU and never earns a profile unlock of its own), so the
+    // app's screen-fixed toast is already right-side-up for whoever's looking.
+    const ownerName = (seat: SnakeId) => profiles.find((p) => p.id === lastSelected[seat])?.name
+    if (mode === 'twoPlayer') showUnlockToasts(seatUnlocks, humanPlayers, { 1: ownerName(1), 2: ownerName(2) }, SEAT_TOAST_STACKS)
+    else showUnlockToasts(seatUnlocks, SOLO_SEATS, { 1: ownerName(1) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state.snakes is read once per gameOver entry, matching the roundOver effect below; adding it would re-run this on every tick.
+  }, [phase, mode, stats, humanPlayers, winner, cpuDifficulty, lastSelected, profiles, recordRoundOutcome, showUnlockToasts])
+
+  // Crash sound + haptic - fires once, the instant the engine's own state.phase (not the derived,
+  // onboarding-aware `phase` above) flips into 'roundOver', mirroring LightCycles' own immediate
+  // crash sound+haptic (its play screen fires on the identical transition, independent of any dialog
+  // delay). useSnakeSounds/useVibration each already gate themselves on the user's own sound/haptics
+  // settings, so no extra enabled-check is needed here. playGameOver and notification come from the
+  // single useSnakeSounds()/useVibration() calls hoisted up near handleActivate above.
+  const hasFiredCrashFeedbackRef = useRef(false)
+
+  useEffect(() => {
+    if (state.phase !== 'roundOver') {
+      hasFiredCrashFeedbackRef.current = false
+      return
+    }
+    if (hasFiredCrashFeedbackRef.current) return
+    hasFiredCrashFeedbackRef.current = true
+    playGameOver()
+    notification()
+  }, [state.phase, playGameOver, notification])
+
+  // Gates GameOverDialog's own visibility behind the death-fade ceremony (see SnakeBoardCanvas.tsx's
+  // own per-snake deathProgress animation) rather than showing it the instant phase flips -
+  // mirrors LightCycles' identical showResultDialog effect. Reads state.snakes once per
+  // 'roundOver' entry rather than as a dependency: a dead snake's body/alive never changes again
+  // for the rest of the round, so there's nothing to go stale. Math.max across every dead snake
+  // (not just the first) is what makes a simultaneous double-death in 2P/Vs CPU wait for whichever
+  // fade takes longer, rather than revealing the dialog over a still-fading loser.
+  const [showGameOverDialog, setShowGameOverDialog] = useState(false)
+
+  // On a desktop-web page (web, at least DESKTOP_WEB_MIN_WIDTH wide) the chips stay up in the page's
+  // top corners for the whole match, so there's always a way out or into Settings; either dialog
+  // pauses play (see `paused` above). Anywhere narrower they only show before and after a round.
+  const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
+  // Same condition GameActionChips' own showBack/showSettings use below.
+  const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'gameOver' && showGameOverDialog)
+
+  // Mirrors phase === 'playing' into Redux (the shell's liveplaySlice - see its own doc) rather than calling
+  // @tastic/edge-guard's useEdgeGestureGuard directly here: that hook stays mounted once at the app
+  // root (the shell's Providers.tsx EdgeGuardBridge), same as every other cross-cutting settings bridge in
+  // this app (FeedbackBridge, ScrollViewBridge) - this just reports the one signal that bridge has
+  // no other way to read. Reset to false on unmount too, so leaving this screen mid-round by any
+  // path (not just the in-app back button) can't leave Edge Guard stuck on.
+  useEffect(() => {
+    dispatch(liveplayActions.setActivelyPlaying(phase === 'playing' && !paused))
+    return () => {
+      dispatch(liveplayActions.setActivelyPlaying(false))
+    }
+  }, [phase, paused, dispatch])
+
+  // No toast may stay on screen during live play - only between rounds or at game over. Unlock
+  // toasts fire at game over and last 7s, so a quick Retry would otherwise carry them past the
+  // countdown into the next round.
+  useEffect(() => {
+    if (phase === 'playing') clearToasts()
+  }, [phase, clearToasts])
+
+  // SettingsDialog, GameOverDialog and the Quit Match? ConfirmDialog are each a single centered card
+  // with no second seat's zone to stay neutral for (see each one's own doc): useRotation's
+  // getViewRotation, not getFixedZoneRotation, so a portrait upside-down hold repositions/flips them
+  // too instead of being silently ignored, same as Home's own identical rotation for its
+  // Settings dialog. Lock Orientation needs nothing here: the shell's OrientationBridge
+  // freezes the shared reading this (and GameActionChips' own read below) comes from.
+  const overlayRotation = useRotation()
+
+  useEffect(() => {
+    if (state.phase !== 'roundOver') return undefined
+    const deadSnakes = state.snakes.filter((s) => !s.alive)
+    const fadeMs = deadSnakes.length > 0 ? Math.max(...deadSnakes.map((s) => snakeDeathFadeMs(s.body.length))) : 0
+    const timer = setTimeout(() => setShowGameOverDialog(true), fadeMs + SNAKE_GAME_OVER_DIALOG_HOLD_MS)
+    return () => {
+      clearTimeout(timer)
+      setShowGameOverDialog(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state.snakes intentionally read once per roundOver entry, not tracked as a dep; see comment above.
+  }, [state.phase])
+
+  const bg = dark ? '#000000' : '#FFFFFF'
+  const fgMuted = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'
+  // Each seat's snake color, tinting its GameOverDialog card's zone and Retry.
+  const seatColor = (seat: SnakeId): string => state.snakes[seat - 1]?.color ?? fgMuted
+
+  // One 2 Player seat's own card on GameOverDialog: its own result, its score against the other
+  // seat's, and its own bucket's best (see seatStats above).
+  const gameOverSeatResult = (seat: SnakeId): GameOverSeatResult => {
+    const score = state.snakes.find((s) => s.id === seat)?.score ?? 0
+    return {
+      outcome: resultFor(winner, seat),
+      score,
+      opponentScore: state.snakes.find((s) => s.id !== seat)?.score ?? 0,
+      highScore: Math.max(seatStats(seat).byMode.twoPlayer.bestScore, score),
+      isNewHighScore: newHighScoreSeats[seat] ?? false,
+      color: seatColor(seat)
+    }
+  }
+
+  // state.grid is already the round's own frozen design resolution - createInitialSnakeState only
+  // ever runs again on retry (see useSnakeState.ts), so every snake body/food coordinate laid down
+  // this round is already committed to state.grid's own cols/rows and can't safely be rederived from
+  // a live resize without invalidating them, exactly like LightCycles' analogous grid. Unlike
+  // LightCycles, though, nothing here used to freeze the PRESENTATION to match: SnakeBoardCanvas's
+  // <Canvas> is a bare StyleSheet.absoluteFill, so it (and TouchInputLayer, also absoluteFill)
+  // stretched to whatever styles.root's live size happened to be on every render, while the actual
+  // drawn cells stayed pinned to state.grid's own frozen pixel footprint - on a resize after a round
+  // already started, the board would silently stop filling (or overflow) its own canvas instead of
+  // visibly growing/shrinking with the window. designWidth/designHeight below are that frozen
+  // footprint made explicit; boardScale - the same live-size-over-design-size transform LightCycles'
+  // GameRound uses, and safe for the identical reason: TouchInputLayer's own zones are
+  // percentage-of-parent/pan-translation based, not absolute-pixel - scales the board+touch subtree
+  // below as one rigid unit to fit the live window, so it now visibly tracks a resize without state
+  // (or state.grid's own cols/rows) ever needing to change. Compared against availableWidth/
+  // availableHeight, not the raw window width/height, on purpose: both are already gutter/inset-
+  // capped when fullScreen is off (see their own comment above), and designWidth/designHeight were
+  // themselves computed from whatever availableWidth/availableHeight were at round start - comparing
+  // against the SAME live, equally-capped quantities is what keeps a live resize honoring that cap
+  // instead of scaling straight back up to the raw window and erasing it. Comparing against raw
+  // `width`/`height` here would do exactly that: undo the gutter/inset the instant the window
+  // resized (or a rotation changed the insets) even slightly, since scale-to-fit doesn't know a
+  // gutter or inset was ever applied.
+  const designWidth = state.grid.cols * cellPx
+  const designHeight = state.grid.rows * cellPx
+  const boardScale = Math.min(availableWidth / designWidth, availableHeight / designHeight)
+
+  // The Quit Match? and Paused dialogs' shared message. Solo gets its own score-only message (no
+  // opponent to show a "-" pairing against); vsCpu/twoPlayer show both scores in each snake's own
+  // color, same colored-segment convention the other apps use.
+  const progressMessage =
+    mode === 'solo' ? (
+      <Text style={{ color: state.snakes[0]?.color ?? fgMuted }}>Score: {humanScore}</Text>
+    ) : (
+      <>
+        <Text style={{ color: state.snakes[0]?.color ?? fgMuted }}>{humanScore}</Text>
+        <Text style={{ color: fgMuted }}> - </Text>
+        <Text style={{ color: state.snakes[1]?.color ?? fgMuted }}>{opponentScore ?? 0}</Text>
+      </>
+    )
+  return (
+    <View style={[styles.root, { backgroundColor: bg }]}>
+      {/* The OS status bar is hidden on this screen only (the shell's RootLayout PLAY_OPTIONS), not on
+      the loadout or Home: for the whole time a round is in progress, for full-screen
+      immersion during actual play. */}
+      {/* Explicit top/bottom/left/right edges from insets (not a flex-centered shrink within a
+      full-bleed parent) so an asymmetric inset - a landscape notch/Dynamic Island sitting on just
+      one side, for instance - still produces a genuinely safe rectangle instead of one that's
+      merely the right SIZE but mis-centered relative to it. fullScreen swaps in boardAreaFullBleed,
+      bleeding the board all the way to the physical screen edge instead. Mirrors LightCycles'
+      identical boardArea/boardAreaFullBleed split. */}
+      <View style={[styles.boardArea, fullScreen ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + gutterWidth, right: insets.right + gutterWidth }]}>
+        <View style={{ width: designWidth, height: designHeight, transform: [{ scale: boardScale }] }}>
+          <SnakeBoard snakes={state.snakes} food={state.food} obstacles={state.obstacles} portals={state.portals} tunnels={state.tunnels} pickups={state.pickups} phase={state.phase} cellPx={cellPx} grid={state.grid} tick={state.tick} tickIntervalMs={tickIntervalMs} wrapEdges={wrapEdges} onboarding={phase === 'onboarding'} />
+          <TouchInputLayer mode={touchMode} enabled={phase === 'playing' && !paused} onTurn={handleTurn} onActivate={handleActivate} controlInverted={controlInverted} currentDirections={currentDirections} />
+          {enabledPowerups.length > 0 && <SnakePowerupHud snakes={state.snakes} />}
+        </View>
+      </View>
+      <KeyboardInputLayer enabled={phase === 'playing' && !paused} humanPlayers={humanPlayers} controlScheme={controlScheme} onTurn={handleTurn} onActivate={handleActivate} controlInverted={controlInverted} currentDirections={currentDirections} />
+
+      {/* Unmounted (rather than merely hidden) while settings, the quit confirmation or the Paused
+      dialog is open: OnboardingOverlay's countdown timers are scheduled once on mount with no pause
+      hook of their own, so unmounting is what stops them ticking underneath any of those dialogs,
+      and remounting on close is what restarts the count from '3' instead of resuming mid-count with
+      stale timers. */}
+      {phase === 'onboarding' && !paused && state.snakes[0] && <OnboardingOverlay onComplete={handleBeginPlaying} humanPlayers={humanPlayers} seatSpots={mode === 'twoPlayer' ? seatSpots : undefined} colors={state.snakes[1] ? { snake1: state.snakes[0].color, snake2: state.snakes[1].color } : { snake1: state.snakes[0].color }} />}
+
+      {phase === 'gameOver' && showGameOverDialog && <GameOverDialog score={humanScore} highScore={Math.max(seatStats(1).byMode[mode].bestScore, humanScore)} isNewHighScore={newHighScoreSeats[1] ?? false} onRetry={handleRetry} onHome={safeBack} outcome={gameOverOutcome} opponentScore={mode !== 'solo' ? opponentScore : undefined} seatResults={mode === 'twoPlayer' && state.outcome ? { 1: gameOverSeatResult(1), 2: gameOverSeatResult(2) } : undefined} seatSpots={seatSpots} rotation={overlayRotation} />}
+
+      {/* Kept as its own sibling of the board/gesture tree above, mirroring LightCycles'/BoxHockey's
+      identically-motivated MatchOverlays split - this live tilt subscription's re-renders should
+      never cascade into the board/touch-input subtree. showBack now matches showSettings' own
+      gameOver gating (previously back-only during onboarding) - matches BoxHockey's/AirHockey's/
+      Pong's identical always-available back button, so there's a consistent way out of a finished
+      round beyond GameOverDialog's own Home button. */}
+      <GameActionChips showBack={controlsVisible} showSettings={controlsVisible} onBack={requestBack} onSettings={() => setSettingsOpen(true)} humanPlayerCount={humanPlayers.length} desktopWeb={isDesktopWeb} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={overlayRotation} />
+
+      {/* 2 Player's unlock toasts, a Toaster per seat turned to face it (see the gameOver effect
+      above); every other toast stays on the app's main Toaster (the shell's Providers.tsx). */}
+      {mode === 'twoPlayer' && <SeatToasters spots={seatSpots} />}
+
+      {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/LightCycles'/
+      Pong's identical "Quit Match?" prompt - see onBackPress's own comment above for why it's
+      gated on there being an actual score to lose. Its message is progressMessage above. */}
+      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={safeBack} onCancel={cancelBack} rotation={overlayRotation} />
+      {/* Shown when the app comes back from the background mid-match (see useBackgroundPause above):
+      play stays frozen until Resume, so a match never restarts before the player is back and ready. */}
+      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={resume} onCancel={safeBack} rotation={overlayRotation} />
+    </View>
+  )
+}
+
+interface GameActionChipsProps {
+  showBack: boolean
+  showSettings: boolean
+  onBack: () => void
+  onSettings: () => void
+  // Solo and vsCpu both report a single human regardless of live orientationMode - see
+  // needsSharedNeutralZone's own doc for why that (not bare orientationMode) is what actually
+  // decides whether the neutral slot is needed.
+  humanPlayerCount: number
+  // Desktop web always takes the corner layout: both players share one screen, keyboard and mouse
+  // there, so there's no far seat for the neutral edge slots to stay readable from.
+  desktopWeb: boolean
+}
+
+// Back/settings chips. Two structurally different layouts, not just two positions:
+//
+// Shared neutral zone (needsSharedNeutralZone - 2 human players, face-to-face): both players read
+// this same pair of chips from opposite sides of the device, so they sit on whichever dividing line
+// is actually live right now rather than a fixed corner - unlike LightCycles'/BoxHockey's boards
+// (always face-to-face, so the wall/midline is always horizontal), Snake's board genuinely supports
+// both face-to-face AND side-by-side (see TouchInputLayer.tsx/OnboardingOverlay.tsx's own zone
+// splits, both of which switch on the same live orientationMode) - but needsSharedNeutralZone is
+// only ever true for face-to-face (side-by-side already gives each seat its own dedicated half, see
+// its own doc), so the neutral line itself is always the horizontal seam OnboardingOverlay's
+// zoneTop/zoneBottom split already establishes; edgeSlotVertical (full height, fixed left/right edge,
+// vertically centered) lands exactly on it. Each chip only ever rotates its own glyph in place here
+// (getFixedZoneRotation): repositioning it under a live tilt would put it inside whichever seat's
+// zone is now upside-down to the OTHER seat instead of staying neutral, the same reason BoxHockey's
+// board-anchored buttons never move either.
+//
+// Corner layout (solo, vsCpu, or 2P side-by-side - no second seat's zone to protect): the same
+// top-left/top-right corners every other screen in the fleet uses (see Home's stats/settings
+// buttons), wrapped in FakeLandscapeView so the pair actually MOVES to wherever "top" visually is
+// right now - including a portrait upside-down hold, which the neutral branch's fixed-zone rotation
+// deliberately ignores - rather than just spinning in place while staying glued to the device's fixed
+// physical top edge.
+//
+// Both branches read the one shared orientation reading, so Lock Orientation (frozen app-wide by
+// the shell's OrientationBridge) holds both of them still, the neutral branch included: which
+// branch shows, and where, stays put for as long as the lock is on.
+function GameActionChips({ showBack, showSettings, onBack, onSettings, humanPlayerCount, desktopWeb }: GameActionChipsProps) {
+  const { orientationMode, p1OnRight, upsideDown } = useOrientationState()
+  const seatSplit = useSeatSplit()
+  const insets = useSafeAreaInsets()
+  const { dark } = useAutoPaperTheme()
+  const fg = dark ? '#FFFFFF' : '#000000'
+  const chipBg = dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)'
+
+  if (!showBack && !showSettings) return null
+
+  const neutral = !desktopWeb && needsSharedNeutralZone(seatSplit.orientationMode, humanPlayerCount)
+
+  if (neutral) {
+    const rotation = getFixedZoneRotation(orientationMode, p1OnRight, upsideDown)
+    const chipRotation = rotation % 360 !== 0 ? { transform: [{ rotate: `${rotation}deg` }] } : undefined
+    const backSlot = [styles.edgeSlotVertical, { left: insets.left }]
+    const settingsSlot = [styles.edgeSlotVertical, { right: insets.right }]
+    return (
+      <>
+        {showBack && (
+          <View style={backSlot}>
+            <IconButton icon='arrow-left' iconColor={fg} containerColor={chipBg} style={[styles.chipButton, chipRotation]} size={24} onPress={onBack} accessibilityLabel='Back' />
+          </View>
+        )}
+        {showSettings && (
+          <View style={settingsSlot}>
+            <IconButton icon='cog' iconColor={fg} containerColor={chipBg} style={[styles.chipButton, chipRotation]} size={24} onPress={onSettings} accessibilityLabel='Settings' />
+          </View>
+        )}
+      </>
+    )
+  }
+
+  const cornerRotation = getViewRotation(orientationMode, p1OnRight, upsideDown)
+  const cornerInsets = rotateInsets(insets, cornerRotation)
+
+  // passThrough: this full-bleed frame only exists to give the two corner slots something to rotate,
+  // so it must never swallow the board's touches or the result card's buttons beneath it. A
+  // `pointerEvents: 'box-none'` style can't do that: FakeLandscapeView hands the style to its inner
+  // View, and react-native-web drops it there, which left the whole frame clickable on web.
+  return (
+    <FakeLandscapeView passThrough style={StyleSheet.absoluteFill}>
+      {showBack && (
+        <View style={[styles.cornerSlot, { top: 8 + cornerInsets.top, left: 8 + cornerInsets.left }]}>
+          <IconButton icon='arrow-left' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onBack} accessibilityLabel='Back' />
+        </View>
+      )}
+      {showSettings && (
+        <View style={[styles.cornerSlot, { top: 8 + cornerInsets.top, right: 8 + cornerInsets.right }]}>
+          <IconButton icon='cog' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onSettings} accessibilityLabel='Settings' />
+        </View>
+      )}
+    </FakeLandscapeView>
+  )
+}
+
+const styles = StyleSheet.create({
+  // See the boardArea View's own comment at its call site for what these two are switching between.
+  boardArea: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'absolute' },
+  boardAreaFullBleed: { bottom: 0, left: 0, right: 0, top: 0 },
+  chipButton: { margin: 0 },
+  cornerSlot: { position: 'absolute' },
+  // Face-to-face: full screen height at a fixed left/right edge, button centered vertically via
+  // justifyContent - lands exactly on the horizontal 50/50 zone split (see OnboardingOverlay's own
+  // zoneTop/zoneBottom), the one strip of the board neither snake's own zone claims.
+  edgeSlotVertical: { alignItems: 'center', bottom: 0, justifyContent: 'center', position: 'absolute', top: 0 },
+  // alignItems/justifyContent center the design-resolution board+touch View (see boardScale's own
+  // comment) inside root's live bounds. Every other direct child here (KeyboardInputLayer,
+  // OnboardingOverlay, GameOverDialog, GameActionChips, SettingsDialog) positions itself via
+  // StyleSheet.absoluteFill or explicit position:'absolute' styles of its own, so centering root
+  // has no effect on any of them - only the board's normal-flow scaled View actually gets centered.
+  root: { alignItems: 'center', flex: 1, justifyContent: 'center' }
+})
