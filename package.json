@@ -1,14 +1,14 @@
 {
-  "name": "light-cycles",
+  "name": "dueltastic",
   "version": "1.1.4",
   "private": true,
-  "description": "A local multiplayer pass-and-play cycle battle game",
+  "description": "Four arcade duel games in one app: LightCycles, Turf, Tag and Snake, against the CPU or a friend on one device.",
   "type": "commonjs",
   "main": "expo-router/entry",
   "scripts": {
     "android": "expo run:android",
     "build": "eas build",
-    "build:web": "npm run verify && WEB_BASE_URL=/lightcycles expo export -p web --output-dir web-build/lightcycles",
+    "build:web": "npm run verify && WEB_BASE_URL=/dueltastic expo export -p web --output-dir web-build/dueltastic",
     "client": "expo start --dev-client",
     "doctor": "expo install --fix && npx expo-doctor@latest",
     "fingerprint:compare": "eas fingerprint:compare",

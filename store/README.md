@@ -14,13 +14,17 @@ eas metadata:lint
 eas metadata:push
 ```
 
-`push` needs the app record to exist in App Store Connect and edits its editable version, setting its number to `store.config.json`'s `apple.version`. Keep that equal to `app.json`'s `expo.version` and bump both together: without it, push sends no version number and Apple refuses the version step (copyright, promo text, description, keywords, support and marketing URLs) while the rest goes through. The record already exists (bundle ID `com.infinitetoken.LightCycles`), created as LightCyclesTastic; 1.1.3's metadata was pushed under that name on 2026-10-19. The title is now LightCycleTastic (the fleet drops a trailing s before "Tastic"), which reaches App Store Connect with the next `eas metadata:push`.
+`push` needs the app record to exist in App Store Connect and edits its editable version, setting its number to `store.config.json`'s `apple.version`. Keep that equal to `app.json`'s `expo.version` and bump both together: without it, push sends no version number and Apple refuses the version step (copyright, promo text, description, keywords, support and marketing URLs) while the rest goes through.
 
-Limits: title 30, subtitle 30, promotional text 170 (editable any time without review), description 4000, keywords 100 in total with the commas. Keywords don't repeat words already in the title or subtitle ("light", "cycle", "duels", "ads" are indexed from the subtitle; "LightCycleTastic" is one word, so it does NOT match a search for "light cycle" on its own).
+**DuelTastic is a new app record (2026-10-25), bundle ID `com.infinitetoken.DuelTastic`, not created yet.** `eas submit` creates it on the first upload (it asks for the name: DuelTastic, which has to be unique on the App Store), or create it by hand first. LightCycles' record (bundle ID `com.infinitetoken.LightCycles`, created as LightCyclesTastic, its 1.1.3 turned down by App Review with Snake and Solitaire as too many similar apps) is left as it was: DuelTastic replaces it, and LightCycles and Snake are two of its games. Everything under "Set by hand" below lives on a record, so it all has to be filled in again for DuelTastic's. The listing's description counts 123 achievements (LightCycles, Turf and Tag 30 each, Snake 33): recheck it when a catalog changes.
+
+Limits: title 30, subtitle 30, promotional text 170 (editable any time without review), description 4000, keywords 100 in total with the commas. Keywords don't repeat words already in the title or subtitle ("four", "duel", "games", "ads" are indexed from the subtitle; "DuelTastic" is one word, so it does NOT match a search for "duel" on its own, which is why the subtitle says it).
 
 `releaseNotes` (What's New) is left out for the first version, which has none. Add it to `info.en-US` for every later version.
 
 ## Screenshots (uploaded by hand)
+
+**These are LightCycles' screenshots, from before the pack (2026-10-19): DuelTastic needs a new set before it's submitted.** They show LightCycles alone, and the seed below still writes LightCycles' old save (`lightcycles:root`, its old slices), which the pack never reads (its save is `dueltastic:root`, with each game's own keys). The header and search art below are LightCycles' too ("Light Cycle Duels"). The rest of this section is how the LightCycles set was made, for reuse.
 
 `store/screenshots/iphone-medium/` (1206x2622) goes in the "iPhone 6.1" or 6.3" displays" slot, which App Store Connect requires (a 1320x2868 file there fails with "File dimensions are invalid"). `store/screenshots/iphone/` (1320x2868) is for the optional 6.9" slot, and `store/screenshots/ipad/` (2064x2752) for the 13" iPad slot, which is required because `ios.supportsTablet` is on. Apple scales these to every smaller device. The order in the folder is the upload order; the first three are what search results show.
 
@@ -65,15 +69,15 @@ Upload in the version's Product Page Information > Header and Search Results (He
 
 > No account or sign-in is needed, and there are no in-app purchases or ads.
 >
-> Two Player is played face to face on one device: each player swipes in their own half of the screen to steer, so the top half's controls and text are upside down on purpose. One Player is against the CPU.
+> DuelTastic is four games in one app (LightCycles, Turf, Tag and Snake): pick one from the Home screen. Two Player is played face to face on one device: each player swipes in their own half of the screen to steer, so the top half's controls and text are upside down on purpose. Seat 2 can also be the CPU, or Nobody in Snake to play alone.
 >
 > The app turns its own screen using the motion sensor, so the system orientation stays portrait and the app runs full screen on iPad. Turn the device to see the landscape layout. Lock Orientation is in Settings (the cog on the Home screen).
 >
 > Player profiles are shared through an App Group with other Tastic games by the same developer, if any are installed. No profile, progress or other game data leaves the device.
 >
-> On first launch a three-card How to Play guide appears. Tap Skip to go straight to the game.
+> Each game shows its How to Play cards the first time it's opened. Tap Skip to go straight to it.
 
-**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21).
+**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21). Snake's in `src/games/snake/sounds/` came over from Snake's repo with it: confirm they're his too before answering.
 
 **Pricing and Availability:** Free, all territories except China mainland (needs a government game approval number) and Vietnam (needs a game license from a local company), the same as SolitaireTastic. Apple Silicon Mac and Apple Vision Pro availability unticked: the app has never been run on either (no accelerometer on a Mac).
 
@@ -81,7 +85,7 @@ Upload in the version's Product Page Information > Header and Search Results (He
 
 **Accessibility (optional):** Dark Interface could be claimed (the app is dark by default and follows Settings' appearance). Nothing else until each feature has been checked on a device. Apple asks per feature (VoiceOver, Larger Text, Dark Interface, Reduced Motion and so on), and a claim that doesn't hold up is worse than none.
 
-**Version release:** manual (you press Release), so SolitaireTastic, LightCycles and Snake go live together.
+**Version release:** manual (you press Release), so it goes live together with SolitaireTastic (or whatever pack Solitaire becomes).
 
 ## Shipping a version
 

@@ -5,9 +5,8 @@ import { turf } from '@/games/turf'
 import { createPackStore } from '@/shell/redux/createPackStore'
 import type { GameDefinition, PackDefinition } from '@/shell/types'
 
-// DuelTastic: the pack's identity and its games, in Home's order. LightCycles first: it's the
-// game this repo shipped as. Snake, from its own app, last for now. The App Store record, bundle id,
-// EAS project and URL scheme all stay LightCycles' for now (see app.json).
+// DuelTastic: the pack's identity and its games, in Home's order. LightCycles first: the pack grew
+// out of it. Snake, from its own app, last for now.
 export const games: readonly GameDefinition[] = [lightCycles, turf, tag, snake]
 
 export const pack: PackDefinition = {

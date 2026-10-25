@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "LightCycles",
-    "slug": "LightCycles",
+    "name": "DuelTastic",
+    "slug": "DuelTastic",
     "version": "1.1.4",
-    "scheme": "lightcycles",
-    "description": "A local multiplayer cycle battle game",
+    "scheme": "dueltastic",
+    "description": "Four arcade duel games in one app: LightCycles, Turf, Tag and Snake, against the CPU or a friend on one device.",
     "orientation": "portrait",
     "platforms": [
       "ios",
@@ -13,8 +13,7 @@
     ],
     "updates": {
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD",
-      "url": "https://u.expo.dev/f70e27f0-c61f-48e9-8ebd-2cf88c723873"
+      "checkAutomatically": "ON_LOAD"
     },
     "runtimeVersion": {
       "policy": "fingerprint"
@@ -26,7 +25,7 @@
     "icon": "./assets/images/icon-dark.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.infinitetoken.LightCycles",
+      "bundleIdentifier": "com.infinitetoken.DuelTastic",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -41,7 +40,7 @@
       }
     },
     "android": {
-      "package": "com.infinitetoken.lightcycles"
+      "package": "com.infinitetoken.dueltastic"
     },
     "web": {
       "bundler": "metro",
@@ -76,10 +75,7 @@
       "@tastic/core"
     ],
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "f70e27f0-c61f-48e9-8ebd-2cf88c723873"
-      }
+      "router": {}
     },
     "owner": "jayrdeaton"
   }
