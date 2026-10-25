@@ -2,7 +2,7 @@
   "expo": {
     "name": "DuelTastic",
     "slug": "DuelTastic",
-    "version": "1.1.4",
+    "version": "1.0.0",
     "scheme": "dueltastic",
     "description": "Four arcade duel games in one app: LightCycles, Turf, Tag and Snake, against the CPU or a friend on one device.",
     "orientation": "portrait",
