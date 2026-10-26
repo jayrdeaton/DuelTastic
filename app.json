@@ -13,7 +13,8 @@
     ],
     "updates": {
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "ON_LOAD",
+      "url": "https://u.expo.dev/a8aef549-91c1-4c26-bad5-09e8af0b47db"
     },
     "runtimeVersion": {
       "policy": "fingerprint"
@@ -27,7 +28,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.infinitetoken.DuelTastic",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait"
+        ],
+        "UIViewControllerBasedStatusBarAppearance": true
       },
       "icon": {
         "dark": "./assets/images/icon-dark.png",
@@ -35,12 +40,17 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
+          "group.com.infinitetoken.tastic",
           "group.com.infinitetoken.tastic"
         ]
-      }
+      },
+      "requireFullScreen": true
     },
     "android": {
-      "package": "com.infinitetoken.dueltastic"
+      "package": "com.infinitetoken.dueltastic",
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "bundler": "metro",
