@@ -1,5 +1,6 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
+import type { SharedArenaVariant } from '@/games/shared/arenaOptions'
 import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
 import type { Effects, Pickup } from '@/shared/powerups'
 
@@ -20,8 +21,8 @@ export type TagLayout = 'faceToFace' | 'sideBySide'
 // loses. 'leastIt': whoever spent less of the round as It wins.
 export type TagRule = 'hotPotato' | 'leastIt'
 
-// What's on the board besides the riders: nothing, or pillars to run around.
-export type TagArena = 'open' | 'pillars'
+// What's on the board besides the riders.
+export type TagArena = SharedArenaVariant
 
 // Tag's powerups, Tag's names for the effects every game shares (src/games/shared/powerups.ts: same
 // colors and icons everywhere; TAG_POWERUP_EFFECTS in constants.ts says which is which):
@@ -50,6 +51,15 @@ export interface TagPillar {
   y: number
   width: number
   height: number
+}
+
+export interface TagPortal {
+  a: GridCell
+  b: GridCell
+}
+
+export interface TagTunnel {
+  cells: GridCell[]
 }
 
 export interface TagPlayer {
@@ -82,7 +92,9 @@ export interface TagState {
   phase: TagPhase
   grid: GridSize
   pillars: TagPillar[]
-  // The pillars' cells, row by row (index y * cols + x): 1 where nobody can ride.
+  portals: TagPortal[]
+  tunnels: TagTunnel[]
+  // The blocked cells, row by row (index y * cols + x): 1 where nobody can ride.
   blocked: Uint8Array
   players: Record<TagSeat, TagPlayer>
   // At most one, when powerups are on.

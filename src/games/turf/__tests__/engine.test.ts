@@ -6,7 +6,7 @@ import { TURF_EFFECT_TICKS } from '../constants'
 import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS } from '../engine'
 import { DEFAULT_TURF_RULES, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
 
-const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
+const HOME: TurfRules = { arena: 'open', crash: 'home', ownTrailDeadly: true, powerups: [] }
 
 interface Start {
   head: GridCell
@@ -179,7 +179,7 @@ describe('crashing (out)', () => {
   })
 
   it('lets a trail cross itself when your own trail is safe', () => {
-    const s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, { crash: 'out', ownTrailDeadly: false, powerups: [] })
+    const s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, { arena: 'open', crash: 'out', ownTrailDeadly: false, powerups: [] })
     expect(s.phase).toBe('playing')
     expect(s.players[1].head).toEqual({ x: 5, y: 13 })
   })

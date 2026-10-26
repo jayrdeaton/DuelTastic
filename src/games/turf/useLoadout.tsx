@@ -6,11 +6,11 @@ import type { CpuDifficulty } from '@/shared/match/types'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 import { TURF_POWERUPS } from './constants'
-import { TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_POWERUP_OPTIONS, TURF_ROUND_OPTIONS } from './loadoutOptions'
+import { TURF_ARENA_OPTIONS, TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_POWERUP_OPTIONS, TURF_ROUND_OPTIONS } from './loadoutOptions'
 import { DEFAULT_SETTINGS, playerSettings } from './settings'
 import type { TurfSettings } from './types'
 
-const OPTION_IDS = ['turfRules', 'turfRound', 'gridSize', 'speed', 'turfPowerups']
+const OPTION_IDS = ['turfArena', 'turfRules', 'turfRound', 'gridSize', 'speed', 'turfPowerups']
 
 // Turf's part of the shared loadout (shell/screens/LoadoutScreen.tsx): its rules (the crash rule and
 // Cross Your Own Trail), round length and powerups, the grid size and speed every game has, each
@@ -20,6 +20,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
 
   const randomize = useCallback(() => {
     setSettings({
+      arena: pickRandom(TURF_ARENA_OPTIONS),
       crash: pickRandom(TURF_CRASH_OPTIONS),
       ownTrailDeadly: Math.random() < 0.5,
       roundSeconds: pickRandom(TURF_ROUND_OPTIONS),
@@ -31,6 +32,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
 
   const reset = useCallback(() => {
     setSettings({
+      arena: DEFAULT_SETTINGS.arena,
       crash: DEFAULT_SETTINGS.crash,
       ownTrailDeadly: DEFAULT_SETTINGS.ownTrailDeadly,
       roundSeconds: DEFAULT_SETTINGS.roundSeconds,
@@ -45,6 +47,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
       const look = { accentColor, mutedColor, onAccentColor, dark }
       return (
         <LoadoutOptionsRow ids={OPTION_IDS} host={host} onRandomize={onRandomize} onReset={onReset} dark={dark}>
+          <SectionedDropdown id='turfArena' host={host} icon='crop-square' accessibilityLabel='Arena' sections={[{ kind: 'single', id: 'turfArena', options: TURF_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) }]} {...look} />
           <SectionedDropdown
             id='turfRules'
             host={host}

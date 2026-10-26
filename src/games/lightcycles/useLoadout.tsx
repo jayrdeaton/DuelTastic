@@ -4,18 +4,13 @@ import { useCallback, useMemo } from 'react'
 import { POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/games/lightcycles/constants/game'
 import { DEFAULT_SETTINGS, playerSettings } from '@/games/lightcycles/redux/settingsSlice'
 import type { ArenaVariant, CpuDifficulty, PowerupType, Settings, TrailSpeedTier } from '@/games/lightcycles/types'
+import { sharedArenaOptions } from '@/games/shared/arenaOptions'
 import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 // The board's static obstacle layout (see utils/arenas.ts's buildArenaObstacles) - a "board shape"
 // concept like grid size, not a gameplay-tuning tier, so each icon just depicts the layout itself.
-const ARENA_OPTIONS: MenuOption<ArenaVariant>[] = [
-  { value: 'open', label: 'Open', icon: 'crop-square' },
-  { value: 'pillars', label: 'Pillars', icon: 'dots-grid' },
-  { value: 'gauntlet', label: 'Gauntlet', icon: 'view-column' },
-  { value: 'portals', label: 'Portals', icon: 'orbit-variant' },
-  { value: 'underpass', label: 'Underpass', icon: 'tunnel' }
-]
+const ARENA_OPTIONS: MenuOption<ArenaVariant>[] = sharedArenaOptions<ArenaVariant>('lightcycles')
 
 // Two rows of one multi-select section in the arena menu, right under the layouts: both simple
 // board-shape toggles. Each option's presence in the section's value array is that toggle's state.
@@ -35,12 +30,12 @@ const TRAIL_SPEED_OPTIONS: MenuOption<TrailSpeedTier>[] = [
 // Icons match POWERUP_ICONS exactly - the same glyph a held item shows in PowerupHud.tsx once
 // revealed, so a player who's already seen one in a HUD badge recognizes it here too.
 const POWERUP_OPTIONS: MenuOption<PowerupType>[] = [
-  { value: 'overdrive', label: 'Overdrive', icon: POWERUP_ICONS.overdrive },
-  { value: 'stasis', label: 'Stasis', icon: POWERUP_ICONS.stasis },
-  { value: 'shield', label: 'Shield', icon: POWERUP_ICONS.shield },
-  { value: 'prune', label: 'Prune', icon: POWERUP_ICONS.prune },
-  { value: 'hack', label: 'Hack', icon: POWERUP_ICONS.hack },
-  { value: 'overclock', label: 'Overclock', icon: POWERUP_ICONS.overclock }
+  { value: 'overdrive', label: 'Overdrive', description: 'Self speed boost (Dash/Sidewind)', icon: POWERUP_ICONS.overdrive },
+  { value: 'stasis', label: 'Stasis', description: 'Opponent freeze (Freeze/Frost/Coldblood)', icon: POWERUP_ICONS.stasis },
+  { value: 'shield', label: 'Shield', description: 'Self shield (Safe/Fence/Scales)', icon: POWERUP_ICONS.shield },
+  { value: 'prune', label: 'Prune', description: 'Opponent trail cut (Constrict)', icon: POWERUP_ICONS.prune },
+  { value: 'hack', label: 'Hack', description: 'Opponent controls reversed (Tangle/Mesmerize)', icon: POWERUP_ICONS.hack },
+  { value: 'overclock', label: 'Overclock', description: 'Opponent forced boost (Gust/Frenzy)', icon: POWERUP_ICONS.overclock }
 ]
 
 const OPTION_IDS = ['arena', 'gridSize', 'speed', 'trailSpeed', 'powerups']

@@ -1,5 +1,6 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
+import type { SharedArenaVariant } from '@/games/shared/arenaOptions'
 import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
 import type { Effects, Pickup } from '@/shared/powerups'
 
@@ -20,6 +21,7 @@ export type TurfLayout = 'faceToFace' | 'sideBySide'
 // 'home' is the gentler one: the rider loses their trail and starts again on their own ground, so a
 // round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
+export type TurfArena = SharedArenaVariant
 
 // Turf's powerups, Turf's names for the effects every game shares (src/games/shared/powerups.ts:
 // same colors and icons everywhere; TURF_POWERUP_EFFECTS in constants.ts says which is which):
@@ -35,6 +37,7 @@ export type TurfCrashRule = 'out' | 'home'
 export type TurfPowerup = 'dash' | 'frost' | 'mud' | 'fence' | 'sod' | 'tangle' | 'gust'
 
 export interface TurfRules {
+  arena: TurfArena
   crash: TurfCrashRule
   // Whether riding into your own trail is a crash. When it isn't, a trail may cross itself.
   ownTrailDeadly: boolean
@@ -42,7 +45,7 @@ export interface TurfRules {
   powerups: TurfPowerup[]
 }
 
-export const DEFAULT_TURF_RULES: TurfRules = { crash: 'out', ownTrailDeadly: true, powerups: [] }
+export const DEFAULT_TURF_RULES: TurfRules = { arena: 'open', crash: 'out', ownTrailDeadly: true, powerups: [] }
 
 // A round's options as the loadout picks them: the rules plus the clock.
 export interface TurfOptions extends TurfRules {
@@ -87,6 +90,11 @@ export interface TurfEvents {
 export interface TurfState {
   phase: TurfPhase
   grid: GridSize
+  obstacles: GridCell[]
+  portals: { a: GridCell; b: GridCell }[]
+  tunnels: { cells: GridCell[] }[]
+  // The static blocked cells from obstacle arenas.
+  blocked: Uint8Array
   // Who owns each cell, row by row (index y * cols + x): 0 for nobody, else the seat.
   owner: Uint8Array
   // How many cells each seat owns, kept in step with `owner`.

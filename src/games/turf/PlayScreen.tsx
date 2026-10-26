@@ -1,4 +1,4 @@
-import { getBlendedColor, useAutoPaperTheme } from '@rific/auto-paper'
+import { useAutoPaperTheme } from '@rific/auto-paper'
 import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 
@@ -31,7 +31,7 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const controls = useMatchControls(roundHistory)
   const cellPx = GRID_CELL_PX[settings.gridSizeTier]
   const intervalMs = scaleMsForCellPx(TURF_SPEED_INTERVAL_MS[settings.speedTier], cellPx)
-  const options = useMemo<TurfOptions>(() => ({ crash: settings.crash, ownTrailDeadly: settings.ownTrailDeadly, powerups: settings.powerups, roundSeconds: settings.roundSeconds }), [settings.crash, settings.ownTrailDeadly, settings.powerups, settings.roundSeconds])
+  const options = useMemo<TurfOptions>(() => ({ arena: settings.arena, crash: settings.crash, ownTrailDeadly: settings.ownTrailDeadly, powerups: settings.powerups, roundSeconds: settings.roundSeconds }), [settings.arena, settings.crash, settings.ownTrailDeadly, settings.powerups, settings.roundSeconds])
   const { state, turn, activate, beginPlaying, rematch, timeLeftMs } = useTurfState({ width, height, cellPx, intervalMs, layout: orientationMode, p1OnRight, options, cpu: gameMode === 'vsCpu' ? settings.cpuDifficulty : null, paused: controls.paused })
 
   const humanPlayers = useMemo(() => humanPlayersFor(gameMode), [gameMode])
@@ -42,18 +42,16 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs: () => TURF_RESULT_HOLD_MS })
 
   const { colors: themeColors, dark } = useAutoPaperTheme()
-  // The edge in the pack's neutral board-structure color (LightCycles' obstacleColor).
-  const edgeColor = getBlendedColor(themeColors.tertiary, themeColors.outline, 0.5)
   const boardScale = Math.min(liveWidth / width, liveHeight / height)
 
   return (
     <>
       <View style={{ width, height, transform: [{ scale: boardScale }] }}>
-        <TurfBoardHost grid={state.grid} cellPx={cellPx} owner={state.owner} players={state.players} colors={colors} phase={state.phase} background={dark ? '#000000' : '#FFFFFF'} edgeColor={edgeColor} pickups={state.pickups} pickupColor={themeColors.tertiary} />
+        <TurfBoardHost grid={state.grid} cellPx={cellPx} owner={state.owner} obstacles={state.obstacles} portals={state.portals} tunnels={state.tunnels} players={state.players} colors={colors} orientationMode={orientationMode} p1OnRight={p1OnRight} phase={state.phase} tick={state.tick} intervalMs={intervalMs} background={dark ? '#000000' : '#FFFFFF'} pickups={state.pickups} pickupColor={themeColors.tertiary} />
         <TouchInputLayer orientationMode={orientationMode} p1OnRight={p1OnRight} humanPlayers={humanPlayers} enabled={state.phase === 'playing' && !controls.paused} onTurn={turn} onActivate={activate} controlInverted={tangled} currentDirections={currentDirections} keyScheme={settings.controlScheme} />
       </View>
 
-      {state.phase !== 'onboarding' && <TurfHud ground={state.ground} totalCells={state.grid.cols * state.grid.rows} timeLeftMs={timeLeftMs} colors={colors} humanPlayers={humanPlayers} held={held} powerupsOn={options.powerups.length > 0} />}
+      {state.phase !== 'onboarding' && <TurfHud ground={state.ground} totalCells={state.grid.cols * state.grid.rows - state.blocked.reduce((sum, value) => sum + value, 0)} timeLeftMs={timeLeftMs} colors={colors} humanPlayers={humanPlayers} held={held} powerupsOn={options.powerups.length > 0} />}
 
       <MatchOverlays phase={state.phase} orientationMode={orientationMode} p1OnRight={p1OnRight} settingsOpen={controls.settingsOpen} onSettingsDismiss={() => controls.setSettingsOpen(false)} onSettingsOpen={() => controls.setSettingsOpen(true)} confirmVisible={controls.confirmVisible} cancelBack={controls.cancelBack} humanPlayers={humanPlayers} colors={colors} profileNames={profileNames} roundHistory={roundHistory} onOnboardingComplete={beginPlaying} showResultDialog={flow.showResultDialog} matchOver={controls.matchOver} controlsVisible={flow.controlsVisible} desktopWeb={flow.isDesktopWeb} outcome={state.outcome} gameMode={gameMode} rematchReady={flow.rematchReady} onRequestRematch={flow.handleRequestRematch} onQuit={flow.handleQuit} onExit={safeBack} onBackPress={controls.requestBack} backgroundPaused={controls.backgroundPaused} onResume={controls.resume} />
     </>

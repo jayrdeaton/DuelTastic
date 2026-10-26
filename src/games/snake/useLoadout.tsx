@@ -1,7 +1,8 @@
 import { type MenuOption, SectionedDropdown } from '@tastic/hud'
 import { useCallback, useMemo } from 'react'
 
-import { LoadoutOptionsRow, pickRandom, useKeySchemeControl } from '@/shared/match/loadout'
+import { sharedArenaOptions } from '@/games/shared/arenaOptions'
+import { GRID_SIZE_OPTIONS as SHARED_GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS as SHARED_SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 import { SNAKE_CPU_DIFFICULTY_NAMES, SNAKE_POWERUP_ALL_TYPES, SNAKE_POWERUP_ICONS } from './constants/snake'
@@ -15,8 +16,8 @@ import type { CpuDifficulty } from './utils/snakeAi'
 // stays easy/normal/hard. Solo is seat 2's Nobody, not a difficulty.
 const CPU_DIFFICULTY_OPTIONS: MenuOption<CpuDifficulty>[] = [
   { value: 'easy', label: SNAKE_CPU_DIFFICULTY_NAMES.easy, icon: 'emoticon-happy-outline' },
-  { value: 'normal', label: SNAKE_CPU_DIFFICULTY_NAMES.normal, icon: 'robot' },
-  { value: 'hard', label: SNAKE_CPU_DIFFICULTY_NAMES.hard, icon: 'fire' }
+  { value: 'normal', label: SNAKE_CPU_DIFFICULTY_NAMES.normal, icon: 'emoticon-neutral-outline' },
+  { value: 'hard', label: SNAKE_CPU_DIFFICULTY_NAMES.hard, icon: 'emoticon-devil-outline' }
 ]
 
 // Two board toggles in one multi-select section of the board menu, under the layouts: presence in
@@ -26,31 +27,26 @@ const FULL_SCREEN_OPTION: MenuOption<'fullScreen'> = { value: 'fullScreen', labe
 const WRAP_EDGES_OPTION: MenuOption<'wrapEdges'> = { value: 'wrapEdges', label: 'Wrap Edges', icon: 'pac-man' }
 
 // The board's static layout (see utils/arenas.ts for what each builds).
-const ARENA_OPTIONS: MenuOption<SnakeArenaVariant>[] = [
-  { value: 'open', label: 'Open', icon: 'checkbox-blank-outline' },
-  { value: 'pillars', label: 'Pillars', icon: 'view-grid-outline' },
-  { value: 'gauntlet', label: 'Gauntlet', icon: 'wall' },
-  { value: 'portals', label: 'Portals', icon: 'circle-double' },
-  { value: 'underpass', label: 'Underpass', icon: 'tunnel-outline' }
-]
+const ARENA_OPTIONS: MenuOption<SnakeArenaVariant>[] = sharedArenaOptions<SnakeArenaVariant>('snake')
 
-// The cell size (see constants/snake.ts's SNAKE_CELL_PX): a growing dot reads as size at a glance.
-const GRID_SIZE_OPTIONS: MenuOption<SnakeGridSizeTier>[] = [
-  { value: 'small', label: 'Small', icon: 'circle-small' },
-  { value: 'medium', label: 'Medium', icon: 'circle-medium' },
-  { value: 'large', label: 'Large', icon: 'circle' }
-]
+// Shared pack icon language for grid size, to keep equivalent settings visually consistent across
+// modes while Snake keeps its own setting values.
+const GRID_SIZE_OPTIONS: MenuOption<SnakeGridSizeTier>[] = SHARED_GRID_SIZE_OPTIONS.map((option) => ({ ...option, value: option.value as SnakeGridSizeTier }))
 
-// The tick speed (see constants/snake.ts's SNAKE_SPEED_TIER_INTERVAL_MS).
-const SPEED_OPTIONS: MenuOption<SnakeSpeedTier>[] = [
-  { value: 'slow', label: 'Slow', icon: 'speedometer-slow' },
-  { value: 'normal', label: 'Normal', icon: 'speedometer-medium' },
-  { value: 'fast', label: 'Fast', icon: 'speedometer' }
-]
+// Shared pack icon language for speed, for the same cross-mode consistency as grid size.
+const SPEED_OPTIONS: MenuOption<SnakeSpeedTier>[] = SHARED_SPEED_OPTIONS.map((option) => ({ ...option, value: option.value as SnakeSpeedTier }))
 
 // The same icons and order as the held badge and the on-board glyph (constants/snake.ts).
 const POWERUP_LABELS: Record<SnakePowerupType, string> = { sidewind: 'Sidewind', coldblood: 'Coldblood', scales: 'Scales', constrict: 'Constrict', mesmerize: 'Mesmerize', frenzy: 'Frenzy' }
-const POWERUP_OPTIONS: MenuOption<SnakePowerupType>[] = SNAKE_POWERUP_ALL_TYPES.map((type) => ({ value: type, label: POWERUP_LABELS[type], icon: SNAKE_POWERUP_ICONS[type] }))
+const POWERUP_DESCRIPTIONS: Record<SnakePowerupType, string> = {
+  sidewind: 'Self speed boost (Overdrive/Dash)',
+  coldblood: 'Opponent freeze (Stasis/Freeze/Frost)',
+  scales: 'Self shield (Shield/Safe/Fence)',
+  constrict: 'Opponent trail cut (Prune)',
+  mesmerize: 'Opponent controls reversed (Hack/Tangle)',
+  frenzy: 'Opponent forced boost (Overclock/Gust)'
+}
+const POWERUP_OPTIONS: MenuOption<SnakePowerupType>[] = SNAKE_POWERUP_ALL_TYPES.map((type) => ({ value: type, label: POWERUP_LABELS[type], description: POWERUP_DESCRIPTIONS[type], icon: SNAKE_POWERUP_ICONS[type] }))
 
 const OPTION_IDS = ['snakeBoard', 'snakeGridSize', 'snakeSpeed', 'snakePowerups']
 

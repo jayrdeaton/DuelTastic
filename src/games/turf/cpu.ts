@@ -75,8 +75,8 @@ function stepsFrom(field: Int32Array, grid: GridSize, head: GridCell, direction:
   return best
 }
 
-function trailMask(grid: GridSize, trail: readonly GridCell[]): Uint8Array {
-  const mask = new Uint8Array(grid.cols * grid.rows)
+function trailMask(grid: GridSize, trail: readonly GridCell[], seed?: Uint8Array): Uint8Array {
+  const mask = seed ? seed.slice() : new Uint8Array(grid.cols * grid.rows)
   for (const cell of trail) mask[cellIndex(cell, grid)] = 1
   return mask
 }
@@ -123,8 +123,8 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
   const me = state.players[seat]
   const them = state.players[other(seat)]
   const outside = me.trail.length > 0
-  const myTrail = trailMask(grid, me.trail)
-  const theirTrail = trailMask(grid, them.trail)
+  const myTrail = trailMask(grid, me.trail, state.blocked)
+  const theirTrail = trailMask(grid, them.trail, state.blocked)
   const myBlocked = rules.ownTrailDeadly ? myTrail : new Uint8Array(myTrail.length)
   const theirBlocked = rules.ownTrailDeadly ? theirTrail : new Uint8Array(theirTrail.length)
   const home = distanceField(grid, groundCells(owner, seat), myBlocked)

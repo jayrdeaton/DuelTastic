@@ -1,12 +1,13 @@
-import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
+import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
 
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/games/lightcycles/utils/arenas'
 // Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
 
 import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_PILLAR_MARGIN, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_POWERUP_EFFECTS, TAG_TAIL_CELLS } from './constants'
-import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState } from './types'
+import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState, TagTunnel } from './types'
 
 const SEATS: readonly TagSeat[] = [1, 2]
 
@@ -18,7 +19,7 @@ export function cellIndex(cell: GridCell, grid: GridSize): number {
   return cell.y * grid.cols + cell.x
 }
 
-// Whether a rider can ride into this cell: on the board and not a pillar.
+// Whether a rider can ride into this cell: on the board and not blocked by arena geometry.
 export function isOpen(state: Pick<TagState, 'grid' | 'blocked'>, cell: GridCell): boolean {
   return isInBounds(cell, state.grid) && !state.blocked[cellIndex(cell, state.grid)]
 }
@@ -78,16 +79,27 @@ export interface CreateTagStateParams {
 
 export function createTagState({ grid, layout, p1OnRight = false, arena = 'pillars', it = 2, starts = {} }: CreateTagStateParams): TagState {
   const start = (seat: TagSeat) => starts[seat] ?? startingStateFor(seat, grid, layout, p1OnRight)
-  const pillars = arena === 'pillars' ? pillarsFor(grid, [start(1).head, start(2).head]) : []
+  const pillarBlocks = arena === 'pillars' ? pillarsFor(grid, [start(1).head, start(2).head]) : []
+  const obstacles =
+    arena === 'pillars'
+      ? pillarBlocks.flatMap((p) => {
+          const cells: GridCell[] = []
+          for (let y = p.y; y < p.y + p.height; y++) for (let x = p.x; x < p.x + p.width; x++) cells.push({ x, y })
+          return cells
+        })
+      : buildArenaObstacles(arena, grid, layout, p1OnRight)
+  const pillars = arena === 'pillars' ? pillarBlocks : obstacles.map((cell) => ({ x: cell.x, y: cell.y, width: 1, height: 1 }))
+  const portals = buildArenaPortals(arena, grid, layout, p1OnRight)
+  const tunnels: TagTunnel[] = buildArenaTunnels(arena, grid, layout, p1OnRight)
   const blocked = new Uint8Array(grid.cols * grid.rows)
-  for (const p of pillars) {
-    for (let y = p.y; y < p.y + p.height; y++) for (let x = p.x; x < p.x + p.width; x++) blocked[y * grid.cols + x] = 1
+  for (const cell of obstacles) {
+    blocked[cell.y * grid.cols + cell.x] = 1
   }
   const player = (seat: TagSeat): TagPlayer => {
     const { head, direction } = start(seat)
     return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS() }
   }
-  return { phase: 'onboarding', grid, pillars, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, events: NO_EVENTS() }
+  return { phase: 'onboarding', grid, pillars, portals, tunnels, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, events: NO_EVENTS() }
 }
 
 export function startTag(state: TagState): TagState {
@@ -106,13 +118,15 @@ export function applyTagTurn(state: TagState, seat: TagSeat, direction: Directio
 
 // One step for a rider: its queued turn if that way is open, else straight on if that is (keeping the
 // turn queued), else nowhere.
-function step(state: TagState, p: TagPlayer): TagPlayer | null {
+function step(state: TagState, p: TagPlayer, portals: ReadonlyMap<string, GridCell>): TagPlayer | null {
   const turn = p.pendingDirection
   if (turn) {
-    const next = stepCell(p.head, turn)
+    const stepped = stepCell(p.head, turn)
+    const next = portals.get(cellKey(stepped)) ?? stepped
     if (isOpen(state, next)) return { ...p, head: next, direction: turn, pendingDirection: null, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS) }
   }
-  const next = stepCell(p.head, p.direction)
+  const stepped = stepCell(p.head, p.direction)
+  const next = portals.get(cellKey(stepped)) ?? stepped
   return isOpen(state, next) ? { ...p, head: next, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS) } : null
 }
 
@@ -123,6 +137,11 @@ function step(state: TagState, p: TagPlayer): TagPlayer | null {
 // within a cell of a box picks it up, and with powerups on a new one turns up once it's taken.
 export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], random: () => number = Math.random): TagState {
   if (state.phase !== 'playing') return state
+  const portalLookup = new Map<string, GridCell>()
+  for (const portal of state.portals) {
+    portalLookup.set(cellKey(portal.a), portal.b)
+    portalLookup.set(cellKey(portal.b), portal.a)
+  }
   const tick = state.tick + 1
   const players: Record<TagSeat, TagPlayer> = { 1: state.players[1], 2: state.players[2] }
   let { it, frozenThrough, tags, pickups } = state
@@ -152,7 +171,7 @@ export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], r
     for (const seat of SEATS) {
       // A rider tagged this tick stands still from then on.
       if (i >= steps[seat] || (seat === it && tick <= frozenThrough)) continue
-      const moved = step(state, players[seat])
+      const moved = step(state, players[seat], portalLookup)
       if (!moved) {
         if (!events.blocked.includes(seat)) events.blocked.push(seat)
         continue

@@ -10,7 +10,7 @@ export const TURF_SPEED_INTERVAL_MS = { slow: 120, normal: 90, fast: 66 } as con
 
 export const TURF_ROUND_SECONDS = [60, 120, 180] as const
 
-export const DEFAULT_TURF_OPTIONS: TurfOptions = { crash: 'out', ownTrailDeadly: true, powerups: [], roundSeconds: 120 }
+export const DEFAULT_TURF_OPTIONS: TurfOptions = { arena: 'open', crash: 'out', ownTrailDeadly: true, powerups: [], roundSeconds: 120 }
 
 // The most a single frame may count toward the round clock, so a stalled frame (the app pausing on a
 // slow device, a debugger) can't eat seconds off the clock in one go.

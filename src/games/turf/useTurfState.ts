@@ -35,7 +35,7 @@ interface RoundState {
 // powerup) decided right before each step it plays in, and the clock run alongside, ending the round
 // when it's up.
 export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, cpu, paused }: UseTurfStateParams) {
-  const fresh = useCallback((): RoundState => ({ round: createTurfState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight }), plan: null, elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight])
+  const fresh = useCallback((): RoundState => ({ round: createTurfState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena }), plan: null, elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena])
   const [state, setState] = useState(fresh)
 
   const turn = useCallback((seat: TurfSeat, direction: Direction) => {
@@ -56,6 +56,10 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
   const phase = state.round.phase
   const lastFrameRef = useRef<number | null>(null)
   const sinceStepRef = useRef(0)
+  const elapsedRef = useRef(0)
+  useEffect(() => {
+    elapsedRef.current = state.elapsedMs
+  }, [state.elapsedMs])
 
   useEffect(() => {
     if (phase !== 'playing' || paused) return
@@ -72,20 +76,31 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
       const steps = Math.floor(sinceStepRef.current / intervalMs)
       sinceStepRef.current -= steps * intervalMs
       if (dt > 0) {
-        setState((s) => {
-          let { round, plan } = s
-          for (let i = 0; i < steps && round.phase === 'playing'; i++) {
-            if (cpu) {
-              const decided = applyTurfCpu(round, 2, cpu, plan, options)
-              round = decided.state
-              plan = decided.plan
+        const prevElapsedMs = elapsedRef.current
+        const nextElapsedMs = Math.min(roundMs, prevElapsedMs + dt)
+        elapsedRef.current = nextElapsedMs
+        const prevLeft = Math.ceil((roundMs - prevElapsedMs) / 1000)
+        const nextLeft = Math.ceil((roundMs - nextElapsedMs) / 1000)
+        const shouldTick = steps > 0
+        const shouldUpdateClock = nextLeft !== prevLeft
+        const shouldFinishOnTime = prevElapsedMs < roundMs && nextElapsedMs >= roundMs
+        if (shouldTick || shouldUpdateClock || shouldFinishOnTime) {
+          setState((s) => {
+            let { round, plan } = s
+            if (shouldTick) {
+              for (let i = 0; i < steps && round.phase === 'playing'; i++) {
+                if (cpu) {
+                  const decided = applyTurfCpu(round, 2, cpu, plan, options)
+                  round = decided.state
+                  plan = decided.plan
+                }
+                round = tickTurf(round, options)
+              }
             }
-            round = tickTurf(round, options)
-          }
-          const elapsedMs = s.elapsedMs + dt
-          if (round.phase === 'playing' && elapsedMs >= roundMs) round = finishTurfOnTime(round)
-          return { round, plan, elapsedMs }
-        })
+            if (round.phase === 'playing' && nextElapsedMs >= roundMs) round = finishTurfOnTime(round)
+            return { round, plan, elapsedMs: nextElapsedMs }
+          })
+        }
       }
       frame = requestAnimationFrame(loop)
     }

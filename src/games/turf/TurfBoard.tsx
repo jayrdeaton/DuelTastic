@@ -1,9 +1,11 @@
-import { Canvas, Circle, Path, Skia, type SkPath } from '@shopify/react-native-skia'
+import { Canvas, Circle, Line, Path, Skia, type SkPath, vec } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import { SplitWalls } from '@/shared/match/SplitWalls'
 import type { Pickup } from '@/shared/powerups'
 
 import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
@@ -12,13 +14,19 @@ export interface TurfBoardProps {
   grid: GridSize
   cellPx: number
   owner: Uint8Array
+  obstacles: GridCell[]
+  portals: { a: GridCell; b: GridCell }[]
+  tunnels: { cells: GridCell[] }[]
   players: Record<TurfSeat, TurfPlayer>
   colors: Record<TurfSeat, string>
+  orientationMode: 'faceToFace' | 'sideBySide'
+  p1OnRight: boolean
   phase: TurfPhase
+  tick: number
+  // Milliseconds per step, for how long each glide from cell to cell takes.
+  intervalMs: number
   // The board's own background, used to ring each head so it stands out over its trail and ground.
   background: string
-  // The board's edge, which is deadly.
-  edgeColor: string
   pickups: Pickup<TurfPowerup>[]
   pickupColor: string
 }
@@ -68,6 +76,59 @@ function trailPath(player: TurfPlayer, cellPx: number): SkPath {
   return path.detach()
 }
 
+function settledTrailPath(player: TurfPlayer, cellPx: number): SkPath {
+  const path = Skia.PathBuilder.Make()
+  const cells = player.leftFrom ? [player.leftFrom, ...player.trail] : player.trail
+  const settled = cells.slice(0, -1)
+  if (settled.length < 2) return path.detach()
+  const first = cellCenter(settled[0], cellPx)
+  path.moveTo(first.x, first.y)
+  for (const cell of settled.slice(1)) {
+    const { x, y } = cellCenter(cell, cellPx)
+    path.lineTo(x, y)
+  }
+  return path.detach()
+}
+
+function useGlide(head: GridCell, tick: number, cellPx: number, intervalMs: number) {
+  const target = cellCenter(head, cellPx)
+  const x = useSharedValue(target.x)
+  const y = useSharedValue(target.y)
+  const lastStepAtRef = useRef(0)
+  useEffect(() => {
+    const now = performance.now()
+    const far = Math.abs(x.value - target.x) > cellPx * 2.5 || Math.abs(y.value - target.y) > cellPx * 2.5
+    const duration = Math.max(1, Math.min(now - lastStepAtRef.current, intervalMs * 3))
+    lastStepAtRef.current = now
+    if (tick === 0 || far) {
+      x.value = target.x
+      y.value = target.y
+      return
+    }
+    x.value = withTiming(target.x, { duration, easing: Easing.linear })
+    y.value = withTiming(target.y, { duration, easing: Easing.linear })
+  }, [tick, target.x, target.y, cellPx, intervalMs, x, y])
+  return { x, y }
+}
+
+function Rider({ seat, player, color, cellPx, tick, intervalMs, background }: { seat: TurfSeat; player: TurfPlayer; color: string; cellPx: number; tick: number; intervalMs: number; background: string }) {
+  const { x, y } = useGlide(player.head, tick, cellPx, intervalMs)
+  const settled = useMemo(() => settledTrailPath(player, cellPx), [player, cellPx])
+  const cells = player.leftFrom ? [player.leftFrom, ...player.trail] : player.trail
+  const lastSettled = cells.length > 1 ? cellCenter(cells[cells.length - 2], cellPx) : null
+  const headPoint = useDerivedValue(() => vec(x.value, y.value))
+  const headRadius = cellPx * HEAD_RADIUS
+  return (
+    <>
+      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} />
+      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} />}
+      {player.alive ? <Circle cx={x} cy={y} r={headRadius} color={color} style='fill' /> : null}
+      {player.alive ? <Circle cx={x} cy={y} r={headRadius} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null}
+      {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}
+    </>
+  )
+}
+
 // Where a rider crashed, held on the board for the tick it happened (or until the next round, when
 // the crash ended this one). A crash off the edge is drawn on the edge.
 function CrashMark({ cell, grid, cellPx, color }: { cell: GridCell; grid: GridSize; cellPx: number; color: string }) {
@@ -81,16 +142,9 @@ function CrashMark({ cell, grid, cellPx, color }: { cell: GridCell; grid: GridSi
   )
 }
 
-export function TurfBoard({ grid, cellPx, owner, players, colors, phase, background, edgeColor, pickups, pickupColor }: TurfBoardProps) {
+export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, background, pickups, pickupColor }: TurfBoardProps) {
   const ground = useMemo(() => SEATS.map((seat) => groundPath(owner, grid, cellPx, seat)), [owner, grid, cellPx])
   const trails = useMemo(() => SEATS.map((seat) => trailPath(players[seat], cellPx)), [players, cellPx])
-  const edge = useMemo(
-    () =>
-      Skia.PathBuilder.Make()
-        .addRect(Skia.XYWHRect(0, 0, grid.cols * cellPx, grid.rows * cellPx))
-        .detach(),
-    [grid, cellPx]
-  )
 
   return (
     <View style={styles.container}>
@@ -98,29 +152,54 @@ export function TurfBoard({ grid, cellPx, owner, players, colors, phase, backgro
         {SEATS.map((seat, i) => (
           <Path key={`ground-${seat}`} path={ground[i]} color={colors[seat]} opacity={GROUND_OPACITY} />
         ))}
-        <Path path={edge} style='stroke' strokeWidth={EDGE_STROKE_WIDTH} color={edgeColor} />
+        {obstacles.map((cell, i) => {
+          const { x, y } = cellToPixel(cell, cellPx)
+          const path = Skia.PathBuilder.Make()
+          path.addRect(Skia.XYWHRect(x, y, cellPx, cellPx))
+          return <Path key={`obstacle-${i}`} path={path.detach()} color={background} />
+        })}
+        {tunnels.map((tunnel, index) => {
+          const path = Skia.PathBuilder.Make()
+          tunnel.cells.forEach((cell, i) => {
+            const { x, y } = cellCenter(cell, cellPx)
+            if (i === 0) path.moveTo(x, y)
+            else path.lineTo(x, y)
+          })
+          return <Path key={`tunnel-${index}`} path={path.detach()} style='stroke' strokeWidth={cellPx * 0.5} color={background} opacity={0.75} />
+        })}
+        {portals.map((portal, index) => {
+          const a = cellCenter(portal.a, cellPx)
+          const b = cellCenter(portal.b, cellPx)
+          const r = cellPx * 0.3
+          const path = Skia.PathBuilder.Make()
+          path.addCircle(a.x, a.y, r)
+          path.addCircle(b.x, b.y, r)
+          return <Path key={`portal-${index}`} path={path.detach()} style='stroke' strokeWidth={2} color={background} />
+        })}
+        {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
-        {SEATS.map((seat, i) => (
-          <Path key={`trail-${seat}`} path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} />
-        ))}
-        {SEATS.map((seat) => {
-          const p = players[seat]
-          const { x, y } = cellCenter(p.head, cellPx)
-          return p.alive ? <Circle key={`head-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} color={colors[seat]} style='fill' /> : null
-        })}
-        {SEATS.map((seat) => {
-          const p = players[seat]
-          const { x, y } = cellCenter(p.head, cellPx)
-          return p.alive ? <Circle key={`ring-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null
-        })}
-        {SEATS.map((seat) => {
-          const p = players[seat]
-          if (!p.alive) return null
-          const { x, y } = cellCenter(p.head, cellPx)
-          return <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={cellPx * HEAD_RADIUS} effects={p.effects} />
-        })}
+        {SEATS.map((seat, i) => (phase === 'playing' ? <Rider key={`rider-${seat}`} seat={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} background={background} /> : <Path key={`trail-${seat}`} path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} />))}
+        {phase !== 'playing' &&
+          SEATS.map((seat) => {
+            const p = players[seat]
+            const { x, y } = cellCenter(p.head, cellPx)
+            return p.alive ? <Circle key={`head-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} color={colors[seat]} style='fill' /> : null
+          })}
+        {phase !== 'playing' &&
+          SEATS.map((seat) => {
+            const p = players[seat]
+            const { x, y } = cellCenter(p.head, cellPx)
+            return p.alive ? <Circle key={`ring-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null
+          })}
+        {phase !== 'playing' &&
+          SEATS.map((seat) => {
+            const p = players[seat]
+            if (!p.alive) return null
+            const { x, y } = cellCenter(p.head, cellPx)
+            return <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={cellPx * HEAD_RADIUS} effects={p.effects} />
+          })}
         {phase !== 'onboarding' && SEATS.map((seat) => (players[seat].crashCell ? <CrashMark key={`crash-${seat}`} cell={players[seat].crashCell!} grid={grid} cellPx={cellPx} color={colors[seat]} /> : null))}
       </Canvas>
     </View>

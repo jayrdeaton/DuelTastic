@@ -8,7 +8,7 @@ import { applyTurfCpu, chooseTurfCpuMove, shouldTurfCpuActivate, type TurfCpuDif
 import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, startTurf, tickTurf } from '../engine'
 import type { TurfPlayer, TurfRules, TurfSeat, TurfState } from '../types'
 
-const HOME: TurfRules = { crash: 'home', ownTrailDeadly: true, powerups: [] }
+const HOME: TurfRules = { arena: 'open', crash: 'home', ownTrailDeadly: true, powerups: [] }
 
 // A small seeded random, so every run of these tests plays the same games.
 function seeded(seed: number): () => number {
@@ -223,7 +223,7 @@ function playWithPowerups(levels: Record<TurfSeat, TurfCpuDifficulty>, rules: Tu
 describe('the CPU with every powerup on', () => {
   for (const crash of ['out', 'home'] as const) {
     it(`never crashes itself unless it's tangled, and uses what it picks up (${crash})`, () => {
-      const rules: TurfRules = { crash, ownTrailDeadly: true, powerups: TURF_POWERUPS }
+      const rules: TurfRules = { arena: 'open', crash, ownTrailDeadly: true, powerups: TURF_POWERUPS }
       let used = 0
       for (let seed = 1; seed <= 4; seed++) {
         for (const levels of [
