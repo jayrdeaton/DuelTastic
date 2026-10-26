@@ -43,8 +43,8 @@ export function useLoadout(mode: RoundMode): GameLoadout {
   }, [setSettings])
 
   const options = useCallback(
-    ({ host, accentColor, mutedColor, onAccentColor, dark, onRandomize, onReset }: LoadoutOptionsProps) => {
-      const look = { accentColor, mutedColor, onAccentColor, dark }
+    ({ host, accentColor, mutedColor, onAccentColor, dark, rotation, onRandomize, onReset }: LoadoutOptionsProps) => {
+      const look = { accentColor, mutedColor, onAccentColor, dark, rotation }
       return (
         <LoadoutOptionsRow ids={OPTION_IDS} host={host} onRandomize={onRandomize} onReset={onReset} dark={dark}>
           <SectionedDropdown id='turfArena' host={host} icon='crop-square' accessibilityLabel='Arena' sections={[{ kind: 'single', id: 'turfArena', options: TURF_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) }]} {...look} />

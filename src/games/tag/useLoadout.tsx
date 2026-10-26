@@ -41,8 +41,8 @@ export function useLoadout(mode: RoundMode): GameLoadout {
   }, [setSettings])
 
   const options = useCallback(
-    ({ host, accentColor, mutedColor, onAccentColor, dark, onRandomize, onReset }: LoadoutOptionsProps) => {
-      const look = { accentColor, mutedColor, onAccentColor, dark }
+    ({ host, accentColor, mutedColor, onAccentColor, dark, rotation, onRandomize, onReset }: LoadoutOptionsProps) => {
+      const look = { accentColor, mutedColor, onAccentColor, dark, rotation }
       return (
         <LoadoutOptionsRow ids={OPTION_IDS} host={host} onRandomize={onRandomize} onReset={onReset} dark={dark}>
           <SectionedDropdown id='tagRules' host={host} icon='gavel' accessibilityLabel='Rules' sections={[{ kind: 'single', id: 'tagRule', options: TAG_RULE_OPTIONS, value: settings.rule, onChange: (rule) => setSettings({ rule }) }]} {...look} />

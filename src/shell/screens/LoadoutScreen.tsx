@@ -165,7 +165,7 @@ export function LoadoutScreen({ game }: { game: GameDefinition }) {
     optionsRow
   )
 
-  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark }
+  const controlLook = { accentColor: themeColors.tertiary, mutedColor: fgMuted, dark, rotation }
   const p1Control = loadout.seatControl(1, controlsHost, { ...controlLook, seatColor: p1Color })
   const p1Panel = <PlayerSetupPanel idPrefix='p1' host={controlsHost} color={p1Color} onColorChange={handleP1ColorChange} swatches={defaultColors} takenColor={p2Exists ? p2Color : undefined} allowSwapTaken={mode === 'vsCpu'} colorCaption={pack.colorCaption} isHuman ready={ready[1]} onToggleReady={() => setReady((r) => ({ ...r, 1: !r[1] }))} dark={dark} showReadyButton={showReadyButton} secondPicker={p1Control} secondPickerId={p1Control ? 'p1-control' : undefined} profiles={profiles} selectedProfileId={lastSelected[1]} takenProfileId={p2IsHuman ? lastSelected[2] : null} guestLabel='P1' onProfileSelect={handleP1ProfileSelect} onManageProfiles={() => router.push('/profiles')} />
   const p2Control = p2IsHuman ? loadout.seatControl(2, p2Host, { ...controlLook, seatColor: p2Color }) : undefined

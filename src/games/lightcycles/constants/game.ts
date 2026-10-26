@@ -6,9 +6,9 @@ import { EFFECT_COLORS, EFFECT_ICONS, PICKUP_EDGE_MARGIN, PICKUP_PULSE_DURATION_
 // the cycle's on-screen (px/sec) pace stays constant across grid-size tiers instead of silently
 // playing faster/slower depending which one is picked.
 export const SPEED_TIER_INTERVAL_MS: Record<SpeedTier, number> = {
-  slow: 90,
-  normal: 63,
-  fast: 43
+  slow: 100,
+  normal: 67,
+  fast: 50
 }
 
 // Speed ramp (optional, see SettingsDialog): every SPEED_RAMP_INTERVAL_MS of round time, the
@@ -18,8 +18,8 @@ export const SPEED_TIER_INTERVAL_MS: Record<SpeedTier, number> = {
 // for the same reason SPEED_TIER_INTERVAL_MS is (see scaleMsForCellPx); SPEED_RAMP_INTERVAL_MS is
 // real round time, not a per-cell duration, so it doesn't scale.
 export const SPEED_RAMP_INTERVAL_MS = 6000
-export const SPEED_RAMP_DECREMENT_MS = 7
-export const SPEED_RAMP_MIN_INTERVAL_MS = 26
+export const SPEED_RAMP_DECREMENT_MS = 8
+export const SPEED_RAMP_MIN_INTERVAL_MS = 33
 
 // Net trail-length growth per tick, as a fraction of the append rate (see gameEngine.ts's
 // shouldTrimTrailAt). 'off' (1) is the original behavior: the tail never follows, so the trail

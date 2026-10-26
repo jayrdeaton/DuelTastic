@@ -1,6 +1,7 @@
 import { useKeepAwake } from '@rific/core'
 import { useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
+import { usePreventRemove } from 'expo-router'
 import { useBackgroundPause } from '@tastic/core'
 import { useQuitConfirmation } from '@tastic/hud'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -49,7 +50,11 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // Asked only once there's a score to lose; the first round's back exits at once. Once the match is
   // over its stats are recorded, so back exits at once then too, like the Match Over card's own
   // button (audit F094).
-  const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => roundHistory.length > 0 && !matchOver, safeBack)
+  const shouldConfirmBack = roundHistory.length > 0 && !matchOver
+  const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
+  usePreventRemove(shouldConfirmBack, () => {
+    requestBack()
+  })
   // Leaving the app mid-match latches a pause that only the Paused dialog's Resume clears (see
   // @tastic/core's useBackgroundPause). Skipped once the round is over, or while a dialog already
   // holds the pause.

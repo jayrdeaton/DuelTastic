@@ -3,9 +3,9 @@ import { IconButton, Pressable } from '@rific/feedback-press'
 import { FakeLandscapeView, rotateInsets, useRotation } from '@tastic/core'
 import { PressAwayOverlay, usePopoverHost, useWellColors, WELL_SHADOW } from '@tastic/hud'
 import { type Profile, ProfilePicker } from '@tastic/profile'
-import { router } from 'expo-router'
-import { useCallback, useState } from 'react'
-import { Image, ScrollView, StyleSheet, View } from 'react-native'
+import { router, useIsFocused } from 'expo-router'
+import { useCallback, useEffect, useState } from 'react'
+import { AppState, type AppStateStatus, Image, ScrollView, StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -29,6 +29,13 @@ export function HomeScreen() {
   const { dark } = useAutoPaperTheme()
   const { openFirstTime, openFor } = useGameGuide()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const isFocused = useIsFocused()
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState)
+    return () => subscription.remove()
+  }, [])
+  const heroTrailsActive = isFocused && appState === 'active'
 
   const { profiles, lastSelected, selectProfile } = useProfiles()
   const { seatTwo } = useOpponent()
@@ -48,7 +55,7 @@ export function HomeScreen() {
       <FakeLandscapeView style={styles.rotatable}>
         <PressAwayOverlay active={pickerHost.openId !== null} onPress={pickerHost.close} />
         <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { paddingTop: 56 + insets.top, paddingBottom: 24 + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
-          <HeroTitle words={pack.wordmark} color={fg} p1Color={p1Color} p2Color={p2Color} />
+          <HeroTitle words={pack.wordmark} color={fg} p1Color={p1Color} p2Color={p2Color} trailsActive={heroTrailsActive} />
 
           {/* Who's playing: seat 1's button, the same one each loadout starts with. Lifted above the
           tiles while its menu is open, so the menu paints over them. */}

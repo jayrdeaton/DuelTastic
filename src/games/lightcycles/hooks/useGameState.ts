@@ -49,6 +49,8 @@ export function useGameState(width: number, height: number, settings: RoundSetti
   const rafRef = useRef<number | null>(null)
   const lastTickRef = useRef<number | null>(null)
   const elapsedRef = useRef(0)
+  const accumulatorRef = useRef(0)
+  const MAX_CATCH_UP_TICKS = 4
 
   // Round time (the speed ramp's clock) starts over with each round's countdown, not each time the
   // loop below restarts - a pause tears that loop down and back up mid-round, and resuming must not
@@ -62,6 +64,7 @@ export function useGameState(width: number, height: number, settings: RoundSetti
 
     let active = true
     lastTickRef.current = null
+    accumulatorRef.current = 0
     const baseIntervalMs = scaleMsForCellPx(SPEED_TIER_INTERVAL_MS[settings.speedTier], cellPx)
     const decrementMs = scaleMsForCellPx(SPEED_RAMP_DECREMENT_MS, cellPx)
     const minIntervalMs = scaleMsForCellPx(SPEED_RAMP_MIN_INTERVAL_MS, cellPx)
@@ -70,15 +73,17 @@ export function useGameState(width: number, height: number, settings: RoundSetti
       if (!active) return
       if (lastTickRef.current === null) lastTickRef.current = timestamp
 
-      const dt = timestamp - lastTickRef.current
-      const intervalMs = computeTickIntervalMs(baseIntervalMs, elapsedRef.current, settings.speedRampEnabled, decrementMs, minIntervalMs)
+      const frameDt = timestamp - lastTickRef.current
+      lastTickRef.current = timestamp
+      accumulatorRef.current += frameDt
 
-      if (dt >= intervalMs) {
-        lastTickRef.current = timestamp
-        // Capped before accumulating into round time - see MAX_TICK_DT_MS's own comment. The
-        // *trigger* check above still uses the real dt (so a tick fires immediately once a stall
-        // resumes); only how much of it counts toward the ramp is bounded.
-        elapsedRef.current += Math.min(dt, MAX_TICK_DT_MS)
+      let catchUpTicks = 0
+      let stepped = false
+      while (catchUpTicks < MAX_CATCH_UP_TICKS) {
+        const intervalMs = computeTickIntervalMs(baseIntervalMs, elapsedRef.current, settings.speedRampEnabled, decrementMs, minIntervalMs)
+        if (accumulatorRef.current < intervalMs) break
+        accumulatorRef.current -= intervalMs
+        elapsedRef.current += Math.min(intervalMs, MAX_TICK_DT_MS)
         setTickIntervalMs(intervalMs)
         const trailSpeedRate = TRAIL_SPEED_RATE[settings.trailSpeedTier]
         const enabledPowerups = settings.enabledPowerups
@@ -108,6 +113,11 @@ export function useGameState(width: number, height: number, settings: RoundSetti
           const occupied = buildOccupiedSet(afterActivation.players, afterActivation.obstacles, tunnelCellSet)
           return tickGame(applyCpuTurn(afterActivation, settings.cpuDifficulty, occupied, undefined, undefined, settings.wrapEdges), occupied, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
         })
+        catchUpTicks += 1
+        stepped = true
+      }
+      if (catchUpTicks === MAX_CATCH_UP_TICKS && stepped) {
+        accumulatorRef.current = 0
       }
 
       rafRef.current = requestAnimationFrame(loop)

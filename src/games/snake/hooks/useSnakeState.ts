@@ -111,6 +111,8 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
   // lastTickRef null, so the first tick after it waits a full interval.
   const rafRef = useRef<number | null>(null)
   const lastTickRef = useRef<number | null>(null)
+  const accumulatorRef = useRef(0)
+  const MAX_CATCH_UP_TICKS = 4
 
   const tickIntervalMs = SNAKE_SPEED_TIER_INTERVAL_MS[settings.speedTier]
   const hasPowerups = settings.enabledPowerups.length > 0
@@ -120,15 +122,19 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
 
     let active = true
     lastTickRef.current = null
+    accumulatorRef.current = 0
 
     const loop = (timestamp: number) => {
       if (!active) return
       if (lastTickRef.current === null) lastTickRef.current = timestamp
 
-      const dt = timestamp - lastTickRef.current
+      const frameDt = timestamp - lastTickRef.current
+      lastTickRef.current = timestamp
+      accumulatorRef.current += frameDt
 
-      if (dt >= tickIntervalMs) {
-        lastTickRef.current = timestamp
+      let catchUpTicks = 0
+      while (accumulatorRef.current >= tickIntervalMs && catchUpTicks < MAX_CATCH_UP_TICKS) {
+        accumulatorRef.current -= tickIntervalMs
         setState((s) => {
           // Mirrors LightCycles' useGameState.ts inline CPU-turn-injection splice exactly: for
           // vsCpu, the CPU's activation decision (if any powerups are even enabled) is made and
@@ -142,6 +148,10 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
           }
           return tickSnake(s, Math.random)
         })
+        catchUpTicks += 1
+      }
+      if (catchUpTicks === MAX_CATCH_UP_TICKS) {
+        accumulatorRef.current = 0
       }
 
       rafRef.current = requestAnimationFrame(loop)

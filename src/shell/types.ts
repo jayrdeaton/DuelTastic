@@ -3,6 +3,7 @@ import type { GuideStep } from '@tastic/hud/guide'
 import type { ComponentType, ReactNode } from 'react'
 import type { ImageSourcePropType } from 'react-native'
 import type { Action, Reducer } from 'redux'
+import type { ViewRotation } from '@tastic/core'
 
 import type { ShellState } from '@/shell/redux/shellState'
 
@@ -30,7 +31,7 @@ export function humanSeatsFor(mode: RoundMode): Seat[] {
 // shares with seat 1's panel, the screen's rotation, and the colors the row draws with.
 export interface LoadoutOptionsProps {
   host: PopoverHost
-  rotation: number
+  rotation: ViewRotation
   accentColor: string
   mutedColor: string
   onAccentColor: string
@@ -46,6 +47,7 @@ export interface SeatControlLook {
   seatColor: string
   mutedColor: string
   dark: boolean
+  rotation: ViewRotation
 }
 
 // One game's part of the shared loadout (shell/screens/LoadoutScreen.tsx), built by the game's

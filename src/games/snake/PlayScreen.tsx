@@ -7,6 +7,7 @@ import { computeContentBounds, FakeLandscapeView, getFixedZoneRotation, getViewR
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
+import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -150,6 +151,9 @@ export default function PlayScreen() {
 
   // See localPhase's own comment above.
   const phase: GamePhase = state.phase === 'roundOver' ? 'gameOver' : localPhase
+  usePreventRemove(phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), () => {
+    requestBack()
+  })
 
   const handleBeginPlaying = useCallback(() => {
     beginPlaying()

@@ -8,13 +8,14 @@ import type { CpuDifficulty } from '@/games/snake/utils/snakeAi'
 // below, never tick cadence: a 'small' round ticks at exactly the same rate as 'large', it just
 // moves fewer px per tick. useSnakeState.ts's rAF loop just compares elapsed dt against whichever
 // of these three the round's persisted speedTier picked, every tick, for the life of a round.
-// `normal` preserves this app's original fixed 110ms exactly, so a player who never touches the new
-// setting sees no behavior change; `slow`/`fast` fan out from it using roughly LightCycles' own
+// Tuned to preserve the pre-fixed-step feel at 60Hz (where the old frame-rounded loop effectively
+// ran near 117ms/84ms for normal/fast), so fixing the loop itself doesn't silently speed the game
+// up on common displays; `slow`/`fast` still fan out from normal using roughly LightCycles' own
 // slow/normal and fast/normal ratios.
 export const SNAKE_SPEED_TIER_INTERVAL_MS: Record<SnakeSpeedTier, number> = {
   slow: 150,
-  normal: 110,
-  fast: 80
+  normal: 117,
+  fast: 84
 }
 
 // Per-tier cell pixel size, mirroring LightCycles' GRID_CELL_PX - 'medium' is Classic Snake's

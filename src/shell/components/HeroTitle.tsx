@@ -17,6 +17,7 @@ export interface HeroTitleProps {
   // second's always matches player 2's.
   p1Color: string
   p2Color: string
+  trailsActive?: boolean
 }
 
 const TRAIL_FADE_DURATION_MS = 280
@@ -40,7 +41,7 @@ const SECOND_WORD_OFFSET = 44 + TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM
 
 // The pack's hero (LightCycles' light-trail wordmark): two staggered words in the display face,
 // each looped by a light trail in its player's color once the letters have landed.
-export function HeroTitle({ words, color, p1Color, p2Color }: HeroTitleProps) {
+export function HeroTitle({ words, color, p1Color, p2Color, trailsActive = true }: HeroTitleProps) {
   const [firstWord, secondWord] = words
   // Trails start looping the instant they mount (see HeroTitleTrails) but stay hidden behind this
   // shared fade until the letters are most of the way settled - one "power on" beat once the
@@ -67,7 +68,7 @@ export function HeroTitle({ words, color, p1Color, p2Color }: HeroTitleProps) {
 
       {firstBox && secondBox && (
         <Animated.View pointerEvents='none' style={[styles.canvas, trailStyle]}>
-          <HeroTitleTrailsHost firstBox={firstBox} secondBox={secondBox} p1Color={p1Color} p2Color={p2Color} active={!reducedMotion} startDelayMs={trailFadeDelayMs} />
+          <HeroTitleTrailsHost firstBox={firstBox} secondBox={secondBox} p1Color={p1Color} p2Color={p2Color} active={trailsActive && !reducedMotion} startDelayMs={trailFadeDelayMs} />
         </Animated.View>
       )}
     </View>
