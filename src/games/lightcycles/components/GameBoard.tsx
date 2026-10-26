@@ -62,9 +62,9 @@ function cellCenter(cell: GridCell, cellPx: number) {
 // trails/heads for visual weight. Flat rather than scaled with cellPx, same reasoning as the head
 // ring's own stroke width above.
 const WALL_STROKE_WIDTH = 1.5
-const TRAIL_OPACITY = 0.85
-const HEAD_RING_OUTLINE_WIDTH = 2.8
-const HEAD_RING_WHITE_WIDTH = 1.2
+const TRAIL_OPACITY = 1
+const HEAD_RING_OUTLINE_WIDTH = 2.2
+const HEAD_RING_WHITE_WIDTH = 1.5
 
 // Every live pickup renders identically, regardless of its actual (already-decided, see
 // gameEngine.ts's maybeSpawnPickup) type - Mario-Kart mystery-box style. The type is only ever

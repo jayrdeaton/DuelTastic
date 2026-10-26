@@ -41,7 +41,7 @@ const IT_HEAD_RADIUS = 0.52
 const HEAD_RING_OUTLINE = 0.2
 const HEAD_RING_WHITE = 0.1
 const TAIL_WIDTH = 0.3
-const TAIL_OPACITY = 1
+const TAIL_OPACITY = 0.4
 // It's pulsing ring, as a multiple of the cell.
 const IT_RING_RADIUS = 0.85
 const IT_RING_PULSE = 0.18
@@ -66,28 +66,17 @@ function useGlide(head: GridCell, tick: number, cellPx: number, intervalMs: numb
   const { x: targetX, y: targetY } = cellCenter(head, cellPx)
   const x = useSharedValue(targetX)
   const y = useSharedValue(targetY)
-  const lastMoveAtRef = useRef(0)
-  const lastTargetRef = useRef({ x: targetX, y: targetY })
+  const lastStepAtRef = useRef(0)
   useEffect(() => {
     const now = performance.now()
-    const moved = lastTargetRef.current.x !== targetX || lastTargetRef.current.y !== targetY
     const far = Math.abs(x.value - targetX) > cellPx * 2.5 || Math.abs(y.value - targetY) > cellPx * 2.5
+    const duration = Math.max(1, Math.min(now - lastStepAtRef.current, intervalMs * GLIDE_MAX_DURATION_INTERVALS))
+    lastStepAtRef.current = now
     if (tick === 0 || far) {
       x.value = targetX
       y.value = targetY
-      lastMoveAtRef.current = now
-      lastTargetRef.current = { x: targetX, y: targetY }
       return
     }
-    if (!moved) {
-      return
-    }
-    // Measured against the real gap since this rider's previous move (not every global tick): Tag
-    // riders can move at different cadences (It speed, Dash, Mud, freeze), so tying duration to
-    // every tick makes slow/paused riders jump when they finally move.
-    const duration = Math.max(1, Math.min(now - lastMoveAtRef.current, intervalMs * GLIDE_MAX_DURATION_INTERVALS))
-    lastMoveAtRef.current = now
-    lastTargetRef.current = { x: targetX, y: targetY }
     x.value = withTiming(targetX, { duration, easing: Easing.linear })
     y.value = withTiming(targetY, { duration, easing: Easing.linear })
   }, [tick, targetX, targetY, cellPx, intervalMs, x, y])

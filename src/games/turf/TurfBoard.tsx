@@ -36,9 +36,9 @@ const SEATS: readonly TurfSeat[] = [1, 2]
 // Ground reads as owned turf first; trail is the lighter layer above it.
 const GROUND_OPACITY = 0.85
 const TRAIL_WIDTH = 0.6
-const TRAIL_OPACITY = 1
+const TRAIL_OPACITY = 0.4
 const HEAD_RADIUS = 0.72
-const HEAD_RING_OUTLINE = 0.24
+const HEAD_RING_OUTLINE = 0.2
 const HEAD_RING_WHITE = 0.11
 const EDGE_STROKE_WIDTH = 1.5
 
