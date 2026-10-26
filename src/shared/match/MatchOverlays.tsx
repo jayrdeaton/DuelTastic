@@ -1,6 +1,6 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { IconButton } from '@rific/feedback-press'
-import { FakeLandscapeView, getFixedZoneRotation, getViewRotation, rotateInsets, useOrientationState } from '@tastic/core'
+import { getFixedZoneRotation, getViewRotation, useOrientationState } from '@tastic/core'
 import { ConfirmDialog } from '@tastic/hud'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { StyleSheet, View } from 'react-native'
@@ -102,13 +102,10 @@ export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen,
   const chipBg = dark ? '#000000' : '#FFFFFF'
   const chipFg = dark ? '#FFFFFF' : '#000000'
   const chipRotation = rotation % 360 !== 0 ? { transform: [{ rotate: `${rotation}deg` }] } : undefined
-  // Only meaningful in the useCornerLayout branch below - rotateInsets remaps the device's own
-  // (physical-frame) safe-area insets onto whichever edge is actually visual-top/left/right once the
-  // corner chips below are rotated+repositioned by singleSeatRotation, same as the Home screen's own
-  // identical rotatedInsets. Unused (and harmless to compute) in the shared-neutral branch, which
-  // still measures leftSlot/rightSlot from the device's raw physical edges as it always has.
+  // Use the device's raw safe-area insets for the fixed corner buttons so they match the rest of the
+  // app, while the split-screen two-player branch stays centered on the shared neutral midline instead
+  // of sitting in only the second seat's physical space.
   const insets = useSafeAreaInsets()
-  const cornerInsets = rotateInsets(insets, singleSeatRotation)
   // 2 Player: each seat's half and reading angle, for its countdown, its round card and its unlock
   // toasts alike (see seatToastSpots): on a phone the board's own split, turned to face each seat;
   // at a computer, side by side, left and right, both upright.
@@ -164,31 +161,23 @@ export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen,
       only their inner content instead.
       useCornerLayout: no second seat's zone to stay neutral for (vsCpu, or 2P side-by-side, which
       already gives each seat its own dedicated half - see needsSharedNeutralZone's own doc), so the
-      whole chip pair is wrapped in FakeLandscapeView and actually MOVES to wherever "top" visually
-      is right now (including a portrait upside-down hold, which chipRotation's fixed-zone rotation
-      deliberately ignores), the same top-left/top-right corners the Home screen's own trophy/settings
-      buttons use - rather than just spinning in place while staying glued to the device's fixed
-      physical top edge. !useCornerLayout (2P face-to-face): unchanged - leftSlot/rightSlot on the
-      shared vertical midline, glyph-only chipRotation, exactly as before.
+      pair stays in the fixed top-left/top-right corners the rest of the app uses instead of drifting
+      into the shared neutral zone. !useCornerLayout (2P face-to-face): unchanged - leftSlot/rightSlot
+      on the shared vertical midline, glyph-only chipRotation, exactly as before.
       Also shown through matchOver (previously hidden then) - matches BoxHockey's/AirHockey's/Pong's
       identical always-visible back+settings chips, so there's a consistent way to back out (still
       gated behind onBackPress's own "Quit Match?" confirmation mid-match, once roundHistory is non-empty)
       rather than only the MatchOverDialog's own exit button. */}
       {controlsVisible &&
         (useCornerLayout ? (
-          // passThrough: this full-bleed frame only exists to give the two corner slots something to
-          // rotate, so it must never swallow the board's touches or the result card's buttons beneath
-          // it. A `pointerEvents: 'box-none'` style can't do that: FakeLandscapeView hands the style to
-          // its inner View, and react-native-web drops it there, which left the whole frame clickable
-          // on web.
-          <FakeLandscapeView passThrough style={StyleSheet.absoluteFill}>
-            <View style={[styles.cornerLeftSlot, { top: 8 + cornerInsets.top, left: 8 + cornerInsets.left }]}>
+          <>
+            <View style={[styles.cornerLeftSlot, { top: 8 + insets.top, left: 8 + insets.left }]}>
               <IconButton icon='arrow-left' iconColor={chipFg} containerColor={chipBg} style={styles.chipButton} size={22} onPress={onBackPress} accessibilityLabel='Back' />
             </View>
-            <View style={[styles.cornerRightSlot, { top: 8 + cornerInsets.top, right: 8 + cornerInsets.right }]}>
+            <View style={[styles.cornerRightSlot, { top: 8 + insets.top, right: 8 + insets.right }]}>
               <IconButton icon='cog' iconColor={chipFg} containerColor={chipBg} style={styles.chipButton} size={22} onPress={onSettingsOpen} accessibilityLabel='Settings' />
             </View>
-          </FakeLandscapeView>
+          </>
         ) : (
           <>
             <View style={styles.leftSlot}>
@@ -215,12 +204,8 @@ const styles = StyleSheet.create({
   // same reasoning as BoxHockey's identical chipButton style - otherwise a visible gap opens up
   // between the solid chip and its slot now that there's a background to see the edge of.
   chipButton: { margin: 0 },
-  // The useCornerLayout counterpart to leftSlot/rightSlot below - pinned near the top-left/top-right
-  // corner instead of centered on the board's vertical midline, for whichever modes don't need a
-  // neutral shared position (see useCornerLayout's own doc for which). No fixed top/left/right of
-  // its own (unlike leftSlot/rightSlot below) - both are rendered inside a FakeLandscapeView that
-  // supplies rotation-aware insets inline, so they actually move to the correct physical corner
-  // under a live tilt instead of just spinning a glyph in place at a fixed physical offset.
+  // The useCornerLayout counterpart to leftSlot/rightSlot below - pinned in the app's standard
+  // top-left/top-right corners instead of the shared neutral midline, matching the rest of the app.
   cornerLeftSlot: { position: 'absolute' },
   cornerRightSlot: { position: 'absolute' },
   // top: 0 + bottom: 0 + justifyContent: 'center' centers the button on the board's vertical

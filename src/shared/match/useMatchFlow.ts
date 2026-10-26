@@ -47,10 +47,13 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   const trackPhase = useCallback((phase: GamePhase) => {
     phaseRef.current = phase
   }, [])
-  // Asked only once there's a score to lose; the first round's back exits at once. Once the match is
-  // over its stats are recorded, so back exits at once then too, like the Match Over card's own
-  // button (audit F094).
-  const shouldConfirmBack = roundHistory.length > 0 && !matchOver
+  // Asked only once there's a score to lose and we're not already in the round-over result card:
+  // the first round's back exits at once, and once the round is over, the result card's own Quit/
+  // Back buttons take the user straight back without a second confirmation layer. This avoids the
+  // weird double-quit flow where a result-card back press opens a "Quit Match?" dialog that then
+  // makes it look like the only way out is to go through another confirmation, even though the
+  // card itself already offers the same exit path.
+  const shouldConfirmBack = roundHistory.length > 0 && !matchOver && phaseRef.current !== 'roundOver'
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
   usePreventRemove(shouldConfirmBack, () => {
     requestBack()

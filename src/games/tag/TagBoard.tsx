@@ -38,10 +38,10 @@ const SEATS: readonly TagSeat[] = [1, 2]
 const HEAD_RADIUS = 0.42
 // It's head is drawn bigger, so who's It reads at a glance.
 const IT_HEAD_RADIUS = 0.52
-const HEAD_RING_OUTLINE = 0.17
+const HEAD_RING_OUTLINE = 0.2
 const HEAD_RING_WHITE = 0.1
 const TAIL_WIDTH = 0.3
-const TAIL_OPACITY = 0.35
+const TAIL_OPACITY = 1
 // It's pulsing ring, as a multiple of the cell.
 const IT_RING_RADIUS = 0.85
 const IT_RING_PULSE = 0.18
