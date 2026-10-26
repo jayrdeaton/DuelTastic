@@ -1,6 +1,6 @@
 import type { MenuOption } from '@tastic/hud'
 
-import { sharedArenaOptions } from '@/games/shared/arenaOptions'
+import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 
 import { TURF_POWERUP_ICONS, TURF_ROUND_SECONDS } from './constants'
 import type { TurfArena, TurfCrashRule, TurfPowerup } from './types'

@@ -1,6 +1,6 @@
 import type { MenuOption } from '@tastic/hud'
 
-import { sharedArenaOptions } from '@/games/shared/arenaOptions'
+import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 
 import { TAG_POWERUP_ICONS, TAG_ROUND_SECONDS } from './constants'
 import type { TagArena, TagPowerup, TagRule } from './types'

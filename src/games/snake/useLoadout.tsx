@@ -1,7 +1,7 @@
 import { type MenuOption, SectionedDropdown } from '@tastic/hud'
 import { useCallback, useMemo } from 'react'
 
-import { sharedArenaOptions } from '@/games/shared/arenaOptions'
+import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 import { GRID_SIZE_OPTIONS as SHARED_GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS as SHARED_SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 

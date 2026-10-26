@@ -1,6 +1,6 @@
 import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
 
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/games/lightcycles/utils/arenas'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
 // Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/shared/match/grid'

@@ -2,9 +2,8 @@ import { cellKey, computeGridSize, isInBounds, isOppositeDirection, stepCell, wr
 
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_COLLECT_RADIUS_CELLS, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/games/lightcycles/constants/game'
 import { ArenaVariant, ControlEffect, Direction, GameState, GridCell, GridSize, OrientationMode, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, PowerupType, RoundOutcome, ShieldEffect, SpeedEffect, Tunnel } from '@/games/lightcycles/types'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
-
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from './arenas'
 
 function createPlayerState(grid: GridSize, player: Player, mode: OrientationMode, color: string, p1OnRight: boolean): PlayerState {
   const { head, direction } = startingStateFor(player, grid, mode, p1OnRight)

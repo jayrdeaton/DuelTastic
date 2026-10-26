@@ -5,7 +5,7 @@ import type { CpuDifficulty, Direction, GameMode, GamePhase, GridSizeTier, KeySc
 // The types every game shares, re-exported so LightCycles' own files read them from one place.
 export type { CpuDifficulty, Direction, GameMode, GamePhase, GridCell, GridSize, GridSizeTier, KeyboardScheme, KeyScheme, OrientationMode, Player, RoundOutcome, SpeedTier, TurnIntentEvent } from '@/shared/match/types'
 
-// Selectable static obstacle layout for the round's board - see utils/arenas.ts's
+// Selectable static obstacle layout for the round's board - see shared/match/arenas.ts's
 // buildArenaObstacles, the sole place these are turned into actual GridCell obstacles. 'open' is
 // the original, fully-open rectangle (empty obstacle list) and stays the default everywhere a
 // caller doesn't specify otherwise (see gameEngine.ts's createInitialGameState). 'portals' and
@@ -67,7 +67,7 @@ export interface PowerupPickup {
   cell: GridCell
 }
 
-// A linked pair of cells for the 'portals' arena (see utils/arenas.ts's buildArenaPortals) -
+// A linked pair of cells for the 'portals' arena (see shared/match/arenas.ts's buildArenaPortals) -
 // stepping onto either one instantly redirects the mover to the other, continuing in the same
 // direction, before any collision check runs (see gameEngine.ts's tickGame). Symmetric: `a` and
 // `b` are interchangeable, neither is "the" entrance.
@@ -76,7 +76,7 @@ export interface Portal {
   b: GridCell
 }
 
-// A short, straight corridor for the 'underpass' arena (see utils/arenas.ts's buildArenaTunnels),
+// A short, straight corridor for the 'underpass' arena (see shared/match/arenas.ts's buildArenaTunnels),
 // ordered mouth-to-mouth. Traversing it checks collision against a separate underground-occupancy
 // set instead of the surface one (see gameEngine.ts's buildTunnelOccupiedSet), so a tunnel-
 // traveler and a surface trail can legitimately share the same coordinate without colliding.
@@ -122,7 +122,7 @@ export interface Settings {
   // an empty array (see gameEngine.ts's maybeSpawnPickup, which only ever spawns from this list),
   // so a single multi-select control (see SectionedDropdown.tsx) covers both at once.
   enabledPowerups: PowerupType[]
-  // Static obstacle layout for the round's board - see utils/arenas.ts's buildArenaObstacles.
+  // Static obstacle layout for the round's board - see shared/match/arenas.ts's buildArenaObstacles.
   arenaVariant: ArenaVariant
   // Labeled "Full Screen" in the loadout: whether the board bleeds all the way to the physical
   // screen edge, or stays inset by the device's safe area (notch/home indicator) plus a
@@ -153,15 +153,15 @@ export interface GameState {
   // Board-wide, not per-player - at most one entry at a time (see gameEngine.ts's
   // maybeSpawnPickup), so a linear scan is fine.
   pickups: PowerupPickup[]
-  // Static per-round obstacle layout from the selected ArenaVariant (see utils/arenas.ts's
+  // Static per-round obstacle layout from the selected ArenaVariant (see shared/match/arenas.ts's
   // buildArenaObstacles) - computed once in createInitialGameState and never mutated after, unlike
   // pickups.
   obstacles: GridCell[]
-  // Static per-round portal pair from the 'portals' ArenaVariant (see utils/arenas.ts's
+  // Static per-round portal pair from the 'portals' ArenaVariant (see shared/match/arenas.ts's
   // buildArenaPortals) - empty for every other variant. Computed once in createInitialGameState and
   // never mutated after, same as `obstacles`.
   portals: Portal[]
-  // Static per-round tunnel corridor from the 'underpass' ArenaVariant (see utils/arenas.ts's
+  // Static per-round tunnel corridor from the 'underpass' ArenaVariant (see shared/match/arenas.ts's
   // buildArenaTunnels) - empty for every other variant. Computed once in createInitialGameState and
   // never mutated after, same as `obstacles`.
   tunnels: Tunnel[]

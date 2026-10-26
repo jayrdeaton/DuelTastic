@@ -2,7 +2,7 @@ import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, isOp
 
 // Shared with LightCycles: each rider starts at the middle of their own half, facing the other. Moves
 // to shared/ when this repo takes the pack layout.
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/games/lightcycles/utils/arenas'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, cellsOnTick, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, takePickup } from '@/shared/powerups'
 

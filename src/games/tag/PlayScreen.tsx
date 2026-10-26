@@ -56,7 +56,7 @@ function TagRound({ width: widthAtMount, height: heightAtMount, liveWidth, liveH
     feedbackRef.current.vibration.notification()
   }, [state.events])
 
-  const { colors: themeColors, dark } = useAutoPaperTheme()
+  const { colors: themeColors } = useAutoPaperTheme()
   // The edge and the pillars in the pack's neutral board-structure color (LightCycles' obstacleColor).
   const structureColor = getBlendedColor(themeColors.tertiary, themeColors.outline, 0.5)
   const boardScale = Math.min(liveWidth / width, liveHeight / height)
@@ -64,7 +64,7 @@ function TagRound({ width: widthAtMount, height: heightAtMount, liveWidth, liveH
   return (
     <>
       <View style={{ width, height, transform: [{ scale: boardScale }] }}>
-        <TagBoardHost grid={state.grid} cellPx={cellPx} pillars={state.pillars} portals={state.portals} tunnels={state.tunnels} players={state.players} it={state.it} orientationMode={orientationMode} p1OnRight={p1OnRight} freezeLeft={freezeLeft(state)} colors={colors} phase={state.phase} tick={state.tick} intervalMs={intervalMs} background={dark ? '#000000' : '#FFFFFF'} structureColor={structureColor} pickups={state.pickups} pickupColor={themeColors.tertiary} />
+        <TagBoardHost grid={state.grid} cellPx={cellPx} pillars={state.pillars} portals={state.portals} tunnels={state.tunnels} players={state.players} it={state.it} orientationMode={orientationMode} p1OnRight={p1OnRight} freezeLeft={freezeLeft(state)} colors={colors} phase={state.phase} tick={state.tick} intervalMs={intervalMs} structureColor={structureColor} pickups={state.pickups} pickupColor={themeColors.tertiary} />
         <TouchInputLayer orientationMode={orientationMode} p1OnRight={p1OnRight} humanPlayers={humanPlayers} enabled={state.phase === 'playing' && !controls.paused} onTurn={turn} onActivate={activate} controlInverted={tangled} currentDirections={currentDirections} keyScheme={settings.controlScheme} />
       </View>
 

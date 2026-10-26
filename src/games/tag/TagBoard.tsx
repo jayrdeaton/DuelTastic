@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import type { Pickup } from '@/shared/powerups'
 
@@ -27,8 +28,6 @@ export interface TagBoardProps {
   tick: number
   // Milliseconds per step, for how long each glide from cell to cell takes.
   intervalMs: number
-  // The board's own background, used to ring each head so it stands out over the other's tail.
-  background: string
   // The edge and the pillars: what stops a rider.
   structureColor: string
   pickups: Pickup<TagPowerup>[]
@@ -39,7 +38,8 @@ const SEATS: readonly TagSeat[] = [1, 2]
 const HEAD_RADIUS = 0.42
 // It's head is drawn bigger, so who's It reads at a glance.
 const IT_HEAD_RADIUS = 0.52
-const HEAD_RING = 0.12
+const HEAD_RING_OUTLINE = 0.17
+const HEAD_RING_WHITE = 0.1
 const TAIL_WIDTH = 0.3
 const TAIL_OPACITY = 0.35
 // It's pulsing ring, as a multiple of the cell.
@@ -105,7 +105,7 @@ function FreezeRing({ x, y, cellPx, left }: { x: SharedValue<number>; y: SharedV
   return <Path path={arc} style='stroke' strokeWidth={IT_RING_WIDTH} strokeCap='round' color={FROZEN_RING_COLOR} />
 }
 
-function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, pulse, background }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; pulse: SharedValue<number>; background: string }) {
+function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, pulse }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; pulse: SharedValue<number> }) {
   const { x, y } = useGlide(player.head, tick, cellPx, intervalMs)
   // The tail: through the cells behind the head, then on to wherever the head is mid-glide.
   const tail = useMemo(() => {
@@ -125,10 +125,9 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
 
   return (
     <>
+      <RiderHead x={x} y={y} radius={radius} color={color} opacity={frozen ? FROZEN_OPACITY : 1} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} />
       <Path path={tail} style='stroke' strokeWidth={cellPx * TAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TAIL_OPACITY} />
       {last && <Line p1={vec(last.x, last.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TAIL_WIDTH} strokeCap='round' color={color} opacity={TAIL_OPACITY} />}
-      <Circle cx={x} cy={y} r={radius} color={color} opacity={frozen ? FROZEN_OPACITY : 1} />
-      <Circle cx={x} cy={y} r={radius} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} />
       <EffectRings x={x} y={y} headRadius={radius} effects={player.effects} />
       {isIt && !frozen && <Circle cx={x} cy={y} r={ringRadius} style='stroke' strokeWidth={IT_RING_WIDTH} color={color} />}
       {frozen && <FreezeRing x={x} y={y} cellPx={cellPx} left={freezeLeft} />}
@@ -136,7 +135,7 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
   )
 }
 
-export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it, orientationMode, p1OnRight, freezeLeft, colors, phase, tick, intervalMs, background, structureColor, pickups, pickupColor }: TagBoardProps) {
+export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it, orientationMode, p1OnRight, freezeLeft, colors, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TagBoardProps) {
   // It's ring breathes in and out the whole round.
   const pulse = useSharedValue(0)
   useEffect(() => {
@@ -182,7 +181,7 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
         {SEATS.map((seat) => (
-          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} background={background} />
+          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} />
         ))}
       </Canvas>
     </View>

@@ -4,11 +4,11 @@ import { useCallback, useMemo } from 'react'
 import { POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/games/lightcycles/constants/game'
 import { DEFAULT_SETTINGS, playerSettings } from '@/games/lightcycles/redux/settingsSlice'
 import type { ArenaVariant, CpuDifficulty, PowerupType, Settings, TrailSpeedTier } from '@/games/lightcycles/types'
-import { sharedArenaOptions } from '@/games/shared/arenaOptions'
+import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
-// The board's static obstacle layout (see utils/arenas.ts's buildArenaObstacles) - a "board shape"
+// The board's static obstacle layout (see shared/match/arenas.ts's buildArenaObstacles) - a "board shape"
 // concept like grid size, not a gameplay-tuning tier, so each icon just depicts the layout itself.
 const ARENA_OPTIONS: MenuOption<ArenaVariant>[] = sharedArenaOptions<ArenaVariant>('lightcycles')
 

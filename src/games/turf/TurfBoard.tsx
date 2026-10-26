@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native'
 import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import type { Pickup } from '@/shared/powerups'
 
@@ -25,18 +26,20 @@ export interface TurfBoardProps {
   tick: number
   // Milliseconds per step, for how long each glide from cell to cell takes.
   intervalMs: number
-  // The board's own background, used to ring each head so it stands out over its trail and ground.
+  // The board's own background, used for neutral board structures (obstacles, tunnels, portals).
   background: string
   pickups: Pickup<TurfPowerup>[]
   pickupColor: string
 }
 
 const SEATS: readonly TurfSeat[] = [1, 2]
-// Ground is a soft fill so trails and heads read on top of it, its own included.
-const GROUND_OPACITY = 0.38
+// Ground reads as owned turf first; trail is the lighter layer above it.
+const GROUND_OPACITY = 0.85
 const TRAIL_WIDTH = 0.6
+const TRAIL_OPACITY = 0.4
 const HEAD_RADIUS = 0.72
-const HEAD_RING = 0.22
+const HEAD_RING_OUTLINE = 0.2
+const HEAD_RING_WHITE = 0.11
 const EDGE_STROKE_WIDTH = 1.5
 
 function cellCenter(cell: GridCell, cellPx: number) {
@@ -111,7 +114,7 @@ function useGlide(head: GridCell, tick: number, cellPx: number, intervalMs: numb
   return { x, y }
 }
 
-function Rider({ seat, player, color, cellPx, tick, intervalMs, background }: { seat: TurfSeat; player: TurfPlayer; color: string; cellPx: number; tick: number; intervalMs: number; background: string }) {
+function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSeat; player: TurfPlayer; color: string; cellPx: number; tick: number; intervalMs: number }) {
   const { x, y } = useGlide(player.head, tick, cellPx, intervalMs)
   const settled = useMemo(() => settledTrailPath(player, cellPx), [player, cellPx])
   const cells = player.leftFrom ? [player.leftFrom, ...player.trail] : player.trail
@@ -120,10 +123,9 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs, background }: { 
   const headRadius = cellPx * HEAD_RADIUS
   return (
     <>
-      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} />
-      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} />}
-      {player.alive ? <Circle cx={x} cy={y} r={headRadius} color={color} style='fill' /> : null}
-      {player.alive ? <Circle cx={x} cy={y} r={headRadius} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null}
+      {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} /> : null}
+      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TRAIL_OPACITY} />
+      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} opacity={TRAIL_OPACITY} />}
       {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}
     </>
   )
@@ -180,18 +182,12 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, pl
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
-        {SEATS.map((seat, i) => (phase === 'playing' ? <Rider key={`rider-${seat}`} seat={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} background={background} /> : <Path key={`trail-${seat}`} path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} />))}
+        {SEATS.map((seat, i) => (phase === 'playing' ? <Rider key={`rider-${seat}`} seat={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} /> : <Path key={`trail-${seat}`} path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} opacity={TRAIL_OPACITY} />))}
         {phase !== 'playing' &&
           SEATS.map((seat) => {
             const p = players[seat]
             const { x, y } = cellCenter(p.head, cellPx)
-            return p.alive ? <Circle key={`head-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} color={colors[seat]} style='fill' /> : null
-          })}
-        {phase !== 'playing' &&
-          SEATS.map((seat) => {
-            const p = players[seat]
-            const { x, y } = cellCenter(p.head, cellPx)
-            return p.alive ? <Circle key={`ring-${seat}`} cx={x} cy={y} r={cellPx * HEAD_RADIUS} style='stroke' strokeWidth={cellPx * HEAD_RING} color={background} /> : null
+            return p.alive ? <RiderHead key={`head-${seat}`} x={x} y={y} radius={cellPx * HEAD_RADIUS} color={colors[seat]} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} /> : null
           })}
         {phase !== 'playing' &&
           SEATS.map((seat) => {

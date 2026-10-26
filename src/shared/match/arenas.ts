@@ -1,7 +1,18 @@
-import { isInBounds } from '@tastic/grid'
+import { type GridCell, type GridSize, isInBounds } from '@tastic/grid'
 
-import { ArenaVariant, GridCell, GridSize, OrientationMode, Portal, Tunnel } from '@/games/lightcycles/types'
 import { startingStateFor } from '@/shared/match/grid'
+import type { OrientationMode } from '@/shared/match/types'
+
+import type { SharedArenaVariant } from './arenaOptions'
+
+export interface Portal {
+  a: GridCell
+  b: GridCell
+}
+
+export interface Tunnel {
+  cells: GridCell[]
+}
 
 // ─── Pillars ────────────────────────────────────────────────────────────────
 // Below these thresholds (split-axis length / shared-axis length, in cells - see alongLengthFor/
@@ -360,7 +371,7 @@ function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2
 // gets a luckier draw than the other; testability: a layout can be asserted exactly). Always
 // computed against the REAL spawn heads from startingStateFor, never assumed geometry, so obstacle
 // placement stays correct even if that function's own zone-centering logic changes later.
-export function buildArenaObstacles(variant: ArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): GridCell[] {
+export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): GridCell[] {
   // Neither 'portals' nor 'underpass' blocks movement the way every other variant's cells do -
   // their geometry lives on GameState.portals/.tunnels instead (see buildArenaPortals below and
   // buildArenaTunnels), so both are obstacle-free exactly like 'open'.
@@ -378,7 +389,7 @@ export function buildArenaObstacles(variant: ArenaVariant, grid: GridSize, mode:
 // gameEngine.ts's tickGame), so keeping them as two separate, independently-callable functions lets
 // every existing 'open'/'pillars'/'gauntlet' caller stay byte-identical rather than threading a new
 // return field through call sites that never asked for one.
-export function buildArenaPortals(variant: ArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Portal[] {
+export function buildArenaPortals(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Portal[] {
   if (variant !== 'portals') return []
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head
@@ -389,7 +400,7 @@ export function buildArenaPortals(variant: ArenaVariant, grid: GridSize, mode: O
 // (`{ cells: GridCell[] }`) and collision semantics (see gameEngine.ts's tickGame) are different
 // enough from either that folding it into one of their return types would only complicate every
 // existing caller for a field they never asked for.
-export function buildArenaTunnels(variant: ArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Tunnel[] {
+export function buildArenaTunnels(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Tunnel[] {
   if (variant !== 'underpass') return []
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head

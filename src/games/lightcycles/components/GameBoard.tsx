@@ -8,6 +8,7 @@ import { Easing, SharedValue, useDerivedValue, useSharedValue, withDelay, withTi
 import { deathAnimationDurationMs, MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_EFFECT_COLORS, POWERUP_PULSE_DURATION_MS, POWERUP_PULSE_SCALE, POWERUP_SPAWN_FADE_MS, powerupPickupRadiusPx, TRAIL_SEVER_EAT_MAX_MS, TRAIL_SEVER_EAT_MIN_MS, TRAIL_SEVER_EAT_MS_PER_CELL } from '@/games/lightcycles/constants/game'
 import { GamePhase, GridCell, GridSize, OrientationMode, Player, PlayerState, Portal, PowerupPickup, Tunnel } from '@/games/lightcycles/types'
 import { shouldTrimTrailAt } from '@/games/lightcycles/utils/gameEngine'
+import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 
 export interface GameBoardProps {
@@ -61,6 +62,9 @@ function cellCenter(cell: GridCell, cellPx: number) {
 // trails/heads for visual weight. Flat rather than scaled with cellPx, same reasoning as the head
 // ring's own stroke width above.
 const WALL_STROKE_WIDTH = 1.5
+const TRAIL_OPACITY = 0.4
+const HEAD_RING_OUTLINE_WIDTH = 2.2
+const HEAD_RING_WHITE_WIDTH = 1.5
 
 // Every live pickup renders identically, regardless of its actual (already-decided, see
 // gameEngine.ts's maybeSpawnPickup) type - Mario-Kart mystery-box style. The type is only ever
@@ -688,24 +692,20 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
         <>
           {/* Underneath everything else - see tunnelHighlightPath's own comment. */}
           <Path path={tunnelPath} style='stroke' strokeWidth={trailWidth * 1.6} strokeCap='round' strokeJoin='round' color={player.color} opacity={0.35} />
-          <Path path={settledPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} />
+          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} outlineWidth={HEAD_RING_OUTLINE_WIDTH} ringWidth={HEAD_RING_WHITE_WIDTH} />
+          <Path path={settledPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
           {/* The chain a Prune/Shield break just cut off `trail` entirely - no longer part of
           settledPath/tailEdgeEnd's own data at all, but still visibly eating itself away for a
           beat rather than just vanishing. See severedPath's own comment. */}
-          <Path path={severedPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} />
-          <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} />
+          <Path path={severedPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
+          <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />
           {/* Skipped once the tail's own segment already reaches the head (trail.length <= 2 -
           see tailEdgeEnd's comment): edgeStart is a snapshot of the head's own glide a moment
           ago, updated on its own schedule, unrelated to tailAnimX's - the two segments could
           each be "correct" on their own terms and still not meet exactly, leaving a visible gap
           between them right where the trail is shortest. There's nothing for this segment to add
           once the tail segment already spans tail-to-head on its own. */}
-          {trail.length > 2 && <Line p1={edgeStart} p2={edgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} />}
-          <Circle cx={animX} cy={animY} r={headRadius} color={player.color} />
-          {/* Always white, not getContrastColor(player.color) - that picks black for light
-          colors like yellow, which blends into the dark board background instead of standing
-          out against it. */}
-          <Circle cx={animX} cy={animY} r={headRadius} style='stroke' strokeWidth={1.5} color='#ffffff' />
+          {trail.length > 2 && <Line p1={edgeStart} p2={edgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />}
           {/* Active-effect "tell" rings, nested at increasing radii so more than one at once
           (e.g. Shield popped while already Overclocked) stays visually distinguishable rather
           than overlapping exactly. Colored by what's actually driving the effect (see

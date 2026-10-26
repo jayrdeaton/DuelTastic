@@ -1,8 +1,8 @@
 import { cellKey, computeGridSize, isAdjacent, isInBounds } from '@tastic/grid'
 
 import { ArenaVariant, GridCell, GridSizeTier, OrientationMode } from '@/games/lightcycles/types'
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS, TUNNEL_LENGTH_CELLS, TUNNEL_MIN_ALONG_LENGTH, TUNNEL_MIN_CROSS_LENGTH, TUNNEL_SPAWN_CLEARANCE_CELLS } from '@/games/lightcycles/utils/arenas'
 import { distanceToNearestTarget } from '@/games/lightcycles/utils/floodFill'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS, TUNNEL_LENGTH_CELLS, TUNNEL_MIN_ALONG_LENGTH, TUNNEL_MIN_CROSS_LENGTH, TUNNEL_SPAWN_CLEARANCE_CELLS } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 import { startingStateFor } from '@/shared/match/grid'
 

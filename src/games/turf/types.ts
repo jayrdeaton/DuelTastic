@@ -1,6 +1,6 @@
 import type { Direction, GridCell, GridSize } from '@tastic/grid'
 
-import type { SharedArenaVariant } from '@/games/shared/arenaOptions'
+import type { SharedArenaVariant } from '@/shared/match/arenaOptions'
 import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
 import type { Effects, Pickup } from '@/shared/powerups'
 
