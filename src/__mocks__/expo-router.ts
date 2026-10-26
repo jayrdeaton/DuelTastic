@@ -6,6 +6,7 @@ module.exports = {
     back: jest.fn()
   }),
   useLocalSearchParams: () => ({}),
+  usePreventRemove: jest.fn(),
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
   Stack: { Screen: ({ children }: any) => children || null },
   Tabs: { Screen: ({ children }: any) => children || null },
