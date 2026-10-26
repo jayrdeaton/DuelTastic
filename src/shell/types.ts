@@ -1,9 +1,9 @@
+import type { ViewRotation } from '@tastic/core'
 import type { MenuOption, PopoverHost } from '@tastic/hud'
 import type { GuideStep } from '@tastic/hud/guide'
 import type { ComponentType, ReactNode } from 'react'
 import type { ImageSourcePropType } from 'react-native'
 import type { Action, Reducer } from 'redux'
-import type { ViewRotation } from '@tastic/core'
 
 import type { ShellState } from '@/shell/redux/shellState'
 

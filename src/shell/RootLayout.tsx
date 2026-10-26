@@ -113,7 +113,14 @@ function HapticGatedToastProvider({ children }: { children: ReactNode }) {
 }
 
 function RotatingToaster() {
-  const renderFrame = useCallback((toasts: ReactNode) => <RotatedFrame rotatedSafeArea passThrough>{toasts}</RotatedFrame>, [])
+  const renderFrame = useCallback(
+    (toasts: ReactNode) => (
+      <RotatedFrame rotatedSafeArea passThrough>
+        {toasts}
+      </RotatedFrame>
+    ),
+    []
+  )
   return <Toaster historyButton={null} clearButton={null} limit={3} renderFrame={renderFrame} />
 }
 
