@@ -18,9 +18,9 @@ export const TAG_ARENA_OPTIONS: MenuOption<TagArena>[] = sharedArenaOptions<TagA
 export const TAG_ROUND_OPTIONS: MenuOption<number>[] = TAG_ROUND_SECONDS.map((seconds) => ({ value: seconds, label: seconds === 60 ? '1 Minute' : seconds === 90 ? '1½ Minutes' : `${seconds} Seconds`, icon: 'timer-outline' }))
 
 export const TAG_POWERUP_OPTIONS: MenuOption<TagPowerup>[] = [
-  { value: 'dash', label: 'Dash', description: 'Self speed boost (Overdrive/Sidewind)', icon: TAG_POWERUP_ICONS.dash },
-  { value: 'freeze', label: 'Freeze', description: 'Opponent freeze (Stasis/Frost/Coldblood)', icon: TAG_POWERUP_ICONS.freeze },
-  { value: 'mud', label: 'Mud', description: 'Opponent slow (soft freeze)', icon: TAG_POWERUP_ICONS.mud },
-  { value: 'safe', label: 'Safe', description: 'Self shield (Shield/Fence/Scales)', icon: TAG_POWERUP_ICONS.safe },
-  { value: 'tangle', label: 'Tangle', description: 'Opponent controls reversed (Hack/Mesmerize)', icon: TAG_POWERUP_ICONS.tangle }
+  { value: 'dash', label: 'Dash', description: 'Boosts your speed', icon: TAG_POWERUP_ICONS.dash },
+  { value: 'freeze', label: 'Freeze', description: 'Freezes your opponent', icon: TAG_POWERUP_ICONS.freeze },
+  { value: 'mud', label: 'Mud', description: 'Slows your opponent', icon: TAG_POWERUP_ICONS.mud },
+  { value: 'safe', label: 'Safe', description: 'Protects you from one tag', icon: TAG_POWERUP_ICONS.safe },
+  { value: 'tangle', label: 'Tangle', description: "Reverses your opponent's controls", icon: TAG_POWERUP_ICONS.tangle }
 ]

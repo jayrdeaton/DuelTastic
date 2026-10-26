@@ -39,12 +39,12 @@ const SPEED_OPTIONS: MenuOption<SnakeSpeedTier>[] = SHARED_SPEED_OPTIONS.map((op
 // The same icons and order as the held badge and the on-board glyph (constants/snake.ts).
 const POWERUP_LABELS: Record<SnakePowerupType, string> = { sidewind: 'Sidewind', coldblood: 'Coldblood', scales: 'Scales', constrict: 'Constrict', mesmerize: 'Mesmerize', frenzy: 'Frenzy' }
 const POWERUP_DESCRIPTIONS: Record<SnakePowerupType, string> = {
-  sidewind: 'Self speed boost (Overdrive/Dash)',
-  coldblood: 'Opponent freeze (Stasis/Freeze/Frost)',
-  scales: 'Self shield (Shield/Safe/Fence)',
-  constrict: 'Opponent trail cut (Prune)',
-  mesmerize: 'Opponent controls reversed (Hack/Tangle)',
-  frenzy: 'Opponent forced boost (Overclock/Gust)'
+  sidewind: 'Boosts your speed',
+  coldblood: 'Freezes your opponent',
+  scales: 'Protects you from one crash',
+  constrict: "Cuts your opponent's body",
+  mesmerize: "Reverses your opponent's controls",
+  frenzy: 'Forces your opponent to boost'
 }
 const POWERUP_OPTIONS: MenuOption<SnakePowerupType>[] = SNAKE_POWERUP_ALL_TYPES.map((type) => ({ value: type, label: POWERUP_LABELS[type], description: POWERUP_DESCRIPTIONS[type], icon: SNAKE_POWERUP_ICONS[type] }))
 

@@ -24,29 +24,29 @@ const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Record<SharedArenaVariant, str
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked warp points (portals)',
-    underpass: 'Safe crossing corridor (underpass)'
+    portals: 'Linked warp points',
+    underpass: 'Safe crossing tunnel'
   },
   snake: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked warp points (holes)',
-    underpass: 'Safe crossing corridor (tunnels)'
+    portals: 'Linked holes',
+    underpass: 'Safe crossing tunnel'
   },
   tag: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked warp points (holes)',
-    underpass: 'Safe crossing corridor (tunnels)'
+    portals: 'Linked holes',
+    underpass: 'Safe crossing tunnel'
   },
   turf: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked warp points (gates)',
-    underpass: 'Safe crossing corridor (tunnels)'
+    portals: 'Linked gates',
+    underpass: 'Safe crossing tunnel'
   }
 }
 
