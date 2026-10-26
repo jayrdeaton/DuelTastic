@@ -75,7 +75,14 @@
       "@tastic/core"
     ],
     "extra": {
-      "router": {}
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "a8aef549-91c1-4c26-bad5-09e8af0b47db"
+      }
     },
     "owner": "jayrdeaton"
   }

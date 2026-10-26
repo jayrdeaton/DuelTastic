@@ -55,6 +55,10 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
   const phase = state.round.phase
   const lastFrameRef = useRef<number | null>(null)
   const sinceStepRef = useRef(0)
+  const elapsedRef = useRef(0)
+  useEffect(() => {
+    elapsedRef.current = state.elapsedMs
+  }, [state.elapsedMs])
 
   useEffect(() => {
     if (phase !== 'playing' || paused) return
@@ -71,16 +75,27 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
       const steps = Math.floor(sinceStepRef.current / intervalMs)
       sinceStepRef.current -= steps * intervalMs
       if (dt > 0) {
-        setState((s) => {
-          let { round } = s
-          for (let i = 0; i < steps && round.phase === 'playing'; i++) {
-            if (cpu) round = applyTagCpu(round, 2, cpu)
-            round = tickTag(round, options.powerups)
-          }
-          const elapsedMs = s.elapsedMs + dt
-          if (round.phase === 'playing' && elapsedMs >= roundMs) round = finishTagOnTime(round, options.rule)
-          return { round, elapsedMs }
-        })
+        const prevElapsedMs = elapsedRef.current
+        const nextElapsedMs = Math.min(roundMs, prevElapsedMs + dt)
+        elapsedRef.current = nextElapsedMs
+        const prevLeft = Math.ceil((roundMs - prevElapsedMs) / 1000)
+        const nextLeft = Math.ceil((roundMs - nextElapsedMs) / 1000)
+        const shouldTick = steps > 0
+        const shouldUpdateClock = nextLeft !== prevLeft
+        const shouldFinishOnTime = prevElapsedMs < roundMs && nextElapsedMs >= roundMs
+        if (shouldTick || shouldUpdateClock || shouldFinishOnTime) {
+          setState((s) => {
+            let { round } = s
+            if (shouldTick) {
+              for (let i = 0; i < steps && round.phase === 'playing'; i++) {
+                if (cpu) round = applyTagCpu(round, 2, cpu)
+                round = tickTag(round, options.powerups)
+              }
+            }
+            if (round.phase === 'playing' && nextElapsedMs >= roundMs) round = finishTagOnTime(round, options.rule)
+            return { round, elapsedMs: nextElapsedMs }
+          })
+        }
       }
       frame = requestAnimationFrame(loop)
     }

@@ -17,7 +17,6 @@
 // GameOverDialog until the slowest dying snake's fade finishes.
 import { getColorRoles, useAutoPaperTheme } from '@rific/auto-paper'
 import { Canvas, Circle, Group, Path, Rect, Skia, type SkPath } from '@shopify/react-native-skia'
-import { type OrientationMode } from '@tastic/core'
 import { cellToPixel } from '@tastic/grid'
 import { ObstacleRect } from '@tastic/sprites/shapes'
 import { Fragment, useEffect, useMemo, useRef } from 'react'
@@ -26,7 +25,8 @@ import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedV
 
 import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, snakeDeathFadeMs } from '@/games/snake/constants/snake'
 import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
-import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakeId, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
+import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
+import { splitWallPath } from '@/shared/match/SplitWalls'
 
 export interface SnakeBoardProps {
   snakes: SnakeEntity[]
@@ -1132,58 +1132,9 @@ function FoodDot({ food, cellPx, phase, color }: FoodDotProps) {
   )
 }
 
-// Ported from LightCycles' identical wallPath - each snake "owns" the half of the perimeter behind
-// its own zone, the same top/bottom or left/right split TouchInputLayer.tsx already uses for input
-// zones (and OnboardingOverlay.tsx for its own player-zone overlay) - so the wall reads as which
-// snake crashes into which edge, not just an arbitrary boundary. Drawn at the grid's own pixel size
-// (cols/rows * cellPx), not the container's - see computeGridSize's flooring, and now
-// MAX_BOARD_CONTENT_WIDTH's own gutter, both of which can leave a container larger than a whole
-// number of cells - the outline has to hug the real crash boundary, not the container's.
-function wallPath(grid: GridSize, cellPx: number, orientationMode: OrientationMode, p1OnRight: boolean, snakeId: SnakeId): SkPath {
-  const width = grid.cols * cellPx
-  const height = grid.rows * cellPx
-  const path = Skia.PathBuilder.Make()
-
-  if (orientationMode === 'faceToFace') {
-    // Snake 2 is the "far" (top) zone, snake 1 the "near" (bottom) zone - same convention
-    // TouchInputLayer's own snake1ZoneStyle/snake2ZoneStyle use.
-    const midY = height / 2
-    if (snakeId === 2) {
-      path.moveTo(0, midY)
-      path.lineTo(0, 0)
-      path.lineTo(width, 0)
-      path.lineTo(width, midY)
-    } else {
-      path.moveTo(0, midY)
-      path.lineTo(0, height)
-      path.lineTo(width, height)
-      path.lineTo(width, midY)
-    }
-    return path.detach()
-  }
-
-  // Side-by-side: whichever snake is currently on the right gets the right zone - see
-  // useOrientationState for which physical rotation direction puts snake 1 there, and
-  // TouchInputLayer.tsx's identical split.
-  const onRight = snakeId === 1 ? p1OnRight : !p1OnRight
-  const midX = width / 2
-  if (!onRight) {
-    path.moveTo(midX, 0)
-    path.lineTo(0, 0)
-    path.lineTo(0, height)
-    path.lineTo(midX, height)
-  } else {
-    path.moveTo(midX, 0)
-    path.lineTo(width, 0)
-    path.lineTo(width, height)
-    path.lineTo(midX, height)
-  }
-  return path.detach()
-}
-
 // Marks the grid's own actual pixel bounds - without this, there's no way to see where a fatal edge
 // actually is until you've already crashed into it. Two-snake modes split the outline by physical
-// zone via wallPath above, each half in that snake's own snake.color - mirroring LightCycles'
+// zone via shared splitWallPath, each half in that snake's own snake.color - mirroring LightCycles'
 // identical Walls (down to "whose wall is whose" being visible at a glance), just sourced from each
 // snake's own identity color instead of the theme's primary/secondary roles: unlike LightCycles
 // (whose two "player colors" ARE literally themeColors.primary/secondary, see PlayScreen.tsx there -
@@ -1220,8 +1171,8 @@ function Walls({ snakes, grid, cellPx, wrapEdges, onboarding }: { snakes: SnakeE
 
   return (
     <>
-      <Path path={wallPath(grid, cellPx, orientationMode, p1OnRight, 1)} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={snake1.color} />
-      <Path path={wallPath(grid, cellPx, orientationMode, p1OnRight, 2)} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={snake2.color} />
+      <Path path={splitWallPath(grid, cellPx, orientationMode, p1OnRight, 1)} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={snake1.color} />
+      <Path path={splitWallPath(grid, cellPx, orientationMode, p1OnRight, 2)} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={snake2.color} />
     </>
   )
 }

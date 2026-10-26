@@ -8,7 +8,7 @@ import { Easing, SharedValue, useDerivedValue, useSharedValue, withDelay, withTi
 import { deathAnimationDurationMs, MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_EFFECT_COLORS, POWERUP_PULSE_DURATION_MS, POWERUP_PULSE_SCALE, POWERUP_SPAWN_FADE_MS, powerupPickupRadiusPx, TRAIL_SEVER_EAT_MAX_MS, TRAIL_SEVER_EAT_MIN_MS, TRAIL_SEVER_EAT_MS_PER_CELL } from '@/games/lightcycles/constants/game'
 import { GamePhase, GridCell, GridSize, OrientationMode, Player, PlayerState, Portal, PowerupPickup, Tunnel } from '@/games/lightcycles/types'
 import { shouldTrimTrailAt } from '@/games/lightcycles/utils/gameEngine'
-import { zoneSideFor } from '@/shared/match/playerZones'
+import { SplitWalls } from '@/shared/match/SplitWalls'
 
 export interface GameBoardProps {
   players: Record<Player, PlayerState>
@@ -182,61 +182,13 @@ function Tunnels({ tunnels, cellPx, color }: { tunnels: Tunnel[]; cellPx: number
   )
 }
 
-// Each player "owns" the half of the perimeter behind their own zone - so the wall reads as which
-// player crashes into which edge, not just an arbitrary boundary. Which player owns which side is
-// zoneSideFor's job, not this function's - see its own comment. Drawn at the grid's own pixel size
-// (cols/rows * cellPx), not the container's, since a container a few pixels larger than a whole
-// number of cells (see computeGridSize's flooring) still crashes exactly at the grid edge - the
-// outline should hug that real boundary, not the container's.
-function wallPath(grid: GridSize, cellPx: number, orientationMode: OrientationMode, p1OnRight: boolean, player: Player) {
-  const width = grid.cols * cellPx
-  const height = grid.rows * cellPx
-  const midX = width / 2
-  const midY = height / 2
-  const path = Skia.PathBuilder.Make()
-
-  // Three sides of this player's own zone, omitting the fourth (the shared midline with the other
-  // player's zone).
-  const side = zoneSideFor(player, orientationMode, p1OnRight)
-  if (side === 'top') {
-    path.moveTo(0, midY)
-    path.lineTo(0, 0)
-    path.lineTo(width, 0)
-    path.lineTo(width, midY)
-  } else if (side === 'bottom') {
-    path.moveTo(0, midY)
-    path.lineTo(0, height)
-    path.lineTo(width, height)
-    path.lineTo(width, midY)
-  } else if (side === 'left') {
-    path.moveTo(midX, 0)
-    path.lineTo(0, 0)
-    path.lineTo(0, height)
-    path.lineTo(midX, height)
-  } else {
-    path.moveTo(midX, 0)
-    path.lineTo(width, 0)
-    path.lineTo(width, height)
-    path.lineTo(midX, height)
-  }
-  return path.detach()
-}
-
 function Walls({ grid, cellPx, orientationMode, p1OnRight, players, phase, wrapEdges }: { grid: GridSize; cellPx: number; orientationMode: OrientationMode; p1OnRight: boolean; players: Record<Player, PlayerState>; phase: GamePhase; wrapEdges: boolean }) {
-  const p1Path = useMemo(() => wallPath(grid, cellPx, orientationMode, p1OnRight, 1), [grid, cellPx, orientationMode, p1OnRight])
-  const p2Path = useMemo(() => wallPath(grid, cellPx, orientationMode, p1OnRight, 2), [grid, cellPx, orientationMode, p1OnRight])
-
   // Hidden during the onboarding countdown - the boundary marker is only meaningful once a round
   // is actually live, and it visually clutters the countdown's own player-zone overlay. Hidden for
   // the whole round under wrapEdges - see GameBoardProps' own comment on that prop.
   if (phase === 'onboarding' || wrapEdges) return null
 
-  return (
-    <>
-      <Path path={p1Path} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={players[1].color} />
-      <Path path={p2Path} style='stroke' strokeWidth={WALL_STROKE_WIDTH} color={players[2].color} />
-    </>
-  )
+  return <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={{ 1: players[1].color, 2: players[2].color }} strokeWidth={WALL_STROKE_WIDTH} />
 }
 
 // How far the tail should have visually crept from trail[0] toward trail[1] as of `tick`, as a
