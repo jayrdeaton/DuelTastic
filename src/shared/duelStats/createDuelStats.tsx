@@ -1,5 +1,5 @@
 import { getAchievementCatalogRows } from '@tastic/achievements'
-import { AchievementCatalogSection, ActivityStatSection, StatRow, StatSection, useWellColors } from '@tastic/hud'
+import { AchievementCatalogSection, ActivityStatSection, MONO_FONT, StatRow, StatSection, useWellColors } from '@tastic/hud'
 import { ProfileChip } from '@tastic/profile'
 import { useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -11,7 +11,6 @@ import { DEFAULT_PROFILE_STATS, DEFAULT_STATS, isValidStats } from '@/shared/due
 import type { ColorStats, ProfileStats, StatsState } from '@/shared/duelStats/types'
 import { createGameStats } from '@/shared/gameStats'
 import type { RoundOutcome } from '@/shared/match/types'
-import { MONO_FONT } from '@/shell/fonts'
 import { useProfiles } from '@/shell/hooks/useProfiles'
 
 interface DuelStatsOptions {

@@ -139,8 +139,8 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <Fonts>
-          <PackProvider pack={pack}>
+        <PackProvider pack={pack}>
+          <Fonts>
             <Providers store={store} persistor={persistor}>
               <Theme>
                 <ProfilesProvider>
@@ -169,8 +169,8 @@ export function RootLayout({ pack, store, persistor }: RootLayoutProps) {
                 </ProfilesProvider>
               </Theme>
             </Providers>
-          </PackProvider>
-        </Fonts>
+          </Fonts>
+        </PackProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )

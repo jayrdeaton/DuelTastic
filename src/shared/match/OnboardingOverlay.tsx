@@ -1,4 +1,5 @@
 import { getOpposingZoneRotation, ViewRotation } from '@tastic/core'
+import { MONO_FONT } from '@tastic/hud'
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
@@ -10,7 +11,6 @@ import RoundHistoryPips from '@/shared/match/RoundHistoryPips'
 import { OrientationMode, Player, RoundOutcome } from '@/shared/match/types'
 import type { SeatToastSpot } from '@/shared/SeatToasters'
 import { useGameSound } from '@/shared/useGameSound'
-import { MONO_FONT } from '@/shell/fonts'
 
 export interface OnboardingOverlayProps {
   orientationMode: OrientationMode

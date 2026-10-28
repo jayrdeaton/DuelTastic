@@ -6,14 +6,10 @@ import { useDispatch, useSelector } from 'react-redux'
 import type { Action, Dispatch } from 'redux'
 
 import { useProfiles } from '@/shell/hooks/useProfiles'
+import { usePack } from '@/shell/PackContext'
 import { seatColorsActions } from '@/shell/redux/seatColorsSlice'
 import type { ShellState } from '@/shell/redux/shellState'
-import { DEFAULT_SEAT_COLORS } from '@/shell/seatColors'
 import type { Seat } from '@/shell/types'
-
-// What @tastic/profile's avoidSeatColorClash moves seat 2 to when both seats land on one color: a
-// profile picked for one seat can be saved as the other seat's color, with no swap step behind it.
-const SEAT_DEFAULT_COLORS = [DEFAULT_SEAT_COLORS[1], DEFAULT_SEAT_COLORS[2]] as const
 
 // Both seats' live colors (the theme's primary and secondary) and the handlers that change them,
 // for Home's who's-playing button and the loadout's seat buttons. `p2IsHuman` says whether seat 2
@@ -24,6 +20,11 @@ export function useSeatColors(p2IsHuman: boolean) {
   const p1Color = themeColors.primary
   const p2Color = themeColors.secondary
   const { profiles, lastSelected } = useProfiles()
+  // What @tastic/profile's avoidSeatColorClash moves seat 2 to when both seats land on one color: a
+  // profile picked for one seat can be saved as the other seat's color, with no swap step behind it.
+  // The pack's own seat colors, which never change while it runs.
+  const { seatColors } = usePack()
+  const seatDefaultColors = [seatColors[1], seatColors[2]] as const
 
   // Typed explicitly because @tastic/profile's action creators return a plain `{ payload, type }`
   // interface with no index signature, which react-redux's default Dispatch<UnknownAction> rejects.
@@ -74,7 +75,7 @@ export function useSeatColors(p2IsHuman: boolean) {
   // every render); profiles.length stands in as a coarse "profiles finished loading" signal.
   useEffect(() => {
     const nextP1 = p1Profile ? profileSeatColor(p1Profile, profileColors) : guestColors[1]
-    const nextP2 = avoidSeatColorClash(nextP1, p2Profile ? profileSeatColor(p2Profile, profileColors) : p2IsHuman ? guestColors[2] : cpuColor, SEAT_DEFAULT_COLORS)
+    const nextP2 = avoidSeatColorClash(nextP1, p2Profile ? profileSeatColor(p2Profile, profileColors) : p2IsHuman ? guestColors[2] : cpuColor, seatDefaultColors)
     if (nextP1.toLowerCase() === p1Color.toLowerCase() && nextP2.toLowerCase() === p2Color.toLowerCase()) return
     setThemeColor({ color: { primary: nextP1, secondary: nextP2, tertiary: getThirdColor(nextP1, nextP2) } })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,7 +95,7 @@ export function useSeatColors(p2IsHuman: boolean) {
       const p2Prof = p2ProfileRef.current
       const picks = profileColorsRef.current
       const nextP1 = p1Prof ? profileSeatColor(p1Prof, picks) : guest[1]
-      const nextP2 = avoidSeatColorClash(nextP1, p2Prof ? profileSeatColor(p2Prof, picks) : p2IsHuman ? guest[2] : cpu, SEAT_DEFAULT_COLORS)
+      const nextP2 = avoidSeatColorClash(nextP1, p2Prof ? profileSeatColor(p2Prof, picks) : p2IsHuman ? guest[2] : cpu, seatDefaultColors)
       setThemeColor({ color: { primary: nextP1, secondary: nextP2, tertiary: getThirdColor(nextP1, nextP2) } })
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lastSelected[1], lastSelected[2], p2IsHuman, setThemeColor])

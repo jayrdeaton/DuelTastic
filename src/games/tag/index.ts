@@ -1,4 +1,5 @@
 import type { KeyScheme } from '@/shared/match/types'
+import { imageGameIcon } from '@/shell/components/imageGameIcon'
 import type { GameDefinition } from '@/shell/types'
 
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
@@ -22,7 +23,7 @@ export const tag: GameDefinition = {
   id: 'tag',
   title: 'Tag',
   blurb: 'The playground classic. Catch the other rider, then run.',
-  icon: { light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') },
+  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
   seatTwo: ['cpu', 'person'],
   // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
   twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },

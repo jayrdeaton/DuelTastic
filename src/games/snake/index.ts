@@ -1,3 +1,4 @@
+import { imageGameIcon } from '@/shell/components/imageGameIcon'
 import type { GameDefinition } from '@/shell/types'
 
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
@@ -20,7 +21,7 @@ export const snake: GameDefinition = {
   id: 'snake',
   title: 'Snake',
   blurb: 'The arcade classic. Eat, grow, and keep off the walls.',
-  icon: { light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') },
+  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
   // Nobody is Solo: one snake, scored, the run ending on the first crash.
   seatTwo: ['cpu', 'person', 'nobody'],
   // On a phone 2 Player always splits face to face, snake 1 at the bottom, however it's held; a

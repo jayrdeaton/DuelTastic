@@ -1,8 +1,9 @@
+import type { ThemeAppearance } from '@rific/auto-paper'
 import type { ViewRotation } from '@tastic/core'
 import type { MenuOption, PopoverHost } from '@tastic/hud'
 import type { GuideStep } from '@tastic/hud/guide'
+import type { FontSource } from 'expo-font'
 import type { ComponentType, ReactNode } from 'react'
-import type { ImageSourcePropType } from 'react-native'
 import type { Action, Reducer } from 'redux'
 
 import type { ShellState } from '@/shell/redux/shellState'
@@ -80,12 +81,23 @@ export interface GameGuide {
   getSteps: (input: object, context: { touch: boolean; mode: RoundMode }) => GuideStep[]
 }
 
+// A game's icon on Home, drawn in the seats' colors (seat 1's from Home's button, seat 2's from
+// whoever sits there), so it matches the players about to play, and in the theme where a part of it
+// follows the board's own colors. An icon drawn as a light and dark pair of pictures instead is
+// imageGameIcon's (components/imageGameIcon.tsx).
+export interface GameIconProps {
+  size: number
+  p1Color: string
+  p2Color: string
+  dark: boolean
+}
+
 export interface GameDefinition {
   id: string
   title: string
   // One line under the tile's name on Home.
   blurb: string
-  icon: { light: ImageSourcePropType; dark: ImageSourcePropType }
+  icon: ComponentType<GameIconProps>
   // Seat 2's choices in this game, in menu order. 'nobody' only where the game has a solo mode.
   seatTwo: readonly SeatTwo[]
   // How the 2 Player loadout seats its players, to match where the game puts them: always face
@@ -107,6 +119,20 @@ export interface GameDefinition {
   guide: GameGuide
 }
 
+// What Home hands the pack's hero (PackDefinition.HeroTitle).
+export interface HeroTitleProps {
+  // The pack's wordmark (see PackDefinition.wordmark).
+  words: readonly [string, string]
+  color: string
+  // The live theme's primary/secondary: whatever the players actually picked, not a fixed pair, so
+  // an accent in each player's color matches their real in-game color.
+  p1Color: string
+  p2Color: string
+  // False while another screen covers Home or the app is in the background: a hero that animates
+  // forever pauses then.
+  active: boolean
+}
+
 export interface PackDefinition {
   name: string
   // The Home wordmark's two lines.
@@ -114,4 +140,20 @@ export interface PackDefinition {
   // A seat's color pick for a profile is kept for this pack only; the seat button says so.
   colorCaption: string
   games: readonly GameDefinition[]
+  // Player 1's and player 2's own default colors. They seed the theme's primary and secondary (the
+  // tertiary is derived from them, see shellState.ts) and the guest and CPU colors a fresh install
+  // starts with (seatColorsSlice.ts), so a fresh install's live theme and its remembered colors agree.
+  // Also what @tastic/profile's avoidSeatColorClash moves seat 2 to when both seats land on one color.
+  seatColors: Record<Seat, string>
+  // The theme's appearance on a fresh install ('system' when unset). Still changeable in Settings.
+  appearance?: ThemeAppearance
+  // Home's wordmark, drawn by the pack: the shell only says where and in which colors.
+  HeroTitle: ComponentType<HeroTitleProps>
+  // Fonts the pack's own art needs (its hero's display face), loaded beside the icon font behind
+  // the splash screen's 'fonts' gate (components/Fonts.tsx).
+  fonts?: Record<string, FontSource>
+  // The typeface every Paper text variant is set in (auto-paper's Provider). Unset is Paper's own.
+  fontFamily?: string
+  // The version label in Settings: src/constants/release.ts's otaVersion, which the OTA tooling bumps.
+  otaVersion: number
 }

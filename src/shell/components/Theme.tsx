@@ -6,7 +6,7 @@ import { ReactNode, useCallback } from 'react'
 import Reanimated from 'react-native-reanimated'
 import { shallowEqual, useDispatch, useSelector } from 'react-redux'
 
-import { MONO_FONT } from '@/shell/fonts'
+import { usePack } from '@/shell/PackContext'
 import type { ShellState } from '@/shell/redux/shellState'
 import { markSplashReady } from '@/shell/splashGate'
 
@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function Theme({ children }: Props) {
+  const { fontFamily } = usePack()
   // redux/store.ts's own `theme` slice (createThemeReducer, seeded with this app's real default
   // P1/P2 colors - see constants/game.ts) replaces this component's old per-field AsyncStorage
   // load/save entirely. PersistGate (mounted in Providers.tsx, an ancestor of this component -
@@ -62,12 +63,12 @@ export function Theme({ children }: Props) {
   // statusBar={false}: auto-paper renders no React Native StatusBar (here or in Appbar.Header). The
   // status bar is set per screen (_layout.tsx's useRotationAwareStatusBar), and with @tastic/core's
   // config plugin on, a mounted StatusBar logs an error (a red box in a dev build).
-  // DuelTastic adds two to PuckTastic's: reanimated (what makes Dialog's own animatedStyle prop do
-  // anything; Metro won't pick up a require()-in-try/catch from this package's ESM build, so the
-  // module is handed in) and fontFamily, which puts MONO_FONT on every Paper typography variant, the
-  // pack's look since LightCycles. Pack settings for when the shell moves into @tastic/shell.
+  // reanimated is what makes Dialog's own animatedStyle prop do anything (Metro won't pick up a
+  // require()-in-try/catch from this package's ESM build, so the module is handed in); nothing else in
+  // auto-paper reads it. fontFamily is the pack's (PackDefinition.fontFamily): set, it goes on every
+  // Paper typography variant; unset, Paper keeps its own.
   return (
-    <AutoPaperProvider {...bridgeProps} expoBlur={ExpoBlur} maskedView={MaskedView} statusBar={false} reanimated={Reanimated} fontFamily={MONO_FONT}>
+    <AutoPaperProvider {...bridgeProps} expoBlur={ExpoBlur} maskedView={MaskedView} statusBar={false} reanimated={Reanimated} fontFamily={fontFamily}>
       {children}
     </AutoPaperProvider>
   )

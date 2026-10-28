@@ -1,3 +1,4 @@
+import { imageGameIcon } from '@/shell/components/imageGameIcon'
 import type { GameDefinition } from '@/shell/types'
 
 import { getGuideSteps } from './constants/guideSteps'
@@ -21,7 +22,7 @@ export const lightCycles: GameDefinition = {
   id: 'lightcycles',
   title: 'LightCycles',
   blurb: 'The classic light-trail duel. Box the other rider in.',
-  icon: { light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') },
+  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
   seatTwo: ['cpu', 'person'],
   // Always face to face, on the web too: the board is one tall, fixed split (see MatchScreen), and
   // an upside-down hold never swaps who is at the bottom.

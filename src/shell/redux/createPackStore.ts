@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { combineReducers, configureStore, type Middleware, type Reducer } from '@reduxjs/toolkit'
 import { FLUSH, PAUSE, PERSIST, type PersistedState, persistReducer, persistStore, PURGE, REGISTER, REHYDRATE } from 'redux-persist'
 
-import { shellReducers } from './shellState'
+import type { GameDefinition, PackDefinition } from '@/shell/types'
+
+import { createShellReducers } from './shellState'
 
 const hasError = (action: unknown): action is { error?: unknown } => typeof action === 'object' && action !== null && 'error' in action && Boolean(action.error)
 
@@ -18,16 +20,19 @@ export interface PackStoreConfig {
   // This is the only key the pack writes itself (the shared profile roster is @tastic/profile's,
   // shared on purpose).
   keyPrefix: string
-  // Every game's own store keys (see GameDefinition.reducers), beside the shell's.
-  gameReducers: Record<string, Reducer>
   // redux-persist's migrate, run on the saved store before it rehydrates (see pack.ts).
   migrate?: (state: PersistedState, version: number) => Promise<PersistedState>
 }
 
+// What the store is built from: the pack's games (each mounts its own keys, GameDefinition.reducers)
+// and the seat colors and appearance the shell's own keys start from.
+export type PackStoreSource = Pick<PackDefinition, 'seatColors' | 'appearance'> & { games: readonly Pick<GameDefinition, 'reducers'>[] }
+
 // The pack's one Redux store, persisted with redux-persist: the shell's keys (shellState.ts) plus
 // every game's own.
-export function createPackStore({ keyPrefix, gameReducers, migrate }: PackStoreConfig) {
-  const rootReducer = combineReducers({ ...shellReducers, ...gameReducers })
+export function createPackStore(pack: PackStoreSource, { keyPrefix, migrate }: PackStoreConfig) {
+  const gameReducers: Record<string, Reducer> = Object.assign({}, ...pack.games.map((game) => game.reducers))
+  const rootReducer = combineReducers({ ...createShellReducers(pack), ...gameReducers })
 
   const persistedReducer = persistReducer(
     {

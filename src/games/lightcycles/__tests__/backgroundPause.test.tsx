@@ -7,10 +7,10 @@ import { DEFAULT_SETTINGS } from '@/games/lightcycles/redux/settingsSlice'
 import type { RoundSettings } from '@/games/lightcycles/types'
 import type { RoundOutcome } from '@/shared/match/types'
 import { useMatchControls } from '@/shared/match/useMatchFlow'
-import { DEFAULT_SEAT_COLORS } from '@/shell/seatColors'
 import { emitAppState } from '@/testUtils/appState'
 
-const COLORS = DEFAULT_SEAT_COLORS
+// The pack's seat colors (pack.ts): blue player 1, red player 2.
+const COLORS = { 1: '#2196f3', 2: '#f44336' }
 const SETTINGS: RoundSettings = { ...DEFAULT_SETTINGS, gameMode: 'twoPlayer' }
 // Room for a few seconds of straight-line play before either cycle reaches a wall.
 const ROOMY_BOARD_PX = 2000

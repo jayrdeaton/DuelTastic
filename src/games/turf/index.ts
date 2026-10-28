@@ -1,4 +1,5 @@
 import type { KeyScheme } from '@/shared/match/types'
+import { imageGameIcon } from '@/shell/components/imageGameIcon'
 import type { GameDefinition } from '@/shell/types'
 
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
@@ -22,7 +23,7 @@ export const turf: GameDefinition = {
   id: 'turf',
   title: 'Turf',
   blurb: 'Loop out from your ground to claim more. Cut their trail.',
-  icon: { light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') },
+  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
   seatTwo: ['cpu', 'person'],
   // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
   twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },

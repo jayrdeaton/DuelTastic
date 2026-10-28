@@ -4,12 +4,11 @@ import { act, render } from '@testing-library/react-native'
 import { AppState } from 'react-native'
 import { Provider } from 'react-redux'
 
-import { playerSettings } from '@/games/lightcycles/redux/settingsSlice'
-import type { Player } from '@/games/lightcycles/types'
 import { ProfilesProvider } from '@/shell/hooks/useProfiles'
+import { onProfileRemoved } from '@/shell/redux/onProfileRemoved'
 import profileSelection from '@/shell/redux/profileSelectionSlice'
-
-import { emitAppState } from '../testUtils/appState'
+import type { Seat } from '@/shell/types'
+import { emitAppState } from '@/testUtils/appState'
 
 // The shared App Group roster sibling @tastic apps write to: @tastic/profile's native TasticProfile
 // module, faked over one in-memory JSON blob so the package's real resolveInitialProfiles and
@@ -40,6 +39,13 @@ function profile(id: string): BaseProfile {
   return { id, name: id, color: '#FF0000', tag: id.toUpperCase(), createdAt: 0, updatedAt: 0 }
 }
 
+// A stand-in for a game's per-profile data (its players' controls): kept by profile id, and forgotten
+// when the Profiles screen deletes the profile, the way every game's own is (onProfileRemoved).
+const gameControls = onProfileRemoved(
+  (state: Record<string, string> = {}) => state,
+  (state, id) => Object.fromEntries(Object.entries(state).filter(([key]) => key !== id))
+)
+
 const ada = profile('ada')
 const bo = profile('bo')
 const cy = profile('cy')
@@ -56,10 +62,10 @@ beforeEach(() => {
 
 // Mounts the real ProfilesProvider over the three slices it reads, with this device's last roster
 // and seat selection as the persisted state, and lets the initial reconciliation land.
-async function mountProfiles(local: BaseProfile[], selection: Record<Player, string | null>) {
+async function mountProfiles(local: BaseProfile[], selection: Record<Seat, string | null>) {
   const store = configureStore({
-    reducer: combineReducers({ profiles: profilesReducer, lightcyclesControls: playerSettings.controlsReducer, profileSelection }),
-    preloadedState: { profiles: local, lightcyclesControls: { [bo.id]: 'ijkl' }, profileSelection: selection }
+    reducer: combineReducers({ profiles: profilesReducer, gameControls, profileSelection }),
+    preloadedState: { profiles: local, gameControls: { [bo.id]: 'keys' }, profileSelection: selection }
   })
   await render(
     <Provider store={store}>
@@ -112,6 +118,6 @@ describe('ProfilesProvider seat selection', () => {
     await returnToForeground()
     expect(store.getState().profiles).toEqual([ada, bo])
     expect(store.getState().profileSelection).toEqual({ 1: ada.id, 2: bo.id })
-    expect(store.getState().lightcyclesControls).toEqual({ [bo.id]: 'ijkl' })
+    expect(store.getState().gameControls).toEqual({ [bo.id]: 'keys' })
   })
 })

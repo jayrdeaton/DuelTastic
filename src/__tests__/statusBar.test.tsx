@@ -19,6 +19,8 @@ jest.mock('@rific/auto-paper', () => ({
 }))
 jest.mock('react-redux', () => ({ shallowEqual: () => true, useDispatch: () => () => {}, useSelector: () => ({}) }))
 jest.mock('@/shell/splashGate', () => ({ markSplashReady: () => {}, useSplashReady: () => {} }))
+// No pack needed: Theme only reads its fontFamily, which a pack may leave unset.
+jest.mock('@/shell/PackContext', () => ({ usePack: () => ({}) }))
 jest.mock('expo-blur', () => ({ BlurView: () => null }))
 
 const SRC = join(__dirname, '..')

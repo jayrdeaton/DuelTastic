@@ -3,22 +3,11 @@ import { useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
 
-import { DISPLAY_FONT } from '@/shell/fonts'
+import type { HeroTitleProps } from '@/shell/types'
 
+import { DISPLAY_FONT } from './fonts'
 import { TRAIL_CANVAS_PAD, TRAIL_TEXT_MARGIN_BOTTOM, TRAIL_TEXT_MARGIN_TOP, WordBox } from './heroTitleGeometry'
 import HeroTitleTrailsHost from './HeroTitleTrailsHost'
-
-export interface HeroTitleProps {
-  // The pack's wordmark, its two words side by side (see PackDefinition.wordmark).
-  words: readonly [string, string]
-  color: string
-  // The live theme's primary/secondary - whatever the players actually picked (see Theme.tsx),
-  // not a fixed pair - so the first word's trail always matches player 1's real color and the
-  // second's always matches player 2's.
-  p1Color: string
-  p2Color: string
-  trailsActive?: boolean
-}
 
 const TRAIL_FADE_DURATION_MS = 280
 
@@ -39,9 +28,11 @@ const TRAIL_FADE_DURATION_MS = 280
 // 0 kiss) produces.
 const SECOND_WORD_OFFSET = 44 + TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM + 1
 
-// The pack's hero (LightCycles' light-trail wordmark): two staggered words in the display face,
-// each looped by a light trail in its player's color once the letters have landed.
-export function HeroTitle({ words, color, p1Color, p2Color, trailsActive = true }: HeroTitleProps) {
+// DuelTastic's hero (PackDefinition.HeroTitle, LightCycles' light-trail wordmark): the wordmark's two
+// words side by side in the display face, each looped by a light trail in its player's live color
+// (the first word's in player 1's, the second's in player 2's) once the letters have landed. The
+// trails stop while Home is covered or the app is in the background (`active`).
+export function HeroTitle({ words, color, p1Color, p2Color, active }: HeroTitleProps) {
   const [firstWord, secondWord] = words
   // Trails start looping the instant they mount (see HeroTitleTrails) but stay hidden behind this
   // shared fade until the letters are most of the way settled - one "power on" beat once the
@@ -68,7 +59,7 @@ export function HeroTitle({ words, color, p1Color, p2Color, trailsActive = true 
 
       {firstBox && secondBox && (
         <Animated.View pointerEvents='none' style={[styles.canvas, trailStyle]}>
-          <HeroTitleTrailsHost firstBox={firstBox} secondBox={secondBox} p1Color={p1Color} p2Color={p2Color} active={trailsActive && !reducedMotion} startDelayMs={trailFadeDelayMs} />
+          <HeroTitleTrailsHost firstBox={firstBox} secondBox={secondBox} p1Color={p1Color} p2Color={p2Color} active={active && !reducedMotion} startDelayMs={trailFadeDelayMs} />
         </Animated.View>
       )}
     </View>

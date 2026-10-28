@@ -2,8 +2,8 @@ import { useUpdateErrorToast } from '@rific/toaster'
 import { ViewRotation } from '@tastic/core'
 import { BaseSettingsDialog } from '@tastic/hud'
 
-import { release } from '@/constants/release'
 import { useAppSettings } from '@/shell/hooks/useAppSettings'
+import { usePack } from '@/shell/PackContext'
 
 export interface SettingsDialogProps {
   visible: boolean
@@ -24,6 +24,8 @@ export interface SettingsDialogProps {
 export function SettingsDialog({ visible, onDismiss, rotation = 0, onShowHowToPlay }: SettingsDialogProps) {
   const onUpdateError = useUpdateErrorToast()
   const { settings, setSettings } = useAppSettings()
+  // The pack's otaVersion (src/constants/release.ts, which the OTA tooling bumps).
+  const { otaVersion } = usePack()
 
-  return <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={release.otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} deferBottomEdgeGestures={settings.deferBottomEdgeGestures} onDeferBottomEdgeGestures={(value) => setSettings({ deferBottomEdgeGestures: value })} onUpdateError={onUpdateError} onShowHowToPlay={onShowHowToPlay} />
+  return <BaseSettingsDialog visible={visible} onDismiss={onDismiss} rotation={rotation} version={otaVersion} lockOrientation={settings.lockOrientation} onLockOrientationChange={(value) => setSettings({ lockOrientation: value })} deferBottomEdgeGestures={settings.deferBottomEdgeGestures} onDeferBottomEdgeGestures={(value) => setSettings({ deferBottomEdgeGestures: value })} onUpdateError={onUpdateError} onShowHowToPlay={onShowHowToPlay} />
 }
