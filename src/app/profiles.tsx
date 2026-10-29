@@ -1,3 +1,3 @@
-import { ProfilesRoute } from '@/shell/screens/ProfilesRoute'
+import { ProfilesRoute } from '@tastic/shell'
 
 export default ProfilesRoute

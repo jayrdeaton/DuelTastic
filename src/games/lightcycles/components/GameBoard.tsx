@@ -1,4 +1,4 @@
-import { Canvas, Circle, Line, Path, Shadow, Skia, vec } from '@shopify/react-native-skia'
+import { Canvas, Circle, Line, Path, Skia, vec } from '@shopify/react-native-skia'
 import { cellKey, cellToPixel, isAdjacent } from '@tastic/grid'
 import { MysteryPickup, ObstacleRect } from '@tastic/sprites/shapes'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -10,6 +10,7 @@ import { GamePhase, GridCell, GridSize, OrientationMode, Player, PlayerState, Po
 import { shouldTrimTrailAt } from '@/games/lightcycles/utils/gameEngine'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
+import { TunnelRoad } from '@/shared/match/TunnelRoad'
 
 export interface GameBoardProps {
   players: Record<Player, PlayerState>
@@ -148,39 +149,12 @@ function Portals({ portals, cellPx, color }: { portals: Portal[]; cellPx: number
   )
 }
 
-// Reads as an ordinary piece of board structure - a straight road, not a special glyph - per
-// explicit user feedback that the previous single faint centerline + corner-marker mouths didn't
-// read clearly. The corridor is always axis-aligned and dead straight (see arenas.ts's buildTunnel),
-// so its two long edges are just the mouth-to-mouth centerline offset by half a cell, perpendicular
-// to the direction of travel - the same solid WALL_STROKE_WIDTH stroke Walls/ObstacleCell already
-// use, plus a drop shadow so the corridor reads as sitting at a different depth than the flat board
-// around it (still walkable - the underground exemption is purely a collision rule, see
-// gameEngine.ts's tickGame - this is just what makes that legible at a glance).
-function TunnelGlyph({ tunnel, cellPx, color }: { tunnel: Tunnel; cellPx: number; color: string }) {
-  const first = tunnel.cells[0]
-  const last = tunnel.cells[tunnel.cells.length - 1]
-  const firstCenter = cellCenter(first, cellPx)
-  const lastCenter = cellCenter(last, cellPx)
-  const horizontal = first.y === last.y
-  const offsetX = horizontal ? 0 : cellPx / 2
-  const offsetY = horizontal ? cellPx / 2 : 0
-  return (
-    <>
-      <Line p1={vec(firstCenter.x - offsetX, firstCenter.y - offsetY)} p2={vec(lastCenter.x - offsetX, lastCenter.y - offsetY)} strokeWidth={WALL_STROKE_WIDTH} color={color}>
-        <Shadow dx={0} dy={2} blur={3} color='rgba(0, 0, 0, 0.65)' />
-      </Line>
-      <Line p1={vec(firstCenter.x + offsetX, firstCenter.y + offsetY)} p2={vec(lastCenter.x + offsetX, lastCenter.y + offsetY)} strokeWidth={WALL_STROKE_WIDTH} color={color}>
-        <Shadow dx={0} dy={2} blur={3} color='rgba(0, 0, 0, 0.65)' />
-      </Line>
-    </>
-  )
-}
-
+// The shared road (TunnelRoad), in the same WALL_STROKE_WIDTH stroke Walls/ObstacleCell use.
 function Tunnels({ tunnels, cellPx, color }: { tunnels: Tunnel[]; cellPx: number; color: string }) {
   return (
     <>
       {tunnels.map((tunnel) => (
-        <TunnelGlyph key={cellKey(tunnel.cells[0])} tunnel={tunnel} cellPx={cellPx} color={color} />
+        <TunnelRoad key={cellKey(tunnel.cells[0])} tunnel={tunnel} cellPx={cellPx} color={color} strokeWidth={WALL_STROKE_WIDTH} />
       ))}
     </>
   )

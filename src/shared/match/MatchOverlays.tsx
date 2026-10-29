@@ -2,6 +2,7 @@ import { useAutoPaperTheme } from '@rific/auto-paper'
 import { IconButton } from '@rific/feedback-press'
 import { getFixedZoneRotation, getViewRotation, useOrientationState } from '@tastic/core'
 import { ConfirmDialog } from '@tastic/hud'
+import { safeBack, SettingsDialog } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -13,8 +14,6 @@ import RoundOverDialog from '@/shared/match/RoundOverDialog'
 import { seatToastSpots } from '@/shared/match/seatToastSpots'
 import { GameMode, GamePhase, OrientationMode, Player, RoundOutcome } from '@/shared/match/types'
 import { SeatToasters } from '@/shared/SeatToasters'
-import { SettingsDialog } from '@/shell/components/SettingsDialog'
-import { safeBack } from '@/shell/navigation'
 
 export interface MatchOverlaysProps {
   phase: GamePhase

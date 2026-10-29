@@ -1,12 +1,10 @@
 import { getAchievementCatalogRows } from '@tastic/achievements'
 import { AchievementCatalogSection, ActivityStatSection, MONO_FONT, StatRow, StatSection, useWellColors } from '@tastic/hud'
 import { ProfileChip } from '@tastic/profile'
+import { createGameStats, useProfiles } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
-
-import { createGameStats } from '@/shared/gameStats'
-import { useProfiles } from '@/shell/hooks/useProfiles'
 
 import { ACHIEVEMENT_CATALOG } from './constants/achievements'
 import type { SnakeMode } from './hooks/useSnakeState'

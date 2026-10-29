@@ -1,4 +1,5 @@
-import { getBlendedColor, useAutoPaperTheme } from '@rific/auto-paper'
+import { useAutoPaperTheme } from '@rific/auto-paper'
+import { safeBack } from '@tastic/shell'
 import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 
@@ -11,10 +12,10 @@ import { lightCyclesStats } from '@/games/lightcycles/stats'
 import type { Direction, Player, RoundSettings, Settings } from '@/games/lightcycles/types'
 import { MatchOverlays } from '@/shared/match/MatchOverlays'
 import { type MatchRoundProps, MatchScreen } from '@/shared/match/MatchScreen'
+import { boardStructureColor } from '@/shared/match/structureColor'
 import TouchInputLayer from '@/shared/match/TouchInputLayer'
 import { humanPlayersFor } from '@/shared/match/types'
 import { useMatchControls, useMatchFlow } from '@/shared/match/useMatchFlow'
-import { safeBack } from '@/shell/navigation'
 
 // A LightCycles match inside the shared frame (MatchScreen), which mounts it only once the board area
 // has been measured, so useGameState's lazy initial state (see useGameState.ts) is always built from
@@ -64,12 +65,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs })
 
   const { colors: themeColors } = useAutoPaperTheme()
-  // themeColors.outline on its own is already blended 45% toward player 1's own primary color (see
-  // auto-paper's useComputedTheme.ts), which reads as "belongs to player 1" rather than a neutral
-  // board marker - per explicit user feedback. Blending it further with tertiary (the same neutral,
-  // belongs-to-neither-player role pickups already render in) pulls obstacle/portal/tunnel geometry
-  // back toward "inert board structure" instead.
-  const obstacleColor = getBlendedColor(themeColors.tertiary, themeColors.outline, 0.5)
+  const obstacleColor = boardStructureColor(themeColors)
 
   return (
     <>

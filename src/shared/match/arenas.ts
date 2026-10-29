@@ -73,10 +73,10 @@ export const PORTAL_SPAWN_CLEARANCE_CELLS = 4
 // just assumed, same defensive style isGroupClear's own callers already use.
 export const PORTAL_MIN_PAIR_DISTANCE_CELLS = 6
 
-function buildPortals(grid: GridSize, p1Head: GridCell, p2Head: GridCell): Portal[] {
-  if (grid.cols < PORTAL_MIN_COLS || grid.rows < PORTAL_MIN_ROWS) return []
+function buildPortals(grid: GridSize, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): Portal[] {
+  if (grid.cols < t.portalMinCols || grid.rows < t.portalMinRows) return []
 
-  const m = PORTAL_CORNER_MARGIN_CELLS
+  const m = t.portalCornerMargin
   const topLeft = { x: m, y: m }
   const topRight = { x: grid.cols - 1 - m, y: m }
   const bottomLeft = { x: m, y: grid.rows - 1 - m }
@@ -90,8 +90,8 @@ function buildPortals(grid: GridSize, p1Head: GridCell, p2Head: GridCell): Porta
     [topLeft, bottomRight],
     [topRight, bottomLeft]
   ] as const) {
-    if (!isGroupClear([a, b], grid, p1Head, p2Head, PORTAL_SPAWN_CLEARANCE_CELLS)) continue
-    if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < PORTAL_MIN_PAIR_DISTANCE_CELLS) continue
+    if (!isGroupClear([a, b], grid, p1Head, p2Head, t.portalSpawnClearance)) continue
+    if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < t.portalMinPairDistance) continue
     portals.push({ a, b })
   }
 
@@ -142,6 +142,115 @@ export const GAUNTLET_GAP_WIDTH_FRACTION = 0.18
 export const GAUNTLET_GAP_WIDTH_MIN_CELLS = 3
 export const GAUNTLET_GAP_WIDTH_MAX_CELLS = 6
 export const GAUNTLET_GAP_OFFSET_FRACTION = 0.25
+
+// ─── Underpass ──────────────────────────────────────────────────────────────
+// Same graceful-degrade reasoning as the pillar/gauntlet/portal thresholds above: the shortest board
+// a TUNNEL_MIN_LENGTH_CELLS corridor still clears both spawns on (see buildTunnel). It was 50, the
+// shortest the full TUNNEL_LENGTH_CELLS fits, which left an iPhone SE-size board at the Large size
+// (42 cells long) with no tunnel at all.
+export const TUNNEL_MIN_ALONG_LENGTH = 32
+export const TUNNEL_MIN_CROSS_LENGTH = 16
+
+// Long enough to feel like a real corridor - several ticks of travel, enough time for a surface
+// trail to legitimately cross the same coordinate while a tunnel-traveler is passing underneath -
+// per explicit user feedback that the original 4-cell version read as too small next to the other
+// arenas' own "bigger" passes (pillars' 3x3 blocks, portals' powerup-sized rings). Still short
+// enough to keep the collision-domain small, which is the entire cost argument for this mechanic
+// over a board-wide layer system (see types/index.ts's own Tunnel comment) - a longer corridor is
+// still just more entries in one flat Set, not a different kind of mechanic.
+export const TUNNEL_LENGTH_CELLS = 12
+
+// On a board too short for the full corridor to clear both spawns, buildTunnel shortens it, never
+// below this: at the Large size (14px cells) 6 cells is about as long on screen as the full 12 at
+// the default 8px.
+export const TUNNEL_MIN_LENGTH_CELLS = 6
+
+// Minimum Chebyshev distance any tunnel cell (mouth or interior) must keep from either spawn head -
+// the same isGroupClear check every other arena generator here already shares.
+export const TUNNEL_SPAWN_CLEARANCE_CELLS = 5
+
+// ─── Tuning ─────────────────────────────────────────────────────────────────
+// Every count above is in cells, tuned for GRID_CELL_PX (LightCycles' and Turf's 5-14px cells). A
+// game with much bigger cells has far fewer of them on the same screen, so it falls under every
+// minimum and its arenas come out empty: Tag's 16-30px cells gave a phone a 17 x 32 board at the
+// default size, and Gauntlet, Holes and Tunnels there were an open board. So the builders take the
+// counts as a tuning: FINE_ARENA_TUNING (the constants above, the default) or COARSE_ARENA_TUNING.
+// The fractions stay shared: they scale with the board on their own.
+export interface ArenaTuning {
+  pillarMinAlong: number
+  pillarMinCross: number
+  pillarBlockRadius: number
+  pillarSpawnClearance: number
+  portalCornerMargin: number
+  portalMinCols: number
+  portalMinRows: number
+  portalSpawnClearance: number
+  portalMinPairDistance: number
+  gauntletMinAlong: number
+  gauntletMinCross: number
+  gauntletThreeWallMinAlong: number
+  gauntletSpawnClearance: number
+  gauntletWallSpacing: number
+  gauntletGapWidthMin: number
+  gauntletGapWidthMax: number
+  tunnelMinAlong: number
+  tunnelMinCross: number
+  tunnelLength: number
+  tunnelMinLength: number
+  tunnelSpawnClearance: number
+}
+
+export const FINE_ARENA_TUNING: ArenaTuning = {
+  pillarMinAlong: PILLAR_MIN_ALONG_LENGTH,
+  pillarMinCross: PILLAR_MIN_CROSS_LENGTH,
+  pillarBlockRadius: PILLAR_BLOCK_RADIUS_CELLS,
+  pillarSpawnClearance: PILLAR_SPAWN_CLEARANCE_CELLS,
+  portalCornerMargin: PORTAL_CORNER_MARGIN_CELLS,
+  portalMinCols: PORTAL_MIN_COLS,
+  portalMinRows: PORTAL_MIN_ROWS,
+  portalSpawnClearance: PORTAL_SPAWN_CLEARANCE_CELLS,
+  portalMinPairDistance: PORTAL_MIN_PAIR_DISTANCE_CELLS,
+  gauntletMinAlong: GAUNTLET_MIN_ALONG_LENGTH,
+  gauntletMinCross: GAUNTLET_MIN_CROSS_LENGTH,
+  gauntletThreeWallMinAlong: GAUNTLET_THREE_WALL_MIN_ALONG_LENGTH,
+  gauntletSpawnClearance: GAUNTLET_SPAWN_CLEARANCE_CELLS,
+  gauntletWallSpacing: GAUNTLET_WALL_SPACING_CELLS,
+  gauntletGapWidthMin: GAUNTLET_GAP_WIDTH_MIN_CELLS,
+  gauntletGapWidthMax: GAUNTLET_GAP_WIDTH_MAX_CELLS,
+  tunnelMinAlong: TUNNEL_MIN_ALONG_LENGTH,
+  tunnelMinCross: TUNNEL_MIN_CROSS_LENGTH,
+  tunnelLength: TUNNEL_LENGTH_CELLS,
+  tunnelMinLength: TUNNEL_MIN_LENGTH_CELLS,
+  tunnelSpawnClearance: TUNNEL_SPAWN_CLEARANCE_CELLS
+}
+
+// For cells about three times GRID_CELL_PX.medium (Tag's), close to Snake's own arenas.ts numbers,
+// with the minimums low enough that a phone at Tag's biggest cells (12 x 20 on an iPhone SE) still
+// gets every arena. Gap widths stay at the fine tuning's: a gap has to be wide enough to ride
+// through whatever the cell size. First pass, for Jay to tune by feel.
+export const COARSE_ARENA_TUNING: ArenaTuning = {
+  pillarMinAlong: 13,
+  pillarMinCross: 9,
+  pillarBlockRadius: 1,
+  pillarSpawnClearance: 2,
+  portalCornerMargin: 3,
+  portalMinCols: 12,
+  portalMinRows: 12,
+  portalSpawnClearance: 2,
+  portalMinPairDistance: 4,
+  gauntletMinAlong: 16,
+  gauntletMinCross: 8,
+  gauntletThreeWallMinAlong: 40,
+  gauntletSpawnClearance: 3,
+  gauntletWallSpacing: 2,
+  gauntletGapWidthMin: GAUNTLET_GAP_WIDTH_MIN_CELLS,
+  gauntletGapWidthMax: GAUNTLET_GAP_WIDTH_MAX_CELLS,
+  tunnelMinAlong: 18,
+  tunnelMinCross: 7,
+  tunnelLength: 6,
+  tunnelMinLength: 6,
+  tunnelSpawnClearance: 2
+}
 
 // ─── Axis helpers ───────────────────────────────────────────────────────────
 // Mirrors grid.ts's startingStateFor: the split axis (the one the two players' zones are divided
@@ -195,10 +304,10 @@ function blockCells(alongC: number, crossC: number, radius: number, mode: Orient
   return cells
 }
 
-function buildPillars(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell): GridCell[] {
+function buildPillars(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): GridCell[] {
   const alongLength = alongLengthFor(grid, mode)
   const crossLength = crossLengthFor(grid, mode)
-  if (alongLength < PILLAR_MIN_ALONG_LENGTH || crossLength < PILLAR_MIN_CROSS_LENGTH) return []
+  if (alongLength < t.pillarMinAlong || crossLength < t.pillarMinCross) return []
 
   const alongCenter = Math.floor(alongLength / 2)
   const crossCenter = Math.floor(crossLength / 2)
@@ -208,17 +317,18 @@ function buildPillars(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p
 
   // The quincunx's middle pip - dropped alone (no mirror needed: it already sits equidistant from
   // both players by construction, so there's no fairness concern with placing or dropping it solo).
-  const centerBlock = blockCells(alongCenter, crossCenter, PILLAR_BLOCK_RADIUS_CELLS, mode)
-  if (isGroupClear(centerBlock, grid, p1Head, p2Head, PILLAR_SPAWN_CLEARANCE_CELLS)) obstacles.push(...centerBlock)
+  const r = t.pillarBlockRadius
+  const centerBlock = blockCells(alongCenter, crossCenter, r, mode)
+  if (isGroupClear(centerBlock, grid, p1Head, p2Head, t.pillarSpawnClearance)) obstacles.push(...centerBlock)
 
   // The four corner pips, as two along-axis mirror pairs (near-cross-edge and far-cross-edge) -
   // each pair validated atomically, same reasoning as every other mirrored group in this file: a
   // corner pip near one player's zone can never appear without its mirror near the other's.
-  const nearCrossPair = [...blockCells(alongCenter - alongOffset, crossCenter - crossOffset, PILLAR_BLOCK_RADIUS_CELLS, mode), ...blockCells(alongCenter + alongOffset, crossCenter - crossOffset, PILLAR_BLOCK_RADIUS_CELLS, mode)]
-  if (isGroupClear(nearCrossPair, grid, p1Head, p2Head, PILLAR_SPAWN_CLEARANCE_CELLS)) obstacles.push(...nearCrossPair)
+  const nearCrossPair = [...blockCells(alongCenter - alongOffset, crossCenter - crossOffset, r, mode), ...blockCells(alongCenter + alongOffset, crossCenter - crossOffset, r, mode)]
+  if (isGroupClear(nearCrossPair, grid, p1Head, p2Head, t.pillarSpawnClearance)) obstacles.push(...nearCrossPair)
 
-  const farCrossPair = [...blockCells(alongCenter - alongOffset, crossCenter + crossOffset, PILLAR_BLOCK_RADIUS_CELLS, mode), ...blockCells(alongCenter + alongOffset, crossCenter + crossOffset, PILLAR_BLOCK_RADIUS_CELLS, mode)]
-  if (isGroupClear(farCrossPair, grid, p1Head, p2Head, PILLAR_SPAWN_CLEARANCE_CELLS)) obstacles.push(...farCrossPair)
+  const farCrossPair = [...blockCells(alongCenter - alongOffset, crossCenter + crossOffset, r, mode), ...blockCells(alongCenter + alongOffset, crossCenter + crossOffset, r, mode)]
+  if (isGroupClear(farCrossPair, grid, p1Head, p2Head, t.pillarSpawnClearance)) obstacles.push(...farCrossPair)
 
   return obstacles
 }
@@ -241,17 +351,17 @@ function computeGapStarts(crossLength: number, gapWidth: number): [number, numbe
   return [first, second]
 }
 
-function buildGauntlet(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell): GridCell[] {
+function buildGauntlet(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): GridCell[] {
   const alongLength = alongLengthFor(grid, mode)
   const crossLength = crossLengthFor(grid, mode)
-  if (alongLength < GAUNTLET_MIN_ALONG_LENGTH || crossLength < GAUNTLET_MIN_CROSS_LENGTH) return []
+  if (alongLength < t.gauntletMinAlong || crossLength < t.gauntletMinCross) return []
 
   const p1Along = alongCoordOf(p1Head, mode)
   const p2Along = alongCoordOf(p2Head, mode)
 
-  const wallCount = alongLength >= GAUNTLET_THREE_WALL_MIN_ALONG_LENGTH ? 3 : 2
+  const wallCount = alongLength >= t.gauntletThreeWallMinAlong ? 3 : 2
   const fractions = wallCount === 3 ? GAUNTLET_WALL_ALONG_FRACTIONS_THREE : GAUNTLET_WALL_ALONG_FRACTIONS_TWO
-  const gapWidth = Math.min(GAUNTLET_GAP_WIDTH_MAX_CELLS, Math.max(GAUNTLET_GAP_WIDTH_MIN_CELLS, Math.round(crossLength * GAUNTLET_GAP_WIDTH_FRACTION)))
+  const gapWidth = Math.min(t.gauntletGapWidthMax, Math.max(t.gauntletGapWidthMin, Math.round(crossLength * GAUNTLET_GAP_WIDTH_FRACTION)))
   const [gap1Start, gap2Start] = computeGapStarts(crossLength, gapWidth)
 
   const obstacles: GridCell[] = []
@@ -300,7 +410,7 @@ function buildGauntlet(grid: GridSize, mode: OrientationMode, p1Head: GridCell, 
             const position1 = axisCenter - offset
             return [position1, axisSum - position1]
           })()
-    const groupClear = positions.every((position) => Math.abs(position - p1Along) >= GAUNTLET_SPAWN_CLEARANCE_CELLS && Math.abs(position - p2Along) >= GAUNTLET_SPAWN_CLEARANCE_CELLS && acceptedPositions.every((accepted) => Math.abs(position - accepted) >= GAUNTLET_WALL_SPACING_CELLS))
+    const groupClear = positions.every((position) => Math.abs(position - p1Along) >= t.gauntletSpawnClearance && Math.abs(position - p2Along) >= t.gauntletSpawnClearance && acceptedPositions.every((accepted) => Math.abs(position - accepted) >= t.gauntletWallSpacing))
     if (!groupClear) continue
 
     // Two permanently-open gaps per wall (not one) - per explicit user feedback that a single door
@@ -320,26 +430,6 @@ function buildGauntlet(grid: GridSize, mode: OrientationMode, p1Head: GridCell, 
 }
 
 // ─── Underpass ──────────────────────────────────────────────────────────────
-// Same graceful-degrade reasoning as the pillar/gauntlet/portal thresholds above - raised from the
-// original 30 alongside TUNNEL_LENGTH_CELLS tripling, so the corridor (now spanning 12 cells around
-// board-center) still comfortably clears both spawns' own clearance zone at the threshold itself,
-// not just on realistic phone-sized boards well above it.
-export const TUNNEL_MIN_ALONG_LENGTH = 50
-export const TUNNEL_MIN_CROSS_LENGTH = 16
-
-// Long enough to feel like a real corridor - several ticks of travel, enough time for a surface
-// trail to legitimately cross the same coordinate while a tunnel-traveler is passing underneath -
-// per explicit user feedback that the original 4-cell version read as too small next to the other
-// arenas' own "bigger" passes (pillars' 3x3 blocks, portals' powerup-sized rings). Still short
-// enough to keep the collision-domain small, which is the entire cost argument for this mechanic
-// over a board-wide layer system (see types/index.ts's own Tunnel comment) - a longer corridor is
-// still just more entries in one flat Set, not a different kind of mechanic.
-export const TUNNEL_LENGTH_CELLS = 12
-
-// Minimum Chebyshev distance any tunnel cell (mouth or interior) must keep from either spawn head -
-// the same isGroupClear check every other arena generator here already shares.
-export const TUNNEL_SPAWN_CLEARANCE_CELLS = 5
-
 // A single straight corridor, oriented ALONG the split axis (not across it) and centered at
 // board-center - so a player driving straight from spawn toward the opponent runs directly into the
 // near mouth, no detour required: the most literal reading of "just goes forward a bit... with a
@@ -348,22 +438,24 @@ export const TUNNEL_SPAWN_CLEARANCE_CELLS = 5
 // path - mirroring is what keeps that fair. A tunnel blocks nothing (see buildArenaObstacles' own
 // 'underpass' branch, which always returns []), so it's already fair simply by sitting equidistant
 // from both spawns at board-center; a second tunnel would only double the rendering/collision/
-// testing surface for no fairness gain.
-function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell): Tunnel[] {
+// testing surface for no fairness gain. The full tunnelLength where it clears both spawns, else the
+// longest that does, down to tunnelMinLength: a short board gets a shorter tunnel, not none.
+function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): Tunnel[] {
   const alongLength = alongLengthFor(grid, mode)
   const crossLength = crossLengthFor(grid, mode)
-  if (alongLength < TUNNEL_MIN_ALONG_LENGTH || crossLength < TUNNEL_MIN_CROSS_LENGTH) return []
+  if (alongLength < t.tunnelMinAlong || crossLength < t.tunnelMinCross) return []
 
   const alongCenter = Math.floor(alongLength / 2)
   const crossCenter = Math.floor(crossLength / 2)
-  const startOffset = Math.floor((TUNNEL_LENGTH_CELLS - 1) / 2)
-  const cells: GridCell[] = []
-  for (let i = 0; i < TUNNEL_LENGTH_CELLS; i++) {
-    cells.push(fromAxisCoords(alongCenter - startOffset + i, crossCenter, mode))
+  for (let length = t.tunnelLength; length >= t.tunnelMinLength; length--) {
+    const startOffset = Math.floor((length - 1) / 2)
+    const cells: GridCell[] = []
+    for (let i = 0; i < length; i++) {
+      cells.push(fromAxisCoords(alongCenter - startOffset + i, crossCenter, mode))
+    }
+    if (isGroupClear(cells, grid, p1Head, p2Head, t.tunnelSpawnClearance)) return [{ cells }]
   }
-
-  if (!isGroupClear(cells, grid, p1Head, p2Head, TUNNEL_SPAWN_CLEARANCE_CELLS)) return []
-  return [{ cells }]
+  return []
 }
 
 // Deterministic static obstacle layout for the selected arena variant - same inputs always produce
@@ -371,7 +463,7 @@ function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2
 // gets a luckier draw than the other; testability: a layout can be asserted exactly). Always
 // computed against the REAL spawn heads from startingStateFor, never assumed geometry, so obstacle
 // placement stays correct even if that function's own zone-centering logic changes later.
-export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): GridCell[] {
+export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): GridCell[] {
   // Neither 'portals' nor 'underpass' blocks movement the way every other variant's cells do -
   // their geometry lives on GameState.portals/.tunnels instead (see buildArenaPortals below and
   // buildArenaTunnels), so both are obstacle-free exactly like 'open'.
@@ -380,8 +472,8 @@ export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize,
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head
 
-  if (variant === 'pillars') return buildPillars(grid, mode, p1Head, p2Head)
-  return buildGauntlet(grid, mode, p1Head, p2Head)
+  if (variant === 'pillars') return buildPillars(grid, mode, p1Head, p2Head, tuning)
+  return buildGauntlet(grid, mode, p1Head, p2Head, tuning)
 }
 
 // Sibling to buildArenaObstacles above rather than folded into its own return type - obstacles and
@@ -389,20 +481,20 @@ export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize,
 // gameEngine.ts's tickGame), so keeping them as two separate, independently-callable functions lets
 // every existing 'open'/'pillars'/'gauntlet' caller stay byte-identical rather than threading a new
 // return field through call sites that never asked for one.
-export function buildArenaPortals(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Portal[] {
+export function buildArenaPortals(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): Portal[] {
   if (variant !== 'portals') return []
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head
-  return buildPortals(grid, p1Head, p2Head)
+  return buildPortals(grid, p1Head, p2Head, tuning)
 }
 
 // Sibling to buildArenaObstacles/buildArenaPortals above, same reasoning: a Tunnel's shape
 // (`{ cells: GridCell[] }`) and collision semantics (see gameEngine.ts's tickGame) are different
 // enough from either that folding it into one of their return types would only complicate every
 // existing caller for a field they never asked for.
-export function buildArenaTunnels(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean): Tunnel[] {
+export function buildArenaTunnels(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): Tunnel[] {
   if (variant !== 'underpass') return []
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head
-  return buildTunnel(grid, mode, p1Head, p2Head)
+  return buildTunnel(grid, mode, p1Head, p2Head, tuning)
 }

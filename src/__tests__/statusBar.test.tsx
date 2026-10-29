@@ -1,27 +1,13 @@
-import { render } from '@testing-library/react-native'
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
 
-import { Theme } from '@/shell/components/Theme'
-
-// The status bar is set per screen: the root Stack's screen options (_layout.tsx, from @tastic/core's
-// useRotationAwareStatusBar) hide it while the content is turned, and /game hides it for the whole round.
-// That needs UIViewControllerBasedStatusBarAppearance on (@tastic/core's config plugin), and with it on,
-// every React Native StatusBar logs an error (a red box in a dev build). An app linked against the iOS
-// 27 SDK can't set the bar app-wide anyway, which is the only way that component works on iOS. So
-// nothing in the app may mount one: not a component here, and not auto-paper's own.
-
-const mockAutoPaperProvider = jest.fn(({ children }: { children: unknown }) => children)
-jest.mock('@rific/auto-paper', () => ({
-  Provider: (props: { children: unknown }) => mockAutoPaperProvider(props),
-  themeActions: { initialize: (settings: unknown) => ({ type: 'theme/initialize', payload: settings }) },
-  useThemeBridgeProps: (props: object) => props
-}))
-jest.mock('react-redux', () => ({ shallowEqual: () => true, useDispatch: () => () => {}, useSelector: () => ({}) }))
-jest.mock('@/shell/splashGate', () => ({ markSplashReady: () => {}, useSplashReady: () => {} }))
-// No pack needed: Theme only reads its fontFamily, which a pack may leave unset.
-jest.mock('@/shell/PackContext', () => ({ usePack: () => ({}) }))
-jest.mock('expo-blur', () => ({ BlurView: () => null }))
+// The status bar is set per screen: the root Stack's screen options (@tastic/shell's RootLayout, from
+// @tastic/core's useRotationAwareStatusBar) hide it while the content is turned, and /game hides it for
+// the whole round. That needs UIViewControllerBasedStatusBarAppearance on (@tastic/core's config plugin),
+// and with it on, every React Native StatusBar logs an error (a red box in a dev build). An app linked
+// against the iOS 27 SDK can't set the bar app-wide anyway, which is the only way that component works on
+// iOS. So nothing in the app may mount one: not a component here, and not auto-paper's own (the shell's
+// Theme turns that off, pinned by the package's own test).
 
 const SRC = join(__dirname, '..')
 
@@ -41,10 +27,5 @@ describe('the status bar', () => {
       return /from ['"]expo-status-bar['"]/.test(source) || /import\s*\{[^}]*\bStatusBar\b[^}]*\}\s*from ['"]react-native['"]/.test(source)
     })
     expect(offenders.map((file) => relative(SRC, file))).toEqual([])
-  })
-
-  it("turns auto-paper's own StatusBar off", async () => {
-    await render(<Theme>{null}</Theme>)
-    expect(mockAutoPaperProvider).toHaveBeenCalledWith(expect.objectContaining({ statusBar: false }))
   })
 })

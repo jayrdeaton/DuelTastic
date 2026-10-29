@@ -2,7 +2,7 @@ import { cellKey, computeGridSize, isAdjacent, isInBounds } from '@tastic/grid'
 
 import { ArenaVariant, GridCell, GridSizeTier, OrientationMode } from '@/games/lightcycles/types'
 import { distanceToNearestTarget } from '@/games/lightcycles/utils/floodFill'
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS, TUNNEL_LENGTH_CELLS, TUNNEL_MIN_ALONG_LENGTH, TUNNEL_MIN_CROSS_LENGTH, TUNNEL_SPAWN_CLEARANCE_CELLS } from '@/shared/match/arenas'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS, TUNNEL_LENGTH_CELLS, TUNNEL_MIN_ALONG_LENGTH, TUNNEL_MIN_CROSS_LENGTH, TUNNEL_MIN_LENGTH_CELLS, TUNNEL_SPAWN_CLEARANCE_CELLS } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 import { startingStateFor } from '@/shared/match/grid'
 
@@ -384,12 +384,13 @@ describe('buildArenaTunnels', () => {
     expect(buildArenaTunnels('underpass', grid, 'sideBySide', true)).toEqual([])
   })
 
-  it('places a single TUNNEL_LENGTH_CELLS-long corridor at exactly the minimums, all in bounds and collinear', () => {
+  it('places a single corridor, shortened but at least TUNNEL_MIN_LENGTH_CELLS, at exactly the minimums, all in bounds and collinear', () => {
     const grid = { cols: TUNNEL_MIN_ALONG_LENGTH, rows: TUNNEL_MIN_CROSS_LENGTH } // sideBySide: along=cols, cross=rows
     const tunnels = buildArenaTunnels('underpass', grid, 'sideBySide', true)
     expect(tunnels).toHaveLength(1)
     const { cells } = tunnels[0]
-    expect(cells).toHaveLength(TUNNEL_LENGTH_CELLS)
+    expect(cells.length).toBeGreaterThanOrEqual(TUNNEL_MIN_LENGTH_CELLS)
+    expect(cells.length).toBeLessThan(TUNNEL_LENGTH_CELLS)
     const p1Head = startingStateFor(1, grid, 'sideBySide', true).head
     const p2Head = startingStateFor(2, grid, 'sideBySide', true).head
     for (const cell of cells) {
@@ -398,6 +399,22 @@ describe('buildArenaTunnels', () => {
       expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
     }
     for (let i = 1; i < cells.length; i++) expect(isAdjacent(cells[i - 1], cells[i])).toBe(true)
+  })
+
+  // The Large size on an iPhone SE-size board is 42 cells long: under the 50 the full corridor used to
+  // need, so there was no tunnel at all. Now the longest that clears both spawns.
+  it('shortens the corridor on a board too short for the full length, rather than leaving it out', () => {
+    const grid = computeGridSize(375, 600, GRID_CELL_PX.large)
+    const tunnels = buildArenaTunnels('underpass', grid, 'faceToFace', false)
+    expect(tunnels).toHaveLength(1)
+    expect(tunnels[0].cells.length).toBeGreaterThanOrEqual(TUNNEL_MIN_LENGTH_CELLS)
+    expect(tunnels[0].cells.length).toBeLessThan(TUNNEL_LENGTH_CELLS)
+    const p1Head = startingStateFor(1, grid, 'faceToFace', false).head
+    const p2Head = startingStateFor(2, grid, 'faceToFace', false).head
+    for (const cell of tunnels[0].cells) {
+      expect(chebyshev(cell, p1Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
+      expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
+    }
   })
 
   it('keeps every tunnel cell at least TUNNEL_SPAWN_CLEARANCE_CELLS away from both spawn heads', () => {

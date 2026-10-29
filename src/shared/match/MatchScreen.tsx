@@ -1,6 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { broadcastDeviceUnlocks } from '@tastic/achievements'
 import { computeContentBounds } from '@tastic/core'
+import { useActiveRound, useProfiles } from '@tastic/shell'
 import { type ComponentType, useCallback, useMemo, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,8 +12,6 @@ import { DESKTOP_CHIP_BAND, MAX_BOARD_CONTENT_WIDTH } from '@/shared/match/const
 import { type CpuDifficulty, type GameMode, humanPlayersFor, type OrientationMode, type Player, type RoundOutcome } from '@/shared/match/types'
 import { useDesktopWeb } from '@/shared/match/useDesktopWeb'
 import { SEAT_TOAST_STACKS, useUnlockToasts } from '@/shared/useUnlockToasts'
-import { useActiveRound } from '@/shell/hooks/useActiveRound'
-import { useProfiles } from '@/shell/hooks/useProfiles'
 
 // A stable, referentially-constant all-zero insets object - see safeAreaInsetsPx's own comment
 // below for why the board passes this instead of the device's real insets whenever it isn't

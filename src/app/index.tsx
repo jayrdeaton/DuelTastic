@@ -1,3 +1,3 @@
-import { HomeScreen } from '@/shell/screens/HomeScreen'
+import { HomeScreen } from '@tastic/shell'
 
 export default HomeScreen

@@ -35,6 +35,12 @@ export const TAG_RESULT_HOLD_MS = 700
 export const TAG_PILLAR_SIZE = 2
 export const TAG_PILLAR_SPACING = 7
 export const TAG_PILLAR_MARGIN = 3
+// A board that leaves fewer pillars than this (the Large size on a phone: 12 or 13 cells across,
+// room for one column of pillars, and it's the riders' own, so the ones by their starts go) gets the
+// tighter lattice instead: two columns either side of the riders.
+export const TAG_MIN_PILLARS = 4
+export const TAG_PILLAR_SPACING_TIGHT = 5
+export const TAG_PILLAR_MARGIN_TIGHT = 2
 
 // ─── Powerups ───────────────────────────────────────────────────────────────
 

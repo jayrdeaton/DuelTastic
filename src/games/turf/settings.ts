@@ -1,7 +1,8 @@
+import { createPlayerSettings } from '@tastic/shell'
+
 import { DEFAULT_GRID_SIZE_TIER } from '@/shared/match/constants'
 import { KEY_SCHEMES } from '@/shared/match/loadout'
 import type { KeyScheme } from '@/shared/match/types'
-import { createPlayerSettings } from '@/shared/playerSettings'
 
 import { DEFAULT_TURF_OPTIONS } from './constants'
 import type { TurfSettings } from './types'
@@ -16,6 +17,6 @@ export const DEFAULT_SETTINGS: TurfSettings = {
   controlScheme: { 1: 'wasd', 2: 'arrows' }
 }
 
-// Turf's loadout, per player (shared/playerSettings.ts): the match settings seat 1's player last set
-// up, under turfSettings, and the controls each player last picked, under turfControls.
+// Turf's loadout, per player (@tastic/shell's createPlayerSettings): the match settings seat 1's
+// player last set up, under turfSettings, and the controls each player last picked, under turfControls.
 export const playerSettings = createPlayerSettings<TurfSettings, KeyScheme>({ id: 'turf', defaults: DEFAULT_SETTINGS, distinctControls: KEY_SCHEMES })

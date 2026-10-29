@@ -1,7 +1,7 @@
 import type { GuideStep } from '@tastic/hud/guide'
+import { createGameGuideSlice } from '@tastic/shell'
 
 import { steeringStep, twoPlayerStep } from '@/shared/match/guideCards'
-import { createGameGuideSlice } from '@/shell/redux/gameGuideSlice'
 
 import { GuideSnakeCrash } from './components/GuideArt'
 import type { ControlScheme, SnakeId } from './types'

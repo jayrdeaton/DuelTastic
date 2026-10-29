@@ -1,5 +1,6 @@
+import { createPlayerSettings } from '@tastic/shell'
+
 import { KEY_SCHEMES } from '@/shared/match/loadout'
-import { createPlayerSettings } from '@/shared/playerSettings'
 
 import type { ControlScheme, Settings } from './types'
 
@@ -18,6 +19,6 @@ export const DEFAULT_SETTINGS: Settings = {
   gridSizeTier: 'medium'
 }
 
-// Snake's loadout, per player (shared/playerSettings.ts): the match settings seat 1's player last
-// set up, under snakeSettings, and the controls each player last picked, under snakeControls.
+// Snake's loadout, per player (@tastic/shell's createPlayerSettings): the match settings seat 1's
+// player last set up, under snakeSettings, and the controls each player last picked, under snakeControls.
 export const playerSettings = createPlayerSettings<Settings, ControlScheme>({ id: 'snake', defaults: DEFAULT_SETTINGS, distinctControls: KEY_SCHEMES })

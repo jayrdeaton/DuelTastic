@@ -1,9 +1,9 @@
 import { SectionedDropdown } from '@tastic/hud'
+import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
 import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { CpuDifficulty } from '@/shared/match/types'
-import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 import { TURF_POWERUPS } from './constants'
 import { TURF_ARENA_OPTIONS, TURF_CRASH_OPTIONS, TURF_OWN_TRAIL_SAFE_OPTION, TURF_POWERUP_OPTIONS, TURF_ROUND_OPTIONS } from './loadoutOptions'
@@ -12,7 +12,7 @@ import type { TurfSettings } from './types'
 
 const OPTION_IDS = ['turfArena', 'turfRules', 'turfRound', 'gridSize', 'speed', 'turfPowerups']
 
-// Turf's part of the shared loadout (shell/screens/LoadoutScreen.tsx): its rules (the crash rule and
+// Turf's part of the shared loadout (@tastic/shell's LoadoutScreen): its rules (the crash rule and
 // Cross Your Own Trail), round length and powerups, the grid size and speed every game has, each
 // seat's controls on desktop web, and the CPU's difficulty.
 export function useLoadout(mode: RoundMode): GameLoadout {

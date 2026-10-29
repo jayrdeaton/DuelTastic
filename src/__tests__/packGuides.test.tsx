@@ -1,6 +1,7 @@
+import type { RoundMode } from '@tastic/shell'
+
 import { games } from '@/pack'
 import type { KeyScheme, Player } from '@/shared/match/types'
-import type { RoundMode } from '@/shell/types'
 
 // Every game's How to Play cards, against the fleet's copy rules (Jay, 2026-09-24): Title Case
 // titles, bodies of 90 characters or less, art on every card, no em dashes, and nothing untrue for

@@ -1,8 +1,8 @@
 import type { GuideStep } from '@tastic/hud/guide'
+import { createGameGuideSlice } from '@tastic/shell'
 
 import { steeringStep, twoPlayerStep } from '@/shared/match/guideCards'
 import type { KeyScheme, Player } from '@/shared/match/types'
-import { createGameGuideSlice } from '@/shell/redux/gameGuideSlice'
 
 import { GuideTagChase } from './GuideArt'
 import type { TagRule } from './types'

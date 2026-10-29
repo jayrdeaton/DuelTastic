@@ -1,4 +1,5 @@
 import { type MenuOption, SectionedDropdown } from '@tastic/hud'
+import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
 import { POWERUP_ALL_TYPES, POWERUP_ICONS } from '@/games/lightcycles/constants/game'
@@ -6,7 +7,6 @@ import { DEFAULT_SETTINGS, playerSettings } from '@/games/lightcycles/redux/sett
 import type { ArenaVariant, CpuDifficulty, PowerupType, Settings, TrailSpeedTier } from '@/games/lightcycles/types'
 import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
-import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 // The board's static obstacle layout (see shared/match/arenas.ts's buildArenaObstacles) - a "board shape"
 // concept like grid size, not a gameplay-tuning tier, so each icon just depicts the layout itself.
@@ -40,7 +40,7 @@ const POWERUP_OPTIONS: MenuOption<PowerupType>[] = [
 
 const OPTION_IDS = ['arena', 'gridSize', 'speed', 'trailSpeed', 'powerups']
 
-// LightCycles' part of the shared loadout (shell/screens/LoadoutScreen.tsx): its match options
+// LightCycles' part of the shared loadout (@tastic/shell's LoadoutScreen): its match options
 // (arena, grid size, speed, trail speed, powerups), each seat's controls on desktop web, and the
 // CPU's difficulty.
 export function useLoadout(mode: RoundMode): GameLoadout {

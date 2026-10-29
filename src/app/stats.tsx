@@ -1,3 +1,3 @@
-import { StatsScreen } from '@/shell/screens/StatsScreen'
+import { StatsScreen } from '@tastic/shell'
 
 export default StatsScreen

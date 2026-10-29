@@ -1,15 +1,16 @@
-import { getBlendedColor, useAutoPaperTheme } from '@rific/auto-paper'
+import { useAutoPaperTheme } from '@rific/auto-paper'
 import { useVibration } from '@rific/feedback-press'
+import { safeBack } from '@tastic/shell'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
 
 import { MatchOverlays } from '@/shared/match/MatchOverlays'
 import { type MatchRoundProps, MatchScreen } from '@/shared/match/MatchScreen'
+import { boardStructureColor } from '@/shared/match/structureColor'
 import TouchInputLayer from '@/shared/match/TouchInputLayer'
 import { type Direction, humanPlayersFor, type Player } from '@/shared/match/types'
 import { useMatchControls, useMatchFlow } from '@/shared/match/useMatchFlow'
 import { useGameSound } from '@/shared/useGameSound'
-import { safeBack } from '@/shell/navigation'
 
 import { TAG_CELL_PX, TAG_RESULT_HOLD_MS, TAG_SPEED_INTERVAL_MS } from './constants'
 import { freezeLeft } from './engine'
@@ -57,8 +58,7 @@ function TagRound({ width: widthAtMount, height: heightAtMount, liveWidth, liveH
   }, [state.events])
 
   const { colors: themeColors } = useAutoPaperTheme()
-  // The edge and the pillars in the pack's neutral board-structure color (LightCycles' obstacleColor).
-  const structureColor = getBlendedColor(themeColors.tertiary, themeColors.outline, 0.5)
+  const structureColor = boardStructureColor(themeColors)
   const boardScale = Math.min(liveWidth / width, liveHeight / height)
 
   return (

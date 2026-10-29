@@ -1,7 +1,9 @@
-import type { Direction, GridCell } from '@tastic/grid'
+import { computeGridSize, type Direction, type GridCell } from '@tastic/grid'
 
-import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_TAIL_CELLS } from '../constants'
-import { applyTagActivation, applyTagTurn, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
+import { distanceField } from '@/shared/distanceField'
+
+import { TAG_CELL_PX, TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_TAIL_CELLS } from '../constants'
+import { applyTagActivation, applyTagTurn, cellIndex, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
 import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
 
 interface Start {
@@ -68,8 +70,54 @@ describe('createTagState', () => {
     }
   })
 
+  // At the Large size a phone's board is 12 or 13 cells across: room for one column of pillars, the
+  // riders' own, so the ones by their starts went and Pillars had 0 or 1. Those boards get the tighter
+  // lattice, two columns either side of the riders.
+  it.each([
+    [375, 600],
+    [393, 720]
+  ])('lays at least TAG_MIN_PILLARS pillars at the Large size on a %ix%i phone, clear of both starts', (width, height) => {
+    const grid = computeGridSize(width, height, TAG_CELL_PX.large)
+    const s = createTagState({ grid, layout: 'faceToFace', arena: 'pillars' })
+    expect(s.pillars.length).toBeGreaterThanOrEqual(TAG_MIN_PILLARS)
+    for (const seat of [1, 2] as const) {
+      const { x, y } = s.players[seat].head
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) expect(s.blocked[(y + dy) * grid.cols + x + dx]).toBe(0)
+    }
+    expect(distanceField(grid, [cellIndex(s.players[1].head, grid)], s.blocked)[cellIndex(s.players[2].head, grid)]).toBeGreaterThan(0)
+  })
+
+  it('keeps the usual lattice where it already lays enough pillars', () => {
+    // 17 across: the usual lattice's two columns, 7 apart, not the tighter one's.
+    const columns = new Set(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'pillars' }).pillars.map((p) => p.x))
+    expect([...columns].sort((a, b) => a - b)).toEqual([4, 11])
+  })
+
   it('has no pillars on an open board', () => {
     expect(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'open' }).pillars).toEqual([])
+  })
+
+  // Tag's cells are about three times LightCycles', so the shared builder's fine tuning left a
+  // phone's board at the default size with no Gauntlet, Holes or Tunnels: an open board. Each one,
+  // on the boards an iPhone SE and an iPhone 15 give at every grid size, face to face.
+  describe.each(['gauntlet', 'portals', 'underpass'] as const)('the %s arena on a phone', (arena) => {
+    const boards = [
+      [375, 600],
+      [393, 720]
+    ].flatMap(([width, height]) => (['small', 'medium', 'large'] as const).map((tier) => computeGridSize(width, height, TAG_CELL_PX[tier])))
+
+    it.each(boards)('is built on a $cols x $rows board', (grid) => {
+      const s = createTagState({ grid, layout: 'faceToFace', arena })
+      expect(s.pillars.length + s.portals.length + s.tunnels.length).toBeGreaterThan(0)
+    })
+
+    it.each(boards)('leaves a way between the riders on a $cols x $rows board, clear of both', (grid) => {
+      const s = createTagState({ grid, layout: 'faceToFace', arena })
+      const heads = [s.players[1].head, s.players[2].head]
+      expect(distanceField(grid, [cellIndex(heads[0], grid)], s.blocked)[cellIndex(heads[1], grid)]).toBeGreaterThan(0)
+      const cells = [...s.pillars, ...s.portals.flatMap((p) => [p.a, p.b]), ...s.tunnels.flatMap((t) => t.cells)]
+      for (const cell of cells) for (const head of heads) expect(Math.max(Math.abs(cell.x - head.x), Math.abs(cell.y - head.y))).toBeGreaterThanOrEqual(2)
+    })
   })
 })
 

@@ -2,11 +2,11 @@ import { IconButton } from '@rific/feedback-press'
 import { useIsTouchPrimaryDevice } from '@tastic/core'
 import { type MenuOption, type PopoverHost, SectionedDropdown } from '@tastic/hud'
 import { assignSeatScheme } from '@tastic/input'
+import type { SeatControlLook } from '@tastic/shell'
 import { type ReactNode, useCallback } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 
 import type { CpuDifficulty, GridSizeTier, KeyScheme, Player, SpeedTier } from '@/shared/match/types'
-import type { SeatControlLook } from '@/shell/types'
 
 // The loadout pieces every game in the pack shares: the grid size, speed, CPU and controls menus
 // (each game also has its own rows), the row they sit in, and each seat's controls picker.

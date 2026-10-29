@@ -103,6 +103,6 @@ export function isValidStats(value: unknown): value is StatsState {
   if (!value || typeof value !== 'object') return false
   const v = value as Partial<StatsState>
   // v.profiles === undefined is valid (a blob stored before this field existed) - see
-  // createGameStats' load-time `profiles ?? {}` normalize (shared/gameStats.tsx), the only "migration" this needs.
+  // createGameStats' load-time `profiles ?? {}` normalize (in @tastic/shell), the only "migration" this needs.
   return isValidVsCpuStats(v.vsCpu) && isValidTwoPlayerStats(v.twoPlayer) && isValidColorsMap(v.colors) && (v.profiles === undefined || isValidProfileStatsMap(v.profiles)) && typeof v.distinctDaysPlayed === 'number' && typeof v.currentDayStreak === 'number' && typeof v.bestDayStreak === 'number' && (v.lastPlayedDate === null || typeof v.lastPlayedDate === 'string') && (v.firstGameResult === null || v.firstGameResult === 'win' || v.firstGameResult === 'loss' || v.firstGameResult === 'draw')
 }

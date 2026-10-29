@@ -1,6 +1,7 @@
 import { getAchievementCatalogRows } from '@tastic/achievements'
 import { AchievementCatalogSection, ActivityStatSection, MONO_FONT, StatRow, StatSection, useWellColors } from '@tastic/hud'
 import { ProfileChip } from '@tastic/profile'
+import { createGameStats, useProfiles } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
@@ -9,9 +10,7 @@ import { createDuelAchievementCatalog } from '@/shared/duelStats/achievements'
 import { applyRoundOutcome, getBestPerformingColor, getFavoriteColor, getOverallTotals, getProfileOverallTotals, getProfileRankings, getProfileStatsView, type ProfileRanking, type RoundContext } from '@/shared/duelStats/statsEngine'
 import { DEFAULT_PROFILE_STATS, DEFAULT_STATS, isValidStats } from '@/shared/duelStats/statsValidation'
 import type { ColorStats, ProfileStats, StatsState } from '@/shared/duelStats/types'
-import { createGameStats } from '@/shared/gameStats'
 import type { RoundOutcome } from '@/shared/match/types'
-import { useProfiles } from '@/shell/hooks/useProfiles'
 
 interface DuelStatsOptions {
   // The game's id: its stats and achievements are saved under `${id}Achievements`.

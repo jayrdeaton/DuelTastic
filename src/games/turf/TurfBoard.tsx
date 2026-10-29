@@ -7,7 +7,8 @@ import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-nativ
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
-import type { Pickup } from '@/shared/powerups'
+import { TunnelRoad } from '@/shared/match/TunnelRoad'
+import { type Pickup, pickupRadiusPx } from '@/shared/powerups'
 
 import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
 
@@ -26,8 +27,8 @@ export interface TurfBoardProps {
   tick: number
   // Milliseconds per step, for how long each glide from cell to cell takes.
   intervalMs: number
-  // The board's own background, used for neutral board structures (obstacles, tunnels, portals).
-  background: string
+  // The arena (pillars, gauntlet walls, gates, tunnels), in the pack's boardStructureColor.
+  structureColor: string
   pickups: Pickup<TurfPowerup>[]
   pickupColor: string
 }
@@ -144,7 +145,7 @@ function CrashMark({ cell, grid, cellPx, color }: { cell: GridCell; grid: GridSi
   )
 }
 
-export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, background, pickups, pickupColor }: TurfBoardProps) {
+export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TurfBoardProps) {
   const ground = useMemo(() => SEATS.map((seat) => groundPath(owner, grid, cellPx, seat)), [owner, grid, cellPx])
   const trails = useMemo(() => SEATS.map((seat) => trailPath(players[seat], cellPx)), [players, cellPx])
 
@@ -158,25 +159,21 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, pl
           const { x, y } = cellToPixel(cell, cellPx)
           const path = Skia.PathBuilder.Make()
           path.addRect(Skia.XYWHRect(x, y, cellPx, cellPx))
-          return <Path key={`obstacle-${i}`} path={path.detach()} color={background} />
+          return <Path key={`obstacle-${i}`} path={path.detach()} color={structureColor} />
         })}
-        {tunnels.map((tunnel, index) => {
-          const path = Skia.PathBuilder.Make()
-          tunnel.cells.forEach((cell, i) => {
-            const { x, y } = cellCenter(cell, cellPx)
-            if (i === 0) path.moveTo(x, y)
-            else path.lineTo(x, y)
-          })
-          return <Path key={`tunnel-${index}`} path={path.detach()} style='stroke' strokeWidth={cellPx * 0.5} color={background} opacity={0.75} />
-        })}
+        {tunnels.map((tunnel, index) => (
+          <TunnelRoad key={`tunnel-${index}`} tunnel={tunnel} cellPx={cellPx} color={structureColor} strokeWidth={EDGE_STROKE_WIDTH} />
+        ))}
         {portals.map((portal, index) => {
           const a = cellCenter(portal.a, cellPx)
           const b = cellCenter(portal.b, cellPx)
-          const r = cellPx * 0.3
+          // A landmark the size of a powerup box, as in LightCycles: at 0.3 of a cell a gate was a
+          // ring about 2px across at the default size, too small to see.
+          const r = pickupRadiusPx(cellPx)
           const path = Skia.PathBuilder.Make()
           path.addCircle(a.x, a.y, r)
           path.addCircle(b.x, b.y, r)
-          return <Path key={`portal-${index}`} path={path.detach()} style='stroke' strokeWidth={2} color={background} />
+          return <Path key={`portal-${index}`} path={path.detach()} style='stroke' strokeWidth={2} color={structureColor} />
         })}
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         {pickups.map((pickup) => (

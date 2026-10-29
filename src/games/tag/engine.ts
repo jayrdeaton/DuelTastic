@@ -1,12 +1,12 @@
 import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
 
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
+import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, COARSE_ARENA_TUNING } from '@/shared/match/arenas'
 // Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
 
-import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_PILLAR_MARGIN, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_POWERUP_EFFECTS, TAG_TAIL_CELLS } from './constants'
+import { TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_PILLAR_MARGIN, TAG_PILLAR_MARGIN_TIGHT, TAG_PILLAR_SIZE, TAG_PILLAR_SPACING, TAG_PILLAR_SPACING_TIGHT, TAG_POWERUP_EFFECTS, TAG_TAIL_CELLS } from './constants'
 import type { TagArena, TagEvents, TagLayout, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState, TagTunnel } from './types'
 
 const SEATS: readonly TagSeat[] = [1, 2]
@@ -38,12 +38,12 @@ export function freezeLeft(state: TagState): number {
 // Where pillars go along one side of the board: evenly spaced, centered, and mirrored end to end so
 // each rider's half is the same. On a side whose length can't center a pillar exactly, the middle
 // one is a cell wider.
-function lattice(length: number): { at: number; size: number }[] {
-  const count = Math.floor((length - 2 * TAG_PILLAR_MARGIN - TAG_PILLAR_SIZE) / TAG_PILLAR_SPACING) + 1
+function lattice(length: number, margin: number, spacing: number): { at: number; size: number }[] {
+  const count = Math.floor((length - 2 * margin - TAG_PILLAR_SIZE) / spacing) + 1
   if (count < 1) return []
-  const start = Math.floor((length - ((count - 1) * TAG_PILLAR_SPACING + TAG_PILLAR_SIZE)) / 2)
+  const start = Math.floor((length - ((count - 1) * spacing + TAG_PILLAR_SIZE)) / 2)
   const out: { at: number; size: number }[] = []
-  for (let i = 0; i < Math.floor(count / 2); i++) out.push({ at: start + i * TAG_PILLAR_SPACING, size: TAG_PILLAR_SIZE })
+  for (let i = 0; i < Math.floor(count / 2); i++) out.push({ at: start + i * spacing, size: TAG_PILLAR_SIZE })
   if (count % 2 === 1) {
     const size = (length - TAG_PILLAR_SIZE) % 2 === 0 ? TAG_PILLAR_SIZE : TAG_PILLAR_SIZE + 1
     out.push({ at: (length - size) / 2, size })
@@ -52,18 +52,26 @@ function lattice(length: number): { at: number; size: number }[] {
   return out
 }
 
-// Pillars on a lattice centered on the board (see lattice), leaving out any that would sit on or
-// right next to a rider's starting cell. Each stands alone with open cells all round, so every open
-// cell can reach every other.
-export function pillarsFor(grid: GridSize, avoid: readonly GridCell[]): TagPillar[] {
+function latticePillars(grid: GridSize, avoid: readonly GridCell[], margin: number, spacing: number): TagPillar[] {
   const pillars: TagPillar[] = []
-  for (const row of lattice(grid.rows)) {
-    for (const col of lattice(grid.cols)) {
+  for (const row of lattice(grid.rows, margin, spacing)) {
+    for (const col of lattice(grid.cols, margin, spacing)) {
       const p = { x: col.at, y: row.at, width: col.size, height: row.size }
       if (avoid.every((c) => c.x < p.x - 1 || c.x > p.x + p.width || c.y < p.y - 1 || c.y > p.y + p.height)) pillars.push(p)
     }
   }
   return pillars
+}
+
+// Pillars on a lattice centered on the board (see lattice), leaving out any that would sit on or
+// right next to a rider's starting cell. Each stands alone with open cells all round, so every open
+// cell can reach every other. A board that leaves fewer than TAG_MIN_PILLARS gets the tighter
+// lattice: at the Large size a phone had 0 or 1 pillars, an open board under the Pillars name.
+export function pillarsFor(grid: GridSize, avoid: readonly GridCell[]): TagPillar[] {
+  const pillars = latticePillars(grid, avoid, TAG_PILLAR_MARGIN, TAG_PILLAR_SPACING)
+  if (pillars.length >= TAG_MIN_PILLARS) return pillars
+  const tight = latticePillars(grid, avoid, TAG_PILLAR_MARGIN_TIGHT, TAG_PILLAR_SPACING_TIGHT)
+  return tight.length > pillars.length ? tight : pillars
 }
 
 export interface CreateTagStateParams {
@@ -87,10 +95,12 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
           for (let y = p.y; y < p.y + p.height; y++) for (let x = p.x; x < p.x + p.width; x++) cells.push({ x, y })
           return cells
         })
-      : buildArenaObstacles(arena, grid, layout, p1OnRight)
+      : buildArenaObstacles(arena, grid, layout, p1OnRight, COARSE_ARENA_TUNING)
   const pillars = arena === 'pillars' ? pillarBlocks : obstacles.map((cell) => ({ x: cell.x, y: cell.y, width: 1, height: 1 }))
-  const portals = buildArenaPortals(arena, grid, layout, p1OnRight)
-  const tunnels: TagTunnel[] = buildArenaTunnels(arena, grid, layout, p1OnRight)
+  // Coarse: Tag's cells are about three times LightCycles', so the fine tuning's minimums left a
+  // phone's board with no Gauntlet, Holes or Tunnels at all (see arenas.ts's ArenaTuning).
+  const portals = buildArenaPortals(arena, grid, layout, p1OnRight, COARSE_ARENA_TUNING)
+  const tunnels: TagTunnel[] = buildArenaTunnels(arena, grid, layout, p1OnRight, COARSE_ARENA_TUNING)
   const blocked = new Uint8Array(grid.cols * grid.rows)
   for (const cell of obstacles) {
     blocked[cell.y * grid.cols + cell.x] = 1

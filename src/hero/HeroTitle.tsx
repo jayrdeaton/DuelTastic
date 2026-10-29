@@ -1,9 +1,8 @@
 import { getStaggeredWordDuration, StaggeredWord } from '@tastic/hud'
+import type { HeroTitleProps } from '@tastic/shell'
 import { useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated'
-
-import type { HeroTitleProps } from '@/shell/types'
 
 import { DISPLAY_FONT } from './fonts'
 import { TRAIL_CANVAS_PAD, TRAIL_TEXT_MARGIN_BOTTOM, TRAIL_TEXT_MARGIN_TOP, WordBox } from './heroTitleGeometry'

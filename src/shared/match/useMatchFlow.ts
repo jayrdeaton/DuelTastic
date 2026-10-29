@@ -3,6 +3,7 @@ import { useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { useBackgroundPause } from '@tastic/core'
 import { useQuitConfirmation } from '@tastic/hud'
+import { liveplayActions, safeBack } from '@tastic/shell'
 import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDispatch } from 'react-redux'
@@ -12,8 +13,6 @@ import { ROUND_OVER_DIALOG_HOLD_MS } from '@/shared/match/constants'
 import type { GamePhase, Player, RoundOutcome } from '@/shared/match/types'
 import { useDesktopWeb } from '@/shared/match/useDesktopWeb'
 import { useGameSound } from '@/shared/useGameSound'
-import { safeBack } from '@/shell/navigation'
-import { liveplayActions } from '@/shell/redux/liveplaySlice'
 
 // A match's flow around whichever game is being played: everything a round screen does besides
 // running its own game. Split in two because the game's state hook sits between them: it needs
@@ -152,7 +151,7 @@ export function useMatchFlow({ controls, phase, outcome, humanPlayers, rematch, 
   const isDesktopWeb = useDesktopWeb()
   const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'roundOver' && showResultDialog) || matchOver
 
-  // Live, unpaused play, for the shell's Providers.tsx EdgeGuardBridge (the one useEdgeGestureGuard call).
+  // Live, unpaused play, for @tastic/shell's Providers.tsx EdgeGuardBridge (the one useEdgeGestureGuard call).
   // Reset on unmount too, so leaving mid-round by any path can't leave Edge Guard stuck on.
   useEffect(() => {
     dispatch(liveplayActions.setActivelyPlaying(phase === 'playing' && !paused))

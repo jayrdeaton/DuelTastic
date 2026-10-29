@@ -1,9 +1,9 @@
 import { type MenuOption, SectionedDropdown } from '@tastic/hud'
+import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
 import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 import { GRID_SIZE_OPTIONS as SHARED_GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS as SHARED_SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
-import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 import { SNAKE_CPU_DIFFICULTY_NAMES, SNAKE_POWERUP_ALL_TYPES, SNAKE_POWERUP_ICONS } from './constants/snake'
 import { DEFAULT_SETTINGS, playerSettings } from './settings'
@@ -50,7 +50,7 @@ const POWERUP_OPTIONS: MenuOption<SnakePowerupType>[] = SNAKE_POWERUP_ALL_TYPES.
 
 const OPTION_IDS = ['snakeBoard', 'snakeGridSize', 'snakeSpeed', 'snakePowerups']
 
-// Snake's part of the shared loadout (shell/screens/LoadoutScreen.tsx): its board (layout, Full
+// Snake's part of the shared loadout (@tastic/shell's LoadoutScreen): its board (layout, Full
 // Screen, Wrap Edges), cell size, speed and powerups, each seat's controls on desktop web, and the
 // CPU's difficulty.
 export function useLoadout(mode: RoundMode): GameLoadout {

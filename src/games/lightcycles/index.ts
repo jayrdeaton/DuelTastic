@@ -1,5 +1,4 @@
-import { imageGameIcon } from '@/shell/components/imageGameIcon'
-import type { GameDefinition } from '@/shell/types'
+import { type GameDefinition, imageGameIcon } from '@tastic/shell'
 
 import { getGuideSteps } from './constants/guideSteps'
 import PlayScreen from './PlayScreen'

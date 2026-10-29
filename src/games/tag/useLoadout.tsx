@@ -1,9 +1,9 @@
 import { SectionedDropdown } from '@tastic/hud'
+import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
 import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { CpuDifficulty } from '@/shared/match/types'
-import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@/shell/types'
 
 import { TAG_POWERUPS } from './constants'
 import { TAG_ARENA_OPTIONS, TAG_POWERUP_OPTIONS, TAG_ROUND_OPTIONS, TAG_RULE_OPTIONS } from './loadoutOptions'
@@ -12,7 +12,7 @@ import type { TagSettings } from './types'
 
 const OPTION_IDS = ['tagRules', 'tagArena', 'tagRound', 'gridSize', 'speed', 'tagPowerups']
 
-// Tag's part of the shared loadout (shell/screens/LoadoutScreen.tsx): its rules, arena, round length
+// Tag's part of the shared loadout (@tastic/shell's LoadoutScreen): its rules, arena, round length
 // and powerups, the grid size and speed every game has, each seat's controls on desktop web, and the
 // CPU's difficulty.
 export function useLoadout(mode: RoundMode): GameLoadout {

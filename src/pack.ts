@@ -1,4 +1,5 @@
 import { MONO_FONT } from '@tastic/hud'
+import { createPackStore, type GameDefinition, type PackDefinition } from '@tastic/shell'
 
 import { release } from '@/constants/release'
 import { lightCycles } from '@/games/lightcycles'
@@ -7,8 +8,6 @@ import { tag } from '@/games/tag'
 import { turf } from '@/games/turf'
 import { HERO_FONTS } from '@/hero/fonts'
 import { HeroTitle } from '@/hero/HeroTitle'
-import { createPackStore } from '@/shell/redux/createPackStore'
-import type { GameDefinition, PackDefinition } from '@/shell/types'
 
 // DuelTastic: the pack's identity and its games, in Home's order. LightCycles first: the pack grew
 // out of it. Snake, from its own app, last for now.

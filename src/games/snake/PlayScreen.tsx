@@ -6,6 +6,7 @@ import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
 import { computeContentBounds, FakeLandscapeView, getFixedZoneRotation, getViewRotation, rotateInsets, useBackgroundPause, useOrientationState, useRotation, useSettledWindowDimensions } from '@tastic/core'
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
+import { liveplayActions, safeBack, SettingsDialog, useActiveRound, useProfiles } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -16,11 +17,6 @@ import { useDispatch } from 'react-redux'
 
 import { SeatToasters } from '@/shared/SeatToasters'
 import { SEAT_TOAST_STACKS, useUnlockToasts } from '@/shared/useUnlockToasts'
-import { SettingsDialog } from '@/shell/components/SettingsDialog'
-import { useActiveRound } from '@/shell/hooks/useActiveRound'
-import { useProfiles } from '@/shell/hooks/useProfiles'
-import { safeBack } from '@/shell/navigation'
-import { liveplayActions } from '@/shell/redux/liveplaySlice'
 
 import { GameOverDialog, type GameOverOutcome, type GameOverSeatResult } from './components/GameOverDialog'
 import KeyboardInputLayer from './components/KeyboardInputLayer'
@@ -143,7 +139,7 @@ export default function PlayScreen() {
   // Settings (read live, so the toggle applies mid-match). Expo only does this by itself in
   // development builds, and the OS auto-lock only counts screen touches, so tilt or keyboard
   // steering, or watching the CPU, could let a release build lock mid-match. The setting and the
-  // expo-keep-awake module are @rific/core's, from the shell's Providers.tsx KeepAwakeBridge.
+  // expo-keep-awake module are @rific/core's, from @tastic/shell's Providers.tsx KeepAwakeBridge.
   useKeepAwake('game')
   const paused = settingsOpen || confirmVisible || backgroundPaused
 
@@ -382,7 +378,7 @@ export default function PlayScreen() {
 
   // Mirrors phase === 'playing' into Redux (the shell's liveplaySlice - see its own doc) rather than calling
   // @tastic/edge-guard's useEdgeGestureGuard directly here: that hook stays mounted once at the app
-  // root (the shell's Providers.tsx EdgeGuardBridge), same as every other cross-cutting settings bridge in
+  // root (@tastic/shell's Providers.tsx EdgeGuardBridge), same as every other cross-cutting settings bridge in
   // this app (FeedbackBridge, ScrollViewBridge) - this just reports the one signal that bridge has
   // no other way to read. Reset to false on unmount too, so leaving this screen mid-round by any
   // path (not just the in-app back button) can't leave Edge Guard stuck on.
@@ -518,7 +514,7 @@ export default function PlayScreen() {
       <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={overlayRotation} />
 
       {/* 2 Player's unlock toasts, a Toaster per seat turned to face it (see the gameOver effect
-      above); every other toast stays on the app's main Toaster (the shell's Providers.tsx). */}
+      above); every other toast stays on the app's main Toaster (@tastic/shell's Providers.tsx). */}
       {mode === 'twoPlayer' && <SeatToasters spots={seatSpots} />}
 
       {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/LightCycles'/

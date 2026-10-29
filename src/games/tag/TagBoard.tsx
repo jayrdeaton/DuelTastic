@@ -7,6 +7,7 @@ import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
+import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import type { Pickup } from '@/shared/powerups'
 
 import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat, TagTunnel } from './types'
@@ -138,15 +139,9 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
         {pillars.map((p) => (
           <RoundedRect key={`${p.x},${p.y}`} x={p.x * cellPx} y={p.y * cellPx} width={p.width * cellPx} height={p.height * cellPx} r={cellPx * PILLAR_CORNER} color={structureColor} />
         ))}
-        {tunnels.map((tunnel, index) => {
-          const path = Skia.PathBuilder.Make()
-          tunnel.cells.forEach((cell, i) => {
-            const { x, y } = cellCenter(cell, cellPx)
-            if (i === 0) path.moveTo(x, y)
-            else path.lineTo(x, y)
-          })
-          return <Path key={`tunnel-${index}`} path={path.detach()} style='stroke' strokeWidth={cellPx * 0.5} color={structureColor} opacity={0.75} />
-        })}
+        {tunnels.map((tunnel, index) => (
+          <TunnelRoad key={`tunnel-${index}`} tunnel={tunnel} cellPx={cellPx} color={structureColor} strokeWidth={EDGE_STROKE_WIDTH} />
+        ))}
         {portals.map((portal, index) => {
           const a = cellCenter(portal.a, cellPx)
           const b = cellCenter(portal.b, cellPx)
