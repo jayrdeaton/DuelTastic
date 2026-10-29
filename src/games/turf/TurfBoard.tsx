@@ -1,14 +1,15 @@
 import { Canvas, Circle, Line, Path, Skia, type SkPath, vec } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
+import { useDerivedValue } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
-import { type Pickup, pickupRadiusPx } from '@/shared/powerups'
+import { useRiderGlide } from '@/shared/match/useRiderGlide'
+import { type Pickup, pickupRadiusPx, speedMultiplier } from '@/shared/powerups'
 
 import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
 
@@ -94,29 +95,12 @@ function settledTrailPath(player: TurfPlayer, cellPx: number): SkPath {
   return path.detach()
 }
 
-function useGlide(head: GridCell, tick: number, cellPx: number, intervalMs: number) {
-  const target = cellCenter(head, cellPx)
-  const x = useSharedValue(target.x)
-  const y = useSharedValue(target.y)
-  const lastStepAtRef = useRef(0)
-  useEffect(() => {
-    const now = performance.now()
-    const far = Math.abs(x.value - target.x) > cellPx * 2.5 || Math.abs(y.value - target.y) > cellPx * 2.5
-    const duration = Math.max(1, Math.min(now - lastStepAtRef.current, intervalMs * 3))
-    lastStepAtRef.current = now
-    if (tick === 0 || far) {
-      x.value = target.x
-      y.value = target.y
-      return
-    }
-    x.value = withTiming(target.x, { duration, easing: Easing.linear })
-    y.value = withTiming(target.y, { duration, easing: Easing.linear })
-  }, [tick, target.x, target.y, cellPx, intervalMs, x, y])
-  return { x, y }
-}
-
 function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSeat; player: TurfPlayer; color: string; cellPx: number; tick: number; intervalMs: number }) {
-  const { x, y } = useGlide(player.head, tick, cellPx, intervalMs)
+  // Its own pace: a cell a tick, two under Dash or Gust, one every other tick under Mud (a frozen
+  // rider takes no steps to glide).
+  const msPerCell = intervalMs / (speedMultiplier(player.effects, tick + 1) || 1)
+  const path = useMemo(() => (player.trail.length > 0 ? player.trail : [player.head]), [player.trail, player.head])
+  const { x, y } = useRiderGlide({ path, cellPx, msPerCell, snap: false })
   const settled = useMemo(() => settledTrailPath(player, cellPx), [player, cellPx])
   const cells = player.leftFrom ? [player.leftFrom, ...player.trail] : player.trail
   const lastSettled = cells.length > 1 ? cellCenter(cells[cells.length - 2], cellPx) : null

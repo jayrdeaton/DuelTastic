@@ -183,6 +183,65 @@ describe('moving', () => {
   })
 })
 
+describe('a tick played in parts', () => {
+  const RACE = () => setup({ head: { x: 2, y: 55 }, direction: 'up' }, { head: { x: 18, y: 55 }, direction: 'up' }, { rows: 60 })
+
+  it('plays the same as a whole tick once the parts add up to one', () => {
+    const whole = run(RACE(), 7)
+    let parts = RACE()
+    for (let i = 0; i < 7 * 3; i++) parts = tickTag(parts, [], Math.random, 1 / 3)
+    expect(parts.tick).toBe(whole.tick)
+    expect(parts.sinceTick).toBe(0)
+    expect(parts.itTicks).toEqual(whole.itTicks)
+    for (const seat of [1, 2] as const) {
+      expect(parts.players[seat].head).toEqual(whole.players[seat].head)
+      expect(parts.players[seat].stride).toBeCloseTo(whole.players[seat].stride)
+    }
+  })
+
+  it('ends the tick only when its parts reach it', () => {
+    const half = tickTag(RACE(), [], Math.random, 0.5)
+    expect(half.tick).toBe(0)
+    expect(half.sinceTick).toBe(0.5)
+    expect(half.itTicks[2]).toBe(0)
+    const done = tickTag(half, [], Math.random, 0.5)
+    expect(done.tick).toBe(1)
+    expect(done.sinceTick).toBe(0)
+    expect(done.itTicks[2]).toBe(1)
+  })
+
+  // Played a frame at a time, It steps every 1 / TAG_IT_SPEED of a tick rather than a cell a tick
+  // with a second cell every few: the jump that drew as a lurch forward.
+  it('steps each rider on its own clock, It evenly', () => {
+    const part = 0.05
+    let s = RACE()
+    const stepsAt: Record<TagSeat, number[]> = { 1: [], 2: [] }
+    for (let i = 0; i < 400; i++) {
+      const before = s
+      s = tickTag(s, [], Math.random, part)
+      for (const seat of [1, 2] as const) {
+        const moved = Math.abs(s.players[seat].head.y - before.players[seat].head.y)
+        expect(moved).toBeLessThanOrEqual(1)
+        if (moved > 0) stepsAt[seat].push(i)
+      }
+    }
+    const gaps = (at: number[]) => at.slice(1).map((n, i) => n - at[i])
+    expect(new Set(gaps(stepsAt[1]))).toEqual(new Set([1 / part]))
+    const itGap = 1 / part / TAG_IT_SPEED
+    for (const gap of gaps(stepsAt[2])) expect([Math.floor(itGap), Math.ceil(itGap)]).toContain(gap)
+  })
+
+  it('keeps a newly tagged It still for its freeze', () => {
+    // Seat 2, It, rides into seat 1 standing against the edge.
+    let s = setup({ head: { x: 5, y: 0 }, direction: 'up' }, { head: { x: 5, y: 4 }, direction: 'up' })
+    while (s.tags === 0) s = tickTag(s, [], Math.random, 0.1)
+    const tagged = s.players[1].head
+    for (let i = 0; i < (TAG_FREEZE_TICKS - 1) * 10; i++) s = tickTag(applyTagTurn(s, 1, 'down'), [], Math.random, 0.1)
+    expect(s.it).toBe(1)
+    expect(s.players[1].head).toEqual(tagged)
+  })
+})
+
 describe('tagging', () => {
   // It (seat 2) riding down column 5 at seat 1, who rides up it.
   const headOn = () => setup({ head: { x: 5, y: 15 }, direction: 'up' }, { head: { x: 5, y: 5 }, direction: 'down' })

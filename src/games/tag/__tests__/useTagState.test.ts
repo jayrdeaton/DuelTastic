@@ -51,6 +51,30 @@ describe('useTagState', () => {
     expect(moved).toBeLessThanOrEqual(6)
   })
 
+  // The riders move a little every frame, but the screen only redraws for a step, a tick or the
+  // clock's second.
+  it('hands React a new state only when something on screen changes', async () => {
+    let renders = 0
+    const { result } = await renderHook(() => {
+      renders++
+      return useTagState({ ...PARAMS, intervalMs: 200 })
+    })
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    const before = renders
+    // A frame at a time, so React renders between frames as it would on screen.
+    for (let frame = 0; frame < 62; frame++) {
+      await act(async () => {
+        jest.advanceTimersByTime(16)
+      })
+    }
+    // About 60 frames: 5 ticks, 5 steps for one rider and 5 or 6 for It, and the clock's second.
+    expect(result.current.state.tick).toBeGreaterThanOrEqual(4)
+    expect(renders - before).toBeGreaterThan(5)
+    expect(renders - before).toBeLessThan(25)
+  })
+
   it('stops the steps and the clock while paused', async () => {
     const { result, rerender } = await renderHook((props: UseTagStateParams) => useTagState(props), { initialProps: PARAMS })
     await act(async () => {

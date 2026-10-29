@@ -30,9 +30,9 @@ export function touching(a: GridCell, b: GridCell): boolean {
   return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1
 }
 
-// How much of It's freeze is left before the next tick, 1 just tagged to 0 free to move.
+// How much of It's freeze is left, 1 just tagged to 0 free to move.
 export function freezeLeft(state: TagState): number {
-  return Math.max(0, state.frozenThrough - state.tick) / TAG_FREEZE_TICKS
+  return Math.min(1, Math.max(0, state.frozenThrough - state.tick - state.sinceTick) / TAG_FREEZE_TICKS)
 }
 
 // Where pillars go along one side of the board: evenly spaced, centered, and mirrored end to end so
@@ -109,7 +109,7 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
     const { head, direction } = start(seat)
     return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS() }
   }
-  return { phase: 'onboarding', grid, pillars, portals, tunnels, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, events: NO_EVENTS() }
+  return { phase: 'onboarding', grid, pillars, portals, tunnels, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS() }
 }
 
 export function startTag(state: TagState): TagState {
@@ -140,22 +140,21 @@ function step(state: TagState, p: TagPlayer, portals: ReadonlyMap<string, GridCe
   return isOpen(state, next) ? { ...p, head: next, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS) } : null
 }
 
-// One tick for both riders. A rider covers a cell a tick, It a little more (TAG_IT_SPEED), twice that
-// under Dash, half under Mud, none under Freeze, and a newly tagged It none until its freeze is over. Whenever It
-// (not frozen either way) is touching the other rider (not Safe), at the start of the tick or after
-// any step, the other rider is It: frozen for TAG_FREEZE_TICKS while the old It gets away. Passing
-// within a cell of a box picks it up, and with powerups on a new one turns up once it's taken.
-export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], random: () => number = Math.random): TagState {
-  if (state.phase !== 'playing') return state
-  const portalLookup = new Map<string, GridCell>()
-  for (const portal of state.portals) {
-    portalLookup.set(cellKey(portal.a), portal.b)
-    portalLookup.set(cellKey(portal.b), portal.a)
-  }
+// Within this of a whole tick (or a whole cell) counts as whole, so parts that add up to one don't
+// fall short on rounding.
+const EPSILON = 1e-6
+
+// Plays part of the tick under way (the one after state.tick) for both riders: each one's stride
+// grows by its speed over that part, and it steps whenever its stride makes a whole cell. A rider
+// covers a cell a tick, It a little more (TAG_IT_SPEED), twice that under Dash, half under Mud, none
+// under Freeze, and a newly tagged It none until its freeze is over. Whenever It (not frozen either
+// way) is touching the other rider (not Safe), at the start or after any step, the other rider is
+// It: frozen for TAG_FREEZE_TICKS while the old It gets away. Passing within a cell of a box picks it
+// up.
+function ride(state: TagState, part: number, events: TagEvents, portals: ReadonlyMap<string, GridCell>): TagState {
   const tick = state.tick + 1
   const players: Record<TagSeat, TagPlayer> = { 1: state.players[1], 2: state.players[2] }
   let { it, frozenThrough, tags, pickups } = state
-  const events = NO_EVENTS()
   const tagIfTouching = () => {
     const runner = otherSeat(it)
     if (tick > frozenThrough && !isFrozen(players[it].effects, tick) && !isShielded(players[runner].effects, tick) && touching(players[1].head, players[2].head)) {
@@ -170,10 +169,10 @@ export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], r
   const steps: Record<TagSeat, number> = { 1: 0, 2: 0 }
   for (const seat of SEATS) {
     if (seat === it && tick <= frozenThrough) continue
-    // In hundredths of a cell, so the sums stay exact.
-    const stride = players[seat].stride + (seat === it ? Math.round(TAG_IT_SPEED * 100) : 100) * speedMultiplier(players[seat].effects, tick)
-    steps[seat] = Math.floor(stride / 100)
-    players[seat] = { ...players[seat], stride: stride % 100 }
+    // In hundredths of a cell.
+    const stride = players[seat].stride + (seat === it ? Math.round(TAG_IT_SPEED * 100) : 100) * speedMultiplier(players[seat].effects, tick) * part
+    steps[seat] = Math.floor((stride + EPSILON) / 100)
+    players[seat] = { ...players[seat], stride: Math.max(0, stride - steps[seat] * 100) }
   }
 
   tagIfTouching()
@@ -181,7 +180,7 @@ export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], r
     for (const seat of SEATS) {
       // A rider tagged this tick stands still from then on.
       if (i >= steps[seat] || (seat === it && tick <= frozenThrough)) continue
-      const moved = step(state, players[seat], portalLookup)
+      const moved = step(state, players[seat], portals)
       if (!moved) {
         if (!events.blocked.includes(seat)) events.blocked.push(seat)
         continue
@@ -196,16 +195,47 @@ export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], r
     }
     tagIfTouching()
   }
+  return { ...state, players, pickups, it, frozenThrough, tags, sinceTick: state.sinceTick + part }
+}
 
+// Finishes the tick under way: with powerups on a new box turns up once the last one's taken,
+// effects run out, and whoever's It is charged the tick.
+function endTick(state: TagState, powerups: readonly TagPowerup[], random: () => number): TagState {
+  const tick = state.tick + 1
+  const players: Record<TagSeat, TagPlayer> = { 1: state.players[1], 2: state.players[2] }
+  let { pickups } = state
   if (powerups.length > 0 && pickups.length === 0) {
     // Its footprint clear of pillars, so it can be reached from every side.
     const cell = pickupCell({ grid: state.grid, heads: [players[1].head, players[2].head], blocked: (i) => state.blocked[i] === 1 }, random)
     if (cell) pickups = [newPickup(tick, cell, powerups, random)]
   }
   for (const seat of SEATS) players[seat] = { ...players[seat], effects: expireEffects(players[seat].effects, tick) }
+  const itTicks = { ...state.itTicks, [state.it]: state.itTicks[state.it] + 1 }
+  return { ...state, tick, sinceTick: 0, players, pickups, itTicks }
+}
 
-  const itTicks = { ...state.itTicks, [it]: state.itTicks[it] + 1 }
-  return { ...state, tick, players, pickups, it, frozenThrough, tags, itTicks, events }
+// Plays dt ticks (one by default) for both riders. The round screen plays a little each frame, so
+// each rider steps on its own clock: It, being faster, steps more often rather than now and then
+// two cells at once, which drew as a lurch forward every few cells.
+export function tickTag(state: TagState, powerups: readonly TagPowerup[] = [], random: () => number = Math.random, dt = 1): TagState {
+  if (state.phase !== 'playing') return state
+  const portalLookup = new Map<string, GridCell>()
+  for (const portal of state.portals) {
+    portalLookup.set(cellKey(portal.a), portal.b)
+    portalLookup.set(cellKey(portal.b), portal.a)
+  }
+  const events = NO_EVENTS()
+  let s = state
+  let left = dt
+  // Each pass either uses up what's left or reaches the end of the tick (sinceTick never stops
+  // within EPSILON of it), so this ends after a pass or two a tick.
+  while (left > 0) {
+    const part = Math.min(left, 1 - s.sinceTick)
+    s = ride(s, part, events, portalLookup)
+    left -= part
+    if (s.sinceTick > 1 - EPSILON) s = endTick(s, powerups, random)
+  }
+  return { ...s, events }
 }
 
 // Uses the rider's held powerup, for a tap, their powerup key or the CPU: Dash and Safe on the rider,

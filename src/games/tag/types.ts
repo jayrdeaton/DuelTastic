@@ -70,7 +70,7 @@ export interface TagPlayer {
   // behind it. Nothing collides with it.
   recent: GridCell[]
   // How far through its next step it is, in hundredths of a cell. It rides a little faster than the
-  // other rider, so its steps come more often (see TAG_IT_SPEED).
+  // other rider, so its steps come more often (see TAG_IT_SPEED and tickTag).
   stride: number
   // The powerup it's holding, used with a tap or its powerup key. One at a time: picking up another
   // swaps it.
@@ -107,6 +107,9 @@ export interface TagState {
   tags: number
   outcome: TagOutcome | null
   tick: number
+  // How far into the next tick the round is, 0 up to 1: the round screen plays a tick in parts, a
+  // part a frame, so each rider steps on its own clock (see tickTag).
+  sinceTick: number
   events: TagEvents
 }
 

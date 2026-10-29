@@ -1,6 +1,6 @@
 import { Canvas, Circle, Line, Path, RoundedRect, Skia, vec } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 
@@ -8,8 +8,10 @@ import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
-import type { Pickup } from '@/shared/powerups'
+import { useRiderGlide } from '@/shared/match/useRiderGlide'
+import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
+import { TAG_IT_SPEED } from './constants'
 import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat, TagTunnel } from './types'
 
 export interface TagBoardProps {
@@ -27,7 +29,7 @@ export interface TagBoardProps {
   colors: Record<TagSeat, string>
   phase: TagPhase
   tick: number
-  // Milliseconds per step, for how long each glide from cell to cell takes.
+  // Milliseconds per cell for the rider who isn't It, for how long each glide from cell to cell takes.
   intervalMs: number
   // The edge and the pillars: what stops a rider.
   structureColor: string
@@ -48,7 +50,6 @@ const IT_RING_RADIUS = 0.85
 const IT_RING_PULSE = 0.18
 const IT_RING_WIDTH = 3
 const IT_PULSE_MS = 620
-const GLIDE_MAX_DURATION_INTERVALS = 1.7
 const PILLAR_CORNER = 0.25
 const EDGE_STROKE_WIDTH = 1.5
 // A frozen It is dimmed, ringed by a white arc that empties as the freeze runs out: plain white, so
@@ -59,29 +60,6 @@ const FROZEN_RING_COLOR = '#FFFFFF'
 function cellCenter(cell: GridCell, cellPx: number) {
   const { x, y } = cellToPixel(cell, cellPx)
   return { x: x + cellPx / 2, y: y + cellPx / 2 }
-}
-
-// A rider's head glides from cell to cell over the time between steps, rather than jumping a whole
-// cell each step; it jumps only for a new round or a move that isn't a step.
-function useGlide(head: GridCell, tick: number, cellPx: number, intervalMs: number) {
-  const { x: targetX, y: targetY } = cellCenter(head, cellPx)
-  const x = useSharedValue(targetX)
-  const y = useSharedValue(targetY)
-  const lastStepAtRef = useRef(0)
-  useEffect(() => {
-    const now = performance.now()
-    const far = Math.abs(x.value - targetX) > cellPx * 2.5 || Math.abs(y.value - targetY) > cellPx * 2.5
-    const duration = Math.max(1, Math.min(now - lastStepAtRef.current, intervalMs * GLIDE_MAX_DURATION_INTERVALS))
-    lastStepAtRef.current = now
-    if (tick === 0 || far) {
-      x.value = targetX
-      y.value = targetY
-      return
-    }
-    x.value = withTiming(targetX, { duration, easing: Easing.linear })
-    y.value = withTiming(targetY, { duration, easing: Easing.linear })
-  }, [tick, targetX, targetY, cellPx, intervalMs, x, y])
-  return { x, y }
 }
 
 // The arc left of a frozen It's ring: a full circle just after the tag, gone when the freeze is over.
@@ -95,8 +73,11 @@ function FreezeRing({ x, y, cellPx, left }: { x: SharedValue<number>; y: SharedV
   return <Path path={arc} style='stroke' strokeWidth={IT_RING_WIDTH} strokeCap='round' color={FROZEN_RING_COLOR} />
 }
 
-function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, pulse }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; pulse: SharedValue<number> }) {
-  const { x, y } = useGlide(player.head, tick, cellPx, intervalMs)
+function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, pulse, phase }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; pulse: SharedValue<number>; phase: TagPhase }) {
+  // Its own pace, as the engine steps it: It a little faster, Dash and Mud on top (a frozen rider
+  // takes no steps to glide).
+  const speed = (isIt ? TAG_IT_SPEED : 1) * (speedMultiplier(player.effects, tick + 1) || 1)
+  const { x, y } = useRiderGlide({ path: player.recent, cellPx, msPerCell: intervalMs / speed, snap: phase !== 'playing' })
   // The tail: through the cells behind the head, then on to wherever the head is mid-glide.
   const tail = useMemo(() => {
     const path = Skia.PathBuilder.Make()
@@ -165,7 +146,7 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
         {SEATS.map((seat) => (
-          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} />
+          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} phase={phase} />
         ))}
       </Canvas>
     </View>
