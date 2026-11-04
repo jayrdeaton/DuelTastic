@@ -1,12 +1,15 @@
-import { Canvas, Circle, Line, Path, RoundedRect, Skia, vec } from '@shopify/react-native-skia'
+import { Canvas, Circle, Line, Path, Skia, vec } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
 import { useEffect, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
+import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
+import { Gates } from '@/shared/match/Gates'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
+import { endsInJump, trailPath } from '@/shared/match/trailPath'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
@@ -48,7 +51,6 @@ const IT_RING_RADIUS = 0.85
 const IT_RING_PULSE = 0.18
 const IT_RING_WIDTH = 3
 const IT_PULSE_MS = 620
-const PILLAR_CORNER = 0.25
 const EDGE_STROKE_WIDTH = 1.5
 // A frozen It is dimmed, ringed by a white arc that empties as the freeze runs out: plain white, so
 // it reads the same whatever the rider's color (an ice blue vanished against player 1's default).
@@ -76,17 +78,10 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
   // takes no steps to glide).
   const speed = (isIt ? TAG_IT_SPEED : 1) * (speedMultiplier(player.effects, tick + 1) || 1)
   const { x, y } = useRiderGlide({ path: player.recent, cellPx, msPerCell: intervalMs / speed, snap: phase !== 'playing' })
-  // The tail: through the cells behind the head, then on to wherever the head is mid-glide.
-  const tail = useMemo(() => {
-    const path = Skia.PathBuilder.Make()
-    player.recent.slice(0, -1).forEach((cell, i) => {
-      const { x: px, y: py } = cellCenter(cell, cellPx)
-      if (i === 0) path.moveTo(px, py)
-      else path.lineTo(px, py)
-    })
-    return path.detach()
-  }, [player.recent, cellPx])
-  const last = player.recent.length > 1 ? cellCenter(player.recent[player.recent.length - 2], cellPx) : null
+  // The tail: through the cells behind the head, then on to wherever the head is mid-glide, broken
+  // where it went through a gate rather than drawn across the board.
+  const tail = useMemo(() => trailPath(player.recent.slice(0, -1), cellPx), [player.recent, cellPx])
+  const last = player.recent.length > 1 && !endsInJump(player.recent) ? cellCenter(player.recent[player.recent.length - 2], cellPx) : null
   const headPoint = useDerivedValue(() => vec(x.value, y.value))
   const radius = cellPx * (isIt ? IT_HEAD_RADIUS : HEAD_RADIUS)
   const ringRadius = useDerivedValue(() => cellPx * (IT_RING_RADIUS + IT_RING_PULSE * pulse.value))
@@ -105,6 +100,9 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
 }
 
 export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it, orientationMode, p1OnRight, freezeLeft, colors, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TagBoardProps) {
+  // Every arena's blocks as cells, so the Pillars arena's pillars and the shared arenas' walls are
+  // drawn the same as in every game (ArenaBlocks).
+  const blockCells = useMemo(() => pillars.flatMap((p) => Array.from({ length: p.width * p.height }, (_, i) => ({ x: p.x + (i % p.width), y: p.y + Math.floor(i / p.width) }))), [pillars])
   // It's ring breathes in and out the whole round.
   const pulse = useSharedValue(0)
   useEffect(() => {
@@ -115,31 +113,11 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
     <View style={styles.container}>
       <Canvas style={StyleSheet.absoluteFill}>
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
-        {pillars.map((p) => (
-          <RoundedRect key={`${p.x},${p.y}`} x={p.x * cellPx} y={p.y * cellPx} width={p.width * cellPx} height={p.height * cellPx} r={cellPx * PILLAR_CORNER} color={structureColor} />
-        ))}
+        <ArenaBlocks cells={blockCells} cellPx={cellPx} color={structureColor} />
         {tunnels.map((tunnel, index) => (
           <TunnelRoad key={`tunnel-${index}`} tunnel={tunnel} cellPx={cellPx} color={structureColor} strokeWidth={EDGE_STROKE_WIDTH} />
         ))}
-        {portals.map((portal, index) => {
-          const a = cellCenter(portal.a, cellPx)
-          const b = cellCenter(portal.b, cellPx)
-          const r = cellPx * 0.34
-          return (
-            <Path
-              key={`portal-link-${index}`}
-              path={(() => {
-                const path = Skia.PathBuilder.Make()
-                path.addCircle(a.x, a.y, r)
-                path.addCircle(b.x, b.y, r)
-                return path.detach()
-              })()}
-              style='stroke'
-              strokeWidth={2}
-              color={structureColor}
-            />
-          )
-        })}
+        <Gates portals={portals} cellPx={cellPx} color={structureColor} />
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}

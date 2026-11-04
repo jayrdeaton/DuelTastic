@@ -5,11 +5,12 @@ import { View } from 'react-native'
 
 import GameBoardHost from '@/games/lightcycles/components/GameBoardHost'
 import { PowerupHud } from '@/games/lightcycles/components/PowerupHud'
-import { deathAnimationDurationMs, TRAIL_SPEED_RATE } from '@/games/lightcycles/constants/game'
+import { TRAIL_SPEED_RATE } from '@/games/lightcycles/constants/game'
 import { useGameState } from '@/games/lightcycles/hooks/useGameState'
 import { DEFAULT_SETTINGS } from '@/games/lightcycles/redux/settingsSlice'
 import { lightCyclesStats } from '@/games/lightcycles/stats'
 import type { Direction, Player, RoundSettings, Settings } from '@/games/lightcycles/types'
+import { deathAnimationDurationMs } from '@/shared/match/constants'
 import { MatchOverlays } from '@/shared/match/MatchOverlays'
 import { type MatchRoundProps, MatchScreen } from '@/shared/match/MatchScreen'
 import { boardStructureColor } from '@/shared/match/structureColor'
@@ -57,7 +58,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // GameBoard.tsx) starts its explosion-then-wipe death sequence the instant its `alive` flips false -
   // and the result card waits for the slower of those sequences (both, on a draw), so it never covers
   // a still-wiping trail. Read once, when the round ends: a dead player's trail never changes again
-  // that round, and GameBoard.tsx computes the same number from deathAnimationDurationMs.
+  // that round, and RiderCrash.tsx computes the same number from deathAnimationDurationMs.
   const resultDelayMs = () => {
     const deadPlayers = ([1, 2] as Player[]).filter((p) => !state.players[p].alive)
     return deadPlayers.length > 0 ? Math.max(...deadPlayers.map((p) => deathAnimationDurationMs(state.players[p].trail.length).totalMs)) : 0

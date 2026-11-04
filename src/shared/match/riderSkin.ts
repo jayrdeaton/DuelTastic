@@ -21,3 +21,8 @@ export const CLASSIC_SKIN: RiderSkin = {
   outlineColor: '#000000',
   outlineWidth: 1
 }
+
+// A head's radius as a share of its cell, in the games on the fine cells (LightCycles and Turf, 5 to
+// 14px): nearly filling its own cell, so the head reads as exactly where it is. Tag sizes its own for
+// its much bigger cells.
+export const HEAD_RADIUS_CELLS = 0.475

@@ -3,7 +3,7 @@ import { safeBack } from '@tastic/shell'
 import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 
-import { GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
+import { deathAnimationDurationMs, GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
 import { MatchOverlays } from '@/shared/match/MatchOverlays'
 import { type MatchRoundProps, MatchScreen } from '@/shared/match/MatchScreen'
 import { boardStructureColor } from '@/shared/match/structureColor'
@@ -16,7 +16,7 @@ import { DEFAULT_SETTINGS } from './settings'
 import { turfStats } from './stats'
 import TurfBoardHost from './TurfBoardHost'
 import { TurfHud } from './TurfHud'
-import type { TurfOptions, TurfSettings } from './types'
+import type { TurfOptions, TurfSeat, TurfSettings } from './types'
 import { useTurfState } from './useTurfState'
 
 // A Turf match inside the shared frame (MatchScreen): Turf's own state, board and score badges, in the
@@ -40,7 +40,14 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   // Tangle reverses a person's swipes and keys in the input layer, as Hack does in LightCycles.
   const tangled = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.reverse !== null, 2: state.players[2].effects.reverse !== null }), [state.players])
   const held = useMemo(() => ({ 1: state.players[1].held, 2: state.players[2].held }), [state.players])
-  const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs: () => TURF_RESULT_HOLD_MS })
+  // A crash plays out on the board as in LightCycles (TurfBoard's RiderCrash) and the result card waits
+  // for the slower one; a round that ends on the clock holds on the final board for a beat instead.
+  const resultDelayMs = () => {
+    const out = ([1, 2] as TurfSeat[]).filter((seat) => !state.players[seat].alive)
+    if (out.length === 0) return TURF_RESULT_HOLD_MS
+    return Math.max(...out.map((seat) => deathAnimationDurationMs(state.players[seat].trail.length + (state.players[seat].leftFrom ? 1 : 0)).totalMs))
+  }
+  const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs })
 
   const { colors: themeColors } = useAutoPaperTheme()
   const boardScale = Math.min(liveWidth / width, liveHeight / height)

@@ -51,38 +51,6 @@ export const MIN_TRAIL_LENGTH_BEFORE_TRIM = 5
 // speed the instant play resumes.
 export const MAX_TICK_DT_MS = 250
 
-// ─── Death sequence (see GameBoard.tsx's DeathExplosion/deathWipePath) ─────────────────────────
-// How long the crashed player's head takes to burst into the flash/ring/shards. Fixed, unlike the
-// wipe below - an explosion at a single point has nothing to scale with trail length the way a
-// wipe crossing every trail cell does.
-export const DEATH_EXPLOSION_MS = 420
-
-// How long the crashed player's trail takes to wipe itself out from head to tail, per cell -
-// clamped below at DEATH_WIPE_MIN_MS/MAX_MS the same way TRAIL_SEVER_EAT_MS_PER_CELL's own
-// severed-chunk eat-away is, and for the identical reason (trail length is unbounded), but at a
-// noticeably lower per-cell rate than that constant's 18: a Prune/Shield break only ever severs a
-// small chunk mid-round, while a death wipe can be walking a round-long trail hundreds of cells
-// long - the same rate here would blow straight through the max clamp almost immediately and stop
-// reading as scaling with trail length at all.
-export const DEATH_WIPE_MS_PER_CELL = 6
-export const DEATH_WIPE_MIN_MS = 250
-export const DEATH_WIPE_MAX_MS = 1400
-
-// Single source of truth for the death sequence's total timing, called independently by both
-// GameBoard.tsx (drives the actual withTiming/withDelay calls that animate it) and useMatchFlow
-// (schedules showResultDialog off the same numbers) - this is what guarantees the two can never
-// drift apart: neither file computes its own duration, both call this against the same
-// (post-crash, never-mutated-again) trail length.
-export function deathAnimationDurationMs(trailLength: number): { explosionMs: number; wipeMs: number; totalMs: number } {
-  const explosionMs = DEATH_EXPLOSION_MS
-  // A 1-cell trail (crashed on the very first tick, before any real movement) has nothing for the
-  // wipe to visibly consume - see GameBoard.tsx's deathWipePath, which already renders nothing
-  // below 2 cells - so there's no reason to still hold the dialog back for DEATH_WIPE_MIN_MS of
-  // nothing.
-  const wipeMs = trailLength <= 1 ? 0 : Math.min(DEATH_WIPE_MAX_MS, Math.max(DEATH_WIPE_MIN_MS, trailLength * DEATH_WIPE_MS_PER_CELL))
-  return { explosionMs, wipeMs, totalMs: explosionMs + wipeMs }
-}
-
 // CPU difficulty (see utils/cpuAi.ts): both tiers below 'hard' still use the same flood-fill
 // scoring, just follow it less faithfully - chance per tick of taking the second-best move
 // instead of the best ('normal'), or a uniformly random non-instantly-fatal move instead of the
@@ -165,7 +133,7 @@ export const POWERUP_EDGE_MARGIN_CELLS = PICKUP_EDGE_MARGIN
 
 // On-board glyph animation timing - a quick grow/fade the instant a pickup spawns (so it doesn't
 // just pop into existence), then an endless gentle pulse for as long as it sits uncollected (see
-// GameBoard.tsx's PowerupGlyph). Purely cosmetic - never affects when it's actually collectible.
+// BoardPowerups.tsx's PickupGlyph). Purely cosmetic - never affects when it's actually collectible.
 // Shared with Turf and Tag.
 export const POWERUP_SPAWN_FADE_MS = PICKUP_SPAWN_FADE_MS
 export const POWERUP_PULSE_DURATION_MS = PICKUP_PULSE_DURATION_MS

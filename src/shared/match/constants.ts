@@ -55,11 +55,35 @@ export function scaleMsForCellPx(referenceMs: number, cellPx: number): number {
 export const ONBOARDING_COUNTDOWN_STEP_MS = 700
 export const ONBOARDING_GO_HOLD_MS = 500
 
-// A last beat once the death sequence (explosion + trail wipe, see GameBoard.tsx and
+// A last beat once the death sequence (explosion + trail wipe, see RiderCrash.tsx and
 // deathAnimationDurationMs below) has already finished and the board's gone quiet - NOT the
 // entire crash-to-dialog gap the way this used to be (see useMatchFlow, which now adds this on top of
 // deathAnimationDurationMs's own totalMs rather than using it as the whole delay): the animation
 // itself now covers most of "register what just happened," so this only needs to be a brief pause
 // before it gets covered up, not a full second.
 export const ROUND_OVER_DIALOG_HOLD_MS = 300
+
+// ─── Death sequence (see RiderCrash.tsx) ─────────────────────────────────────
+// Every game's crash, LightCycles' and Turf's: how long the crashed rider's head takes to burst into
+// the flash, ring and shards. Fixed, unlike the wipe below: an explosion at a single point has
+// nothing to scale with trail length the way a wipe crossing every trail cell does.
+export const DEATH_EXPLOSION_MS = 420
+
+// How long the crashed rider's trail takes to wipe itself out from head to tail, per cell, clamped to
+// DEATH_WIPE_MIN_MS/MAX_MS (trail length is unbounded). Lower per cell than LightCycles'
+// TRAIL_SEVER_EAT_MS_PER_CELL (18): a Prune or Shield break only severs a small chunk mid-round,
+// while a death wipe can walk a round-long trail hundreds of cells long.
+export const DEATH_WIPE_MS_PER_CELL = 6
+export const DEATH_WIPE_MIN_MS = 250
+export const DEATH_WIPE_MAX_MS = 1400
+
+// The death sequence's timing, read by both RiderCrash.tsx (which animates it) and each play screen's
+// resultDelayMs (which holds the result card back until it's over), so the two can never drift apart.
+export function deathAnimationDurationMs(trailLength: number): { explosionMs: number; wipeMs: number; totalMs: number } {
+  const explosionMs = DEATH_EXPLOSION_MS
+  // A 1-cell trail (crashed on the very first tick) has nothing for the wipe to consume, so there's no
+  // reason to hold the dialog back for DEATH_WIPE_MIN_MS of nothing.
+  const wipeMs = trailLength <= 1 ? 0 : Math.min(DEATH_WIPE_MAX_MS, Math.max(DEATH_WIPE_MIN_MS, trailLength * DEATH_WIPE_MS_PER_CELL))
+  return { explosionMs, wipeMs, totalMs: explosionMs + wipeMs }
+}
 export const ONBOARDING_FADE_MS = 300

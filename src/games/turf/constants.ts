@@ -16,7 +16,8 @@ export const DEFAULT_TURF_OPTIONS: TurfOptions = { arena: 'open', crash: 'out', 
 // slow device, a debugger) can't eat seconds off the clock in one go.
 export const TURF_MAX_CLOCK_STEP_MS = 250
 
-// How long the round's end holds on the board before its result card shows.
+// How long a round that ends on the clock holds on the board before its result card shows (a crash
+// waits for its own animation, deathAnimationDurationMs).
 export const TURF_RESULT_HOLD_MS = 900
 
 // ─── Powerups ───────────────────────────────────────────────────────────────

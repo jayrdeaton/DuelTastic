@@ -21,6 +21,6 @@ export const TAG_POWERUP_OPTIONS: MenuOption<TagPowerup>[] = [
   { value: 'dash', label: 'Dash', description: 'Boosts your speed', icon: TAG_POWERUP_ICONS.dash },
   { value: 'freeze', label: 'Freeze', description: 'Freezes your opponent', icon: TAG_POWERUP_ICONS.freeze },
   { value: 'mud', label: 'Mud', description: 'Slows your opponent', icon: TAG_POWERUP_ICONS.mud },
-  { value: 'safe', label: 'Safe', description: 'Protects you from one tag', icon: TAG_POWERUP_ICONS.safe },
+  { value: 'safe', label: 'Safe', description: 'Nobody can tag you', icon: TAG_POWERUP_ICONS.safe },
   { value: 'tangle', label: 'Tangle', description: "Reverses your opponent's controls", icon: TAG_POWERUP_ICONS.tangle }
 ]

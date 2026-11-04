@@ -25,7 +25,7 @@ export const TURF_POWERUP_OPTIONS: MenuOption<TurfPowerup>[] = [
   { value: 'dash', label: 'Dash', description: 'Boosts your speed', icon: TURF_POWERUP_ICONS.dash },
   { value: 'frost', label: 'Frost', description: 'Freezes your opponent', icon: TURF_POWERUP_ICONS.frost },
   { value: 'mud', label: 'Mud', description: 'Slows your opponent', icon: TURF_POWERUP_ICONS.mud },
-  { value: 'fence', label: 'Fence', description: 'Protects you from one crash', icon: TURF_POWERUP_ICONS.fence },
+  { value: 'fence', label: 'Fence', description: 'Only the edge can crash you', icon: TURF_POWERUP_ICONS.fence },
   { value: 'sod', label: 'Sod', description: 'Claims turf instantly', icon: TURF_POWERUP_ICONS.sod },
   { value: 'tangle', label: 'Tangle', description: "Reverses your opponent's controls", icon: TURF_POWERUP_ICONS.tangle },
   { value: 'gust', label: 'Gust', description: 'Forces your opponent to boost', icon: TURF_POWERUP_ICONS.gust }
