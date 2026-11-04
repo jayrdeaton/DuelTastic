@@ -107,6 +107,9 @@ export interface ChooseCpuSnakeDirectionParams {
   // unaffected. This is the ground truth, not a per-difficulty decision; whether it's actually
   // USED is gated to 'hard' further down (see this function's own wrapAware local).
   wrapEdges?: boolean
+  // Whether this snake's Scales covers this tick (see types.ts's SnakeShieldEffect): bodies and
+  // obstacles are then no hazard, only the edge, so the CPU rides through them toward open space.
+  shielded?: boolean
 }
 
 // Walks `ownSteps` cells ahead in `direction` from `head`, treating each intermediate cell as
@@ -115,8 +118,10 @@ export interface ChooseCpuSnakeDirectionParams {
 // those steps would be out of bounds or already occupied. A tunnel-member landing cell is never
 // itself a hazard (see types/index.ts's own SnakeTunnel comment - mirrored here by simply never
 // adding a tunnel cell to `working`, so a later step through the same cell also reads it as clear),
-// matching tickSnake's own "tunnel cells never block" rule exactly.
-function candidateSnakeSafety(head: GridCell, direction: Direction, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, cap: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), wrapEdges: boolean = false): { space: number; cell: GridCell | null } {
+// matching tickSnake's own "tunnel cells never block" rule exactly. `shielded` (default false) lets
+// every step through an occupied cell, as Scales does, and counts the space from wherever it lands
+// as if that cell were open, so riding through a body scores the room on its far side.
+function candidateSnakeSafety(head: GridCell, direction: Direction, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, cap: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), wrapEdges: boolean = false, shielded: boolean = false): { space: number; cell: GridCell | null } {
   let cell = head
   let working: ReadonlySet<string> = occupied
   const steps = Math.max(1, ownSteps)
@@ -127,8 +132,13 @@ function candidateSnakeSafety(head: GridCell, direction: Direction, grid: GridSi
     if (portals.has(key)) cell = portals.get(key)!
     const landedKey = cellKey(cell)
     const isTunnelCell = tunnelCellSet.has(landedKey)
-    if (!isInBounds(cell, grid) || (!isTunnelCell && working.has(landedKey))) return { space: -1, cell: null }
+    if (!isInBounds(cell, grid) || (!shielded && !isTunnelCell && working.has(landedKey))) return { space: -1, cell: null }
     if (i < steps - 1 && !isTunnelCell) working = new Set(working).add(landedKey)
+  }
+  if (shielded && working.has(cellKey(cell))) {
+    const open = new Set(working)
+    open.delete(cellKey(cell))
+    working = open
   }
   // tunnelOccupied is always empty here (never passed) since a tunnel cell never blocks anyone in
   // Snake's model - passing an always-empty set is what makes floodFill.ts's own isBlocked routing
@@ -159,7 +169,7 @@ function isCornered(snake: SnakeEntity, grid: GridSize, occupied: ReadonlySet<st
 // rather than two competing systems; like food-seeking, it can only ever break a tie among
 // directions that already score within tolerance of the best - it can never pull the CPU toward a
 // target at the cost of a genuinely safer option.
-export function chooseCpuSnakeDirection({ snake, grid, occupied, difficulty, random = Math.random, food, ownSteps = 1, pickups = [], heldPowerup = null, portals = new Map(), tunnelCellSet = new Set(), wrapEdges = false }: ChooseCpuSnakeDirectionParams): Direction {
+export function chooseCpuSnakeDirection({ snake, grid, occupied, difficulty, random = Math.random, food, ownSteps = 1, pickups = [], heldPowerup = null, portals = new Map(), tunnelCellSet = new Set(), wrapEdges = false, shielded = false }: ChooseCpuSnakeDirectionParams): Direction {
   const head = snake.body[snake.body.length - 1]
   const candidates = ALL_DIRECTIONS.filter((direction) => !isOppositeDirection(direction, snake.direction))
 
@@ -168,7 +178,7 @@ export function chooseCpuSnakeDirection({ snake, grid, occupied, difficulty, ran
   // tiers rather than an unfinished feature.
   const wrapAware = wrapEdges && difficulty === 'hard'
 
-  const scored: ScoredDirection[] = candidates.map((direction) => ({ direction, ...candidateSnakeSafety(head, direction, grid, occupied, ownSteps, CPU_FLOOD_FILL_CAP, portals, tunnelCellSet, wrapAware) })).sort((a, b) => b.space - a.space)
+  const scored: ScoredDirection[] = candidates.map((direction) => ({ direction, ...candidateSnakeSafety(head, direction, grid, occupied, ownSteps, CPU_FLOOD_FILL_CAP, portals, tunnelCellSet, wrapAware, shielded) })).sort((a, b) => b.space - a.space)
 
   const maxSpace = scored[0].space
   const tiedForBest = scored.filter((s) => s.space === maxSpace)
@@ -255,7 +265,9 @@ export function applyCpuSnakeTurn(state: SnakeGameState, cpuSnakeId: SnakeId, di
     heldPowerup: snake.heldPowerup,
     portals,
     tunnelCellSet,
-    wrapEdges: state.wrapEdges
+    wrapEdges: state.wrapEdges,
+    // tickSnake compares Scales' expiresAtTick against state.tick + 1.
+    shielded: snake.effects.shield !== null && state.tick + 1 <= snake.effects.shield.expiresAtTick
   })
   const mesmerized = snake.effects.control?.type === 'mesmerize'
   const compensates = mesmerized && shouldCompensateForMesmerize(difficulty, random)

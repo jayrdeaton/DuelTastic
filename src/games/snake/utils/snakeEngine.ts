@@ -312,8 +312,8 @@ export function applySnakePowerupActivation(state: SnakeGameState, snakeId: Snak
 // snake's CURRENT body minus `vacating`, with a tunnel-member destination exempted from this check
 // entirely (see types/index.ts's own SnakeTunnel comment for why no per-snake exclusion layer is
 // needed here, unlike LightCycles' equivalent). Scales (an active shield: tick <= its
-// expiresAtTick) negates one hit and is used up by it, the same rule as LightCycles' Shield. Walls
-// and out-of-bounds always kill. A head-on where exactly one of the two is shielded is won by the
+// expiresAtTick) negates every hit until it runs out, never used up by one, the same rule as
+// LightCycles' Shield. Walls and out-of-bounds always kill. A head-on where exactly one of the two is shielded is won by the
 // shielded snake, which moves into the cell while the other dies; both or neither shielded stays a
 // mutual crash. A shielded body or obstacle hit survives and moves into the cell (breaking
 // through), and the body it hit, if it belongs to a live snake (the breaker's own included), loses
@@ -345,8 +345,6 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
   const crashCell: (GridCell | null)[] = snakes.map((s) => s.crashCell)
   const heldPowerup = snakes.map((s) => s.heldPowerup)
   const bodies = snakes.map((s) => s.body)
-  // Scales is used up mid-tick, so each snake's effects are tracked here and written back below.
-  const effects = snakes.map((s) => s.effects)
   // Food eaten this tick, counted as each growing move commits: a break-through trim can shrink a
   // body in the same tick, so the score can't be read off the change in length.
   const foodEaten = snakes.map(() => 0)
@@ -372,7 +370,7 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
       if (stepping[i] && !wallDeath[i] && !growing[i]) vacating.add(cellKey(bodies[i][0]))
     }
 
-    const shieldActive = effects.map((e) => e.shield !== null && tick <= e.shield.expiresAtTick)
+    const shieldActive = snakes.map((s) => s.effects.shield !== null && tick <= s.effects.shield.expiresAtTick)
     const headOn = snakes.map(() => false)
     const brokeThrough = snakes.map(() => false)
 
@@ -384,14 +382,10 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
         if (nextCell[i]!.x === nextCell[j]!.x && nextCell[i]!.y === nextCell[j]!.y) {
           headOn[i] = true
           headOn[j] = true
-          // Exactly one side shielded wins the head-on outright, using its shield up; both or
-          // neither shielded is the usual mutual crash.
-          const survivesI = shieldActive[i] && !shieldActive[j]
-          const survivesJ = shieldActive[j] && !shieldActive[i]
-          if (survivesI) effects[i] = { ...effects[i], shield: null }
-          else stepDead[i] = true
-          if (survivesJ) effects[j] = { ...effects[j], shield: null }
-          else stepDead[j] = true
+          // Exactly one side shielded wins the head-on outright; both or neither shielded is the
+          // usual mutual crash.
+          if (!(shieldActive[i] && !shieldActive[j])) stepDead[i] = true
+          if (!(shieldActive[j] && !shieldActive[i])) stepDead[j] = true
         }
       }
     }
@@ -405,12 +399,8 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
       const key = cellKey(nextCell[i]!)
       if (tunnelCellSet.has(key)) continue
       if (obstacleSet.has(key) || (bodyUnion.has(key) && !vacating.has(key))) {
-        if (shieldActive[i]) {
-          brokeThrough[i] = true
-          effects[i] = { ...effects[i], shield: null }
-        } else {
-          stepDead[i] = true
-        }
+        if (shieldActive[i]) brokeThrough[i] = true
+        else stepDead[i] = true
       }
     }
 
@@ -493,7 +483,7 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
       pendingDirection: steps[i] > 0 ? null : s.pendingDirection,
       score: s.score + scoreGain,
       heldPowerup: heldPowerup[i],
-      effects: expireEffects(effects[i], tick),
+      effects: expireEffects(s.effects, tick),
       crashCell: diedThisTick[i] ? crashCell[i] : s.crashCell,
       peakLength: Math.max(s.peakLength, bodies[i].length)
     }

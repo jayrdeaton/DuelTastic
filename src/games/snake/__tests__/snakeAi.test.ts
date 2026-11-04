@@ -99,6 +99,26 @@ describe('chooseCpuSnakeDirection - single safe option', () => {
   })
 })
 
+describe('chooseCpuSnakeDirection - Scales', () => {
+  // 1-row strip, head at (3,0) facing 'up' (out of bounds): 'left' opens onto 3 free cells, 'right'
+  // is an obstacle with 35 free cells behind it, far enough apart that food-seeking can't tie them.
+  const grid = { cols: 40, rows: 1 }
+  const food: GridCell = { x: 39, y: 0 }
+  const cpu = (expiresAtTick: number | null) => snake({ id: 2, direction: 'up', body: [{ x: 3, y: 0 }], effects: { speed: null, control: null, shield: expiresAtTick === null ? null : { expiresAtTick } } })
+
+  it('rides through toward more room while shielded, but never off the edge', () => {
+    const occupied = new Set(['3,0', '4,0'])
+    expect(chooseCpuSnakeDirection({ snake: cpu(null), grid, occupied, difficulty: 'hard', food })).toBe('left')
+    expect(chooseCpuSnakeDirection({ snake: cpu(null), grid, occupied, difficulty: 'hard', food, shielded: true })).toBe('right')
+  })
+
+  it('applyCpuSnakeTurn steers through only while Scales covers the next tick', () => {
+    const state = (expiresAtTick: number) => makeState({ grid, food, snakes: [cpu(expiresAtTick)], obstacles: [{ x: 4, y: 0 }] })
+    expect(applyCpuSnakeTurn(state(1), 2, 'hard').snakes[0].pendingDirection).toBe('right')
+    expect(applyCpuSnakeTurn(state(0), 2, 'hard').snakes[0].pendingDirection).toBe('left')
+  })
+})
+
 describe('chooseCpuSnakeDirection - determinism', () => {
   it('returns the same result on repeated calls with the same fixed random and inputs', () => {
     const testSnake = snake({

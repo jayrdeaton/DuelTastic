@@ -41,7 +41,7 @@ const POWERUP_LABELS: Record<SnakePowerupType, string> = { sidewind: 'Sidewind',
 const POWERUP_DESCRIPTIONS: Record<SnakePowerupType, string> = {
   sidewind: 'Boosts your speed',
   coldblood: 'Freezes your opponent',
-  scales: 'Protects you from one crash',
+  scales: 'Ride through bodies and walls',
   constrict: "Cuts your opponent's body",
   mesmerize: "Reverses your opponent's controls",
   frenzy: 'Forces your opponent to boost'

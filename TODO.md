@@ -123,6 +123,6 @@ Open for Jay: whether PuckTastic should start dark and set Paper's text in `MONO
 
 I think (and my kids agree) that the shield should last for a certain amount of time, and not go away after first contact.  Shield maybe should allow you to crash through gauntlet walls, pillars, and screen edges.
 
-✅ Done 2026-11-04 for LightCycles (CLAUDE.md, "Timed Shield"): it lasts its full ~3s, through every trail, wall and pillar it meets. Screen edges still crash it (Jay, 2026-11-04: keep it that way while the kids play it; if they keep riding into the edge shielded and feel cheated, wrap a shielded rider to the far side, with the CPU taught the same). Still open: whether Snake's Scales should change the same way.
+✅ Done 2026-11-04 for LightCycles (CLAUDE.md, "Timed Shield"): it lasts its full ~3s, through every trail, wall and pillar it meets. Screen edges still crash it (Jay, 2026-11-04: keep it that way while the kids play it; if they keep riding into the edge shielded and feel cheated, wrap a shielded rider to the far side, with the CPU taught the same). Snake's Scales changed the same way the same day (Jay: keep it predictable).
 
 Achievements on desktop are full width, but on solitaire its capped to a certain width, or the profile view is at least...  These should all be the same across the fleet.

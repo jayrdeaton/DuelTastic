@@ -832,8 +832,8 @@ describe('tickSnake', () => {
   })
 
   // Regression coverage for F062: Scales used to set effects.shield and nothing ever read it, so a
-  // shielded snake died exactly like an unshielded one. The rule is LightCycles' Shield: one hit
-  // negated, then used up; walls always kill.
+  // shielded snake died exactly like an unshielded one. The rule is LightCycles' Shield: every hit
+  // negated until it runs out (since 2026-11-04; one hit used it up before); walls always kill.
   describe('Scales (shield)', () => {
     const SHIELD = { shield: { expiresAtTick: 10 }, speed: null, control: null }
     const cells = (...pairs: [number, number][]): GridCell[] => pairs.map(([x, y]) => ({ x, y }))
@@ -847,28 +847,29 @@ describe('tickSnake', () => {
       })
     }
 
-    it('survives an obstacle cell, moving onto it, and uses the shield up', () => {
+    it('survives an obstacle cell, moving onto it, and keeps the shield', () => {
       const next = tickSnake(makeState({ snakes: [snake({ id: 1, body: cells([2, 5], [3, 5], [4, 5]), direction: 'right', effects: SHIELD })], obstacles: cells([5, 5]) }))
       expect(next.snakes[0].alive).toBe(true)
       expect(next.snakes[0].body).toEqual(cells([3, 5], [4, 5], [5, 5]))
-      expect(next.snakes[0].effects.shield).toBeNull()
+      expect(next.snakes[0].effects.shield).toEqual(SHIELD.shield)
       expect(next.phase).toBe('playing')
     })
 
-    it("survives the opponent's body and cuts it at the hit cell; a second hit the next tick kills", () => {
+    it("survives the opponent's body and cuts it at the hit cell, then rides through an obstacle the next tick", () => {
       const next = tickSnake(crossingState({ effects: SHIELD }, { obstacles: cells([6, 5]) }))
       expect(next.snakes[0].alive).toBe(true)
       expect(next.snakes[0].body).toEqual(cells([3, 5], [4, 5], [5, 5]))
-      expect(next.snakes[0].effects.shield).toBeNull()
+      expect(next.snakes[0].effects.shield).toEqual(SHIELD.shield)
       // Snake 2 slid down to (5, 7), then lost (5, 5) and everything behind it.
       expect(next.snakes[1].alive).toBe(true)
       expect(next.snakes[1].body).toEqual(cells([5, 6], [5, 7]))
       expect(next.phase).toBe('playing')
 
       const after = tickSnake(next)
-      expect(after.snakes[0].alive).toBe(false)
-      expect(after.snakes[0].crashCell).toEqual({ x: 6, y: 5 })
-      expect(after.outcome).toEqual({ type: 'win', winnerId: 2 })
+      expect(after.snakes[0].alive).toBe(true)
+      expect(after.snakes[0].body).toEqual(cells([4, 5], [5, 5], [6, 5]))
+      expect(after.snakes[0].effects.shield).toEqual(SHIELD.shield)
+      expect(after.phase).toBe('playing')
     })
 
     it('survives running into its own body, which is cut at the hit cell', () => {
@@ -876,7 +877,7 @@ describe('tickSnake', () => {
       const next = tickSnake(state)
       expect(next.snakes[0].alive).toBe(true)
       expect(next.snakes[0].body).toEqual(cells([5, 3], [5, 4], [4, 4], [4, 3]))
-      expect(next.snakes[0].effects.shield).toBeNull()
+      expect(next.snakes[0].effects.shield).toEqual(SHIELD.shield)
       expect(next.phase).toBe('playing')
     })
 
@@ -888,7 +889,7 @@ describe('tickSnake', () => {
       const next = tickSnake(state)
       expect(next.snakes[0].alive).toBe(true)
       expect(next.snakes[0].body).toEqual(cells([3, 5], [4, 5], [5, 5]))
-      expect(next.snakes[0].effects.shield).toBeNull()
+      expect(next.snakes[0].effects.shield).toEqual(SHIELD.shield)
       expect(next.snakes[1].alive).toBe(false)
       expect(next.snakes[1].crashCell).toEqual({ x: 5, y: 5 })
       expect(next.snakes[1].body).toEqual(cells([8, 5], [7, 5], [6, 5]))

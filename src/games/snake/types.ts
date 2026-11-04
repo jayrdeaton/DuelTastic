@@ -71,6 +71,9 @@ export interface SnakeControlEffect {
   expiresAtTick: number
 }
 
+// Scales: until expiresAtTick the snake rides through any body (cutting it back to where it hit,
+// its own included, see tickSnake) or obstacle, as many as it meets, and wins a head-on against an
+// unshielded snake. The board's edge still kills it.
 export interface SnakeShieldEffect {
   expiresAtTick: number
 }
