@@ -1,21 +1,20 @@
 import { Circle } from '@shopify/react-native-skia'
 import type { SharedValue } from 'react-native-reanimated'
 
+import { CLASSIC_SKIN, type RiderSkin } from './riderSkin'
+
 type Coordinate = number | SharedValue<number>
 
-// The rider's color, a white ring on its edge, and a thin black line just outside the white. On the
-// dark board the black is invisible and the white does the work; on a rider's own ground, a light
-// theme or a light rider color (yellow), the black is what separates the white from what's behind.
-// The black never covers the white, and is at least 1pt so it still reads at the smallest cells.
-// Draw it after the trail, so the whole ring shows.
-export function RiderHead({ x, y, radius, color, opacity = 1, outlineWidth, ringWidth, outlineColor = '#000000', ringColor = '#FFFFFF' }: { x: Coordinate; y: Coordinate; radius: number; color: string; opacity?: number; outlineWidth: number; ringWidth: number; outlineColor?: string; ringColor?: string }) {
-  const outline = Math.max(1, outlineWidth)
-  const outlineRadius = radius + ringWidth / 2 + outline / 2
+// A rider's head in its color, ringed by the skin (riderSkin.ts): the ring on the head's edge and the
+// outline just outside it, so the outline never covers the ring. Draw it after the trail, so the
+// whole ring shows.
+export function RiderHead({ x, y, radius, color, opacity = 1, skin = CLASSIC_SKIN }: { x: Coordinate; y: Coordinate; radius: number; color: string; opacity?: number; skin?: RiderSkin }) {
+  const outlineRadius = radius + skin.ringWidth / 2 + skin.outlineWidth / 2
   return (
     <>
       <Circle cx={x} cy={y} r={radius} color={color} opacity={opacity} />
-      <Circle cx={x} cy={y} r={radius} style='stroke' strokeWidth={ringWidth} color={ringColor} />
-      <Circle cx={x} cy={y} r={outlineRadius} style='stroke' strokeWidth={outline} color={outlineColor} />
+      <Circle cx={x} cy={y} r={radius} style='stroke' strokeWidth={skin.ringWidth} color={skin.ringColor} />
+      <Circle cx={x} cy={y} r={outlineRadius} style='stroke' strokeWidth={skin.outlineWidth} color={skin.outlineColor} />
     </>
   )
 }

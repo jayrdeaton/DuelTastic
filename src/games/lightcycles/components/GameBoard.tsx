@@ -60,12 +60,10 @@ function cellCenter(cell: GridCell, cellPx: number) {
 }
 
 // Thin on purpose - this is a boundary marker, not a trail, and shouldn't compete with the
-// trails/heads for visual weight. Flat rather than scaled with cellPx, same reasoning as the head
-// ring's own stroke width above.
+// trails/heads for visual weight. Flat rather than scaled with cellPx, like the head's ring
+// (riderSkin.ts).
 const WALL_STROKE_WIDTH = 1.5
 const TRAIL_OPACITY = 1
-const HEAD_RING_OUTLINE_WIDTH = 1
-const HEAD_RING_WHITE_WIDTH = 1.5
 
 // Every live pickup renders identically, regardless of its actual (already-decided, see
 // gameEngine.ts's maybeSpawnPickup) type - Mario-Kart mystery-box style. The type is only ever
@@ -680,7 +678,7 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
           once the tail segment already spans tail-to-head on its own. */}
           {trail.length > 2 && <Line p1={edgeStart} p2={edgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />}
           {/* Over the trail, so its whole ring shows. */}
-          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} outlineWidth={HEAD_RING_OUTLINE_WIDTH} ringWidth={HEAD_RING_WHITE_WIDTH} />
+          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} />
           {/* Active-effect "tell" rings, nested at increasing radii so more than one at once
           (e.g. Shield popped while already Overclocked) stays visually distinguishable rather
           than overlapping exactly. Colored by what's actually driving the effect (see
