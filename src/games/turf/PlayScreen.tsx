@@ -1,6 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
+import { useVibration } from '@rific/feedback-press'
 import { safeBack } from '@tastic/shell'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
 
 import { deathAnimationDurationMs, GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
@@ -10,6 +11,7 @@ import { boardStructureColor } from '@/shared/match/structureColor'
 import TouchInputLayer from '@/shared/match/TouchInputLayer'
 import { type Direction, humanPlayersFor, type Player } from '@/shared/match/types'
 import { useMatchControls, useMatchFlow } from '@/shared/match/useMatchFlow'
+import { useGameSound } from '@/shared/useGameSound'
 
 import { TURF_RESULT_HOLD_MS, TURF_SPEED_INTERVAL_MS } from './constants'
 import { DEFAULT_SETTINGS } from './settings'
@@ -48,6 +50,20 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
     return Math.max(...out.map((seat) => deathAnimationDurationMs(state.players[seat].trail.length + (state.players[seat].leftFrom ? 1 : 0)).totalMs))
   }
   const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs })
+
+  // A crash that sends a rider home (Crash Sends Home) lands with the crash sound and a buzz, as a
+  // crash that ends the round does (useMatchFlow).
+  const playCrash = useGameSound(require('../../../assets/sounds/crash.wav'))
+  const vibration = useVibration()
+  const feedbackRef = useRef({ playCrash, vibration })
+  useEffect(() => {
+    feedbackRef.current = { playCrash, vibration }
+  }, [playCrash, vibration])
+  useEffect(() => {
+    if (state.events.sentHome.length === 0) return
+    feedbackRef.current.playCrash()
+    feedbackRef.current.vibration.notification()
+  }, [state.events])
 
   const { colors: themeColors } = useAutoPaperTheme()
   const boardScale = Math.min(liveWidth / width, liveHeight / height)

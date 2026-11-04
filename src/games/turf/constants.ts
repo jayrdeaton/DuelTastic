@@ -20,6 +20,11 @@ export const TURF_MAX_CLOCK_STEP_MS = 250
 // waits for its own animation, deathAnimationDurationMs).
 export const TURF_RESULT_HOLD_MS = 900
 
+// Under Crash Sends Home, the ticks a crashed rider takes to fly home, standing still there until it
+// lands: about 0.9s at the normal speed. The same however far it flies, so a crash costs the same
+// wherever it happens.
+export const TURF_FLIGHT_TICKS = 10
+
 // ─── Powerups ───────────────────────────────────────────────────────────────
 
 export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'mud', 'fence', 'sod', 'tangle', 'gust']

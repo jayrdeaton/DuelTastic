@@ -7,7 +7,7 @@ import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, cellsOnTick, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, takePickup } from '@/shared/powerups'
 
 import { claimedCells } from './capture'
-import { TURF_EFFECT_TICKS, TURF_POWERUP_EFFECTS, TURF_SOD_RADIUS } from './constants'
+import { TURF_EFFECT_TICKS, TURF_FLIGHT_TICKS, TURF_POWERUP_EFFECTS, TURF_SOD_RADIUS } from './constants'
 import { DEFAULT_TURF_RULES, type TurfEvents, type TurfLayout, type TurfOutcome, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
 
 const SEATS: readonly TurfSeat[] = [1, 2]
@@ -63,7 +63,7 @@ export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open
         if (!blocked[i]) owner[i] = seat
       }
     }
-    return { head, direction, pendingDirection: null, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS() }
+    return { head, direction, pendingDirection: null, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS(), flight: null }
   }
   const players = { 1: player(1), 2: player(2) }
   return { phase: 'onboarding', grid, obstacles, portals, tunnels, blocked, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
@@ -83,34 +83,124 @@ export function applyTurfTurn(state: TurfState, seat: TurfSeat, direction: Direc
   return { ...state, players: { ...state.players, [seat]: { ...p, pendingDirection: direction } } }
 }
 
-// Where 'home' puts a crashed rider back: the cell they left their ground from if it's still theirs,
-// otherwise the nearest cell they own. Null when they own nothing.
-function homeCell(owner: Uint8Array, grid: GridSize, seat: TurfSeat, p: TurfPlayer): GridCell | null {
-  if (p.leftFrom && owner[cellIndex(p.leftFrom, grid)] === seat) return p.leftFrom
-  let best: GridCell | null = null
+// Whether a rider flying home stands still on tick `tick` (see TurfFlight).
+export const isFlying = (p: TurfPlayer, tick: number) => p.flight !== null && tick <= p.flight.landsAtTick
+
+// Ticks a rider still has to stand still after tick `tick` before it lands home; 0 when it isn't flying.
+export const flightTicksLeft = (p: TurfPlayer, tick: number) => (p.flight ? Math.max(0, p.flight.landsAtTick - tick) : 0)
+
+const SIDES: readonly [number, number][] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1]
+]
+
+// Where 'home' puts a crashed rider: the middle of their biggest patch of ground (cells joined side to
+// side), so they never land on a sliver the other rider has nearly closed off. The middle is a cell of
+// the patch, not its centroid (an L or a ring has its centroid outside it): the cell furthest in from
+// the patch's edge (the board's edge, a pillar or anyone else's cell), ties going to the one nearest
+// the centroid, then the first row by row. Never a cell in `avoid` (the other rider's head and trail)
+// while the patch has another. Null when they own nothing.
+export function homeCell(owner: Uint8Array, grid: GridSize, seat: TurfSeat, avoid: ReadonlySet<number> = new Set()): GridCell | null {
+  const { cols, rows } = grid
+  const onBoard = (x: number, y: number) => x >= 0 && y >= 0 && x < cols && y < rows
+
+  // Each of their patches, filled out from its first cell row by row; the biggest kept (the first of
+  // two the same size).
+  const patchOf = new Int32Array(owner.length).fill(-1)
+  let biggest: number[] = []
+  for (let start = 0; start < owner.length; start++) {
+    if (owner[start] !== seat || patchOf[start] >= 0) continue
+    const patch = [start]
+    patchOf[start] = start
+    for (let k = 0; k < patch.length; k++) {
+      const x = patch[k] % cols
+      const y = (patch[k] - x) / cols
+      for (const [dx, dy] of SIDES) {
+        if (!onBoard(x + dx, y + dy)) continue
+        const j = (y + dy) * cols + x + dx
+        if (owner[j] !== seat || patchOf[j] >= 0) continue
+        patchOf[j] = start
+        patch.push(j)
+      }
+    }
+    if (patch.length > biggest.length) biggest = patch
+  }
+  if (biggest.length === 0) return null
+  const id = biggest[0]
+  const inPatch = (x: number, y: number) => onBoard(x, y) && patchOf[y * cols + x] === id
+
+  // Steps in from the patch's edge: 0 on a cell beside anything that isn't the patch, counting in.
+  const depth = new Int32Array(owner.length).fill(-1)
+  const queue: number[] = []
+  for (const i of biggest) {
+    const x = i % cols
+    const y = (i - x) / cols
+    if (SIDES.some(([dx, dy]) => !inPatch(x + dx, y + dy))) {
+      depth[i] = 0
+      queue.push(i)
+    }
+  }
+  for (let k = 0; k < queue.length; k++) {
+    const x = queue[k] % cols
+    const y = (queue[k] - x) / cols
+    for (const [dx, dy] of SIDES) {
+      if (!inPatch(x + dx, y + dy)) continue
+      const j = (y + dy) * cols + x + dx
+      if (depth[j] >= 0) continue
+      depth[j] = depth[queue[k]] + 1
+      queue.push(j)
+    }
+  }
+
+  let cx = 0
+  let cy = 0
+  for (const i of biggest) {
+    cx += i % cols
+    cy += Math.floor(i / cols)
+  }
+  cx /= biggest.length
+  cy /= biggest.length
+  const open = biggest.filter((i) => !avoid.has(i))
+  let best = -1
   let bestDistance = Infinity
-  for (let i = 0; i < owner.length; i++) {
-    if (owner[i] !== seat) continue
-    const cell = { x: i % grid.cols, y: Math.floor(i / grid.cols) }
-    const distance = Math.abs(cell.x - p.head.x) + Math.abs(cell.y - p.head.y)
-    if (distance < bestDistance) {
-      best = cell
+  for (const i of open.length > 0 ? open : biggest) {
+    const distance = ((i % cols) - cx) ** 2 + (Math.floor(i / cols) - cy) ** 2
+    if (best < 0 || depth[i] > depth[best] || (depth[i] === depth[best] && (distance < bestDistance || (distance === bestDistance && i < best)))) {
+      best = i
       bestDistance = distance
     }
   }
-  return best
+  return { x: best % cols, y: Math.floor(best / cols) }
 }
 
-// Back home, the rider keeps its heading if the next cell that way is still its own ground, so it
-// doesn't ride straight back out (or into a wall); otherwise it takes the first heading that stays
-// home, or any heading that stays on the board.
+// Back home, the rider heads the way with the most of its own ground straight ahead, so it has the
+// longest to steer before it rides out, then the way with the most board ahead (away from the edge it
+// may have just hit), then the way it was heading.
 function homeDirection(owner: Uint8Array, grid: GridSize, seat: TurfSeat, cell: GridCell, current: Direction): Direction {
-  const order: Direction[] = [current, 'up', 'right', 'down', 'left']
-  const staysHome = order.find((d) => {
-    const next = stepCell(cell, d)
-    return isInBounds(next, grid) && owner[cellIndex(next, grid)] === seat
-  })
-  return staysHome ?? order.find((d) => isInBounds(stepCell(cell, d), grid)) ?? current
+  const ahead = (d: Direction) => {
+    let own = 0
+    let room = 0
+    let mine = true
+    for (let c = stepCell(cell, d); isInBounds(c, grid); c = stepCell(c, d)) {
+      room++
+      if (mine && owner[cellIndex(c, grid)] === seat) own++
+      else mine = false
+    }
+    return { own, room }
+  }
+  const order: Direction[] = [current, ...(['up', 'right', 'down', 'left'] as const).filter((d) => d !== current)]
+  let best = current
+  let bestAhead = ahead(current)
+  for (const d of order) {
+    const a = ahead(d)
+    if (a.own > bestAhead.own || (a.own === bestAhead.own && a.room > bestAhead.room)) {
+      best = d
+      bestAhead = a
+    }
+  }
+  return best
 }
 
 const sameCell = (a: GridCell, b: GridCell) => a.x === b.x && a.y === b.y
@@ -159,9 +249,9 @@ function applyClaims(owner: Uint8Array, blocked: Uint8Array, ground: Record<Turf
 //
 // - A rider who leaves the board crashes.
 // - Two heads meeting, in one cell or by swapping cells: whoever's ground the meeting cell is wins, and
-//   on nobody's ground both crash. Riding into a rider who's standing still (frozen, or done with its
-//   steps) counts the same, unless it's out on a trail: its head is the end of its trail, so riding
-//   into it cuts it.
+//   on nobody's ground both crash. Riding into a rider who's standing still (frozen, flying home, or
+//   done with its steps) counts the same, unless it's out on a trail: its head is the end of its
+//   trail, so riding into it cuts it.
 // - Riding into the other rider's trail crashes them, not you. Riding into your own crashes you, when
 //   `ownTrailDeadly`.
 // - Fence: nothing but the board's edge crashes its rider.
@@ -171,16 +261,18 @@ function applyClaims(owner: Uint8Array, blocked: Uint8Array, ground: Record<Turf
 // - Passing within a cell of a pickup picks it up (swapping whatever was held).
 // - A rider whose ground is all taken is suffocated and loses.
 //
-// With the 'out' crash rule a crash ends the round; with 'home' it sends the rider back to its ground
-// without its trail, done for the tick, and the round goes on. With powerups on, a new pickup turns
-// up once the last one's been taken.
+// With the 'out' crash rule a crash ends the round; with 'home' it sends the rider without its trail
+// to the middle of its biggest patch of ground (homeCell), where it stands still while it flies there
+// (TURF_FLIGHT_TICKS), and the round goes on. With powerups on, a new pickup turns up once the last
+// one's been taken.
 export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES, random: () => number = Math.random): TurfState {
   if (state.phase !== 'playing') return state
   const { grid } = state
   const portalLookup = buildPortalLookup(state.portals)
   const tunnelCellSet = buildTunnelCellSet(state.tunnels)
   const tick = state.tick + 1
-  const steps: Record<TurfSeat, number> = { 1: cellsOnTick(state.players[1].effects, tick), 2: cellsOnTick(state.players[2].effects, tick) }
+  const stepsOf = (p: TurfPlayer) => (isFlying(p, tick) ? 0 : cellsOnTick(p.effects, tick))
+  const steps: Record<TurfSeat, number> = { 1: stepsOf(state.players[1]), 2: stepsOf(state.players[2]) }
   // Fence: nothing but the edge crashes its rider.
   const fenced: Record<TurfSeat, boolean> = { 1: isShielded(state.players[1].effects, tick), 2: isShielded(state.players[2].effects, tick) }
   // One turn a tick: a rider covers its steps in the direction it starts the tick with. A frozen
@@ -312,16 +404,19 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
     }
     if (claims.length > 0) applyClaims(writableOwner(), state.blocked, ground, events.captured, claims)
 
-    // Back home after a crash, under the 'home' rule. crashCell keeps where they crashed for the rest
-    // of the tick, so the board can mark it.
+    // Back home after a crash, under the 'home' rule, flying there. crashCell keeps where they crashed
+    // for the rest of the tick.
     for (const seat of crashed) {
       const p = players[seat]
-      const cell = homeCell(owner, grid, seat, p)
+      const them = players[other(seat)]
+      const avoid = new Set([them.head, ...them.trail].map((c) => cellIndex(c, grid)))
+      const cell = homeCell(owner, grid, seat, avoid)
       events.crashed.push(seat)
       done.add(seat)
       if (!cell) continue
       clearTrail(seat)
-      players[seat] = { ...p, head: cell, direction: homeDirection(owner, grid, seat, cell, p.direction), pendingDirection: null, trail: [], leftFrom: null, crashCell: crashCell(seat) }
+      const from = crashCell(seat)
+      players[seat] = { ...p, head: cell, direction: homeDirection(owner, grid, seat, cell, p.direction), pendingDirection: null, trail: [], leftFrom: null, crashCell: from, flight: { from, startTick: tick, landsAtTick: tick + TURF_FLIGHT_TICKS } }
       events.sentHome.push(seat)
     }
 
@@ -344,7 +439,10 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
     if (cell) pickups = [newPickup(tick, cell, rules.powerups, random)]
   }
 
-  for (const seat of SEATS) players[seat] = { ...players[seat], effects: expireEffects(players[seat].effects, tick) }
+  for (const seat of SEATS) {
+    const { effects, flight } = players[seat]
+    players[seat] = { ...players[seat], effects: expireEffects(effects, tick), flight: flight && tick >= flight.landsAtTick ? null : flight }
+  }
 
   return { ...state, tick, owner, ground, pickups, players, events }
 }

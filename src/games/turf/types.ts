@@ -18,8 +18,8 @@ export type TurfPhase = 'onboarding' | 'playing' | 'roundOver'
 export type TurfLayout = 'faceToFace' | 'sideBySide'
 
 // What a crash costs (the loadout's Crashes option). 'out' is the classic rule: the round is over.
-// 'home' is the gentler one: the rider loses their trail and starts again on their own ground, so a
-// round only ends on the clock or a suffocation.
+// 'home' is the gentler one: the rider loses their trail and flies back to the middle of their
+// biggest patch of ground to start again, so a round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
 export type TurfArena = SharedArenaVariant
 
@@ -63,8 +63,8 @@ export interface TurfPlayer {
   // The cells laid since leaving their own ground, oldest first, the head's cell last. Empty while the
   // rider is on their own ground.
   trail: GridCell[]
-  // The last cell of their own ground before the trail began, where 'home' sends them back to (when
-  // it's still theirs). Null while they're on their own ground.
+  // The last cell of their own ground before the trail began, where the trail is drawn from. Null
+  // while they're on their own ground.
   leftFrom: GridCell | null
   alive: boolean
   // Where the rider crashed (null when they didn't): the cell they hit, which is off the board for a
@@ -74,6 +74,17 @@ export interface TurfPlayer {
   // another swaps it.
   held: TurfPowerup | null
   effects: Effects
+  // Under Crash Sends Home, the flight home after a crash. Null the rest of the time.
+  flight: TurfFlight | null
+}
+
+// A rider flying home after a crash (the 'home' rule). It's already home (its head), and stands still
+// there through tick `landsAtTick` while the board draws it flying in from `from`, the cell it crashed
+// at on tick `startTick` (off the board for the edge).
+export interface TurfFlight {
+  from: GridCell
+  startTick: number
+  landsAtTick: number
 }
 
 // What happened on the last tick, for sounds, haptics and flashes. Reset every tick.

@@ -5,7 +5,7 @@ import { distanceField } from '@/shared/distanceField'
 import { compensatesForReverse, isShielded, isSlowed, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '@/shared/powerups'
 
 import { TURF_EFFECT_TICKS } from './constants'
-import { applyTurfActivation, applyTurfTurn, cellIndex } from './engine'
+import { applyTurfActivation, applyTurfTurn, cellIndex, flightTicksLeft, isFlying } from './engine'
 import { DEFAULT_TURF_RULES, type TurfPlayer, type TurfRules, type TurfSeat, type TurfState } from './types'
 
 export type TurfCpuDifficulty = 'easy' | 'normal' | 'hard'
@@ -89,6 +89,14 @@ function groundCells(owner: Uint8Array, seat: TurfSeat): number[] {
 
 const randomIn = ([min, max]: [number, number], random: () => number) => min + Math.floor(random() * (max - min + 1))
 
+// Ticks for a rider to cover `steps` cells after tick `tick`, at its real speed and after any flight
+// home it has yet to land from. No way there (-1) stays -1.
+function ticksForRider(steps: number, p: TurfPlayer, tick: number): number {
+  const wait = flightTicksLeft(p, tick)
+  const ticks = ticksFor(steps, p.effects, tick + wait)
+  return ticks < 0 ? -1 : wait + ticks
+}
+
 // Free cells from `from` to the board's edge going `direction`, not counting `from`.
 function roomAhead(grid: GridSize, from: GridCell, direction: Direction): number {
   let room = 0
@@ -97,7 +105,7 @@ function roomAhead(grid: GridSize, from: GridCell, direction: Direction): number
 }
 
 // What the CPU reads off the board before deciding anything, in ticks rather than cells, so a rider
-// under Dash, Gust or Frost counts at its real speed.
+// under Dash, Gust or Frost, or still flying home, counts at its real speed.
 interface Reading {
   me: TurfPlayer
   them: TurfPlayer
@@ -128,16 +136,16 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
   const myBlocked = rules.ownTrailDeadly ? myTrail : new Uint8Array(myTrail.length)
   const theirBlocked = rules.ownTrailDeadly ? theirTrail : new Uint8Array(theirTrail.length)
   const home = distanceField(grid, groundCells(owner, seat), myBlocked)
-  const ticksHome = ticksFor(stepsFrom(home, grid, me.head, me.direction), me.effects, tick)
-  const reach = outside ? ticksFor(stepsFrom(distanceField(grid, me.trail.map(at), theirBlocked), grid, them.head, them.direction), them.effects, tick) : -1
+  const ticksHome = ticksForRider(stepsFrom(home, grid, me.head, me.direction), me, tick)
+  const reach = outside ? ticksForRider(stepsFrom(distanceField(grid, me.trail.map(at), theirBlocked), grid, them.head, them.direction), them, tick) : -1
   const threat = reach < 0 ? -1 : Math.max(reach, ticksLeft(me.effects.shield, tick))
 
   let cut: Int32Array | null = null
   let ticksToCut = -1
   if (them.trail.length > 0) {
     const toTheirTrail = distanceField(grid, them.trail.map(at), myBlocked)
-    ticksToCut = ticksFor(stepsFrom(toTheirTrail, grid, me.head, me.direction), me.effects, tick)
-    const theirHome = ticksFor(stepsFrom(distanceField(grid, groundCells(owner, other(seat)), theirBlocked), grid, them.head, them.direction), them.effects, tick)
+    ticksToCut = ticksForRider(stepsFrom(toTheirTrail, grid, me.head, me.direction), me, tick)
+    const theirHome = ticksForRider(stepsFrom(distanceField(grid, groundCells(owner, other(seat)), theirBlocked), grid, them.head, them.direction), them, tick)
     if (ticksToCut > ticksLeft(them.effects.shield, tick) && (theirHome < 0 || ticksToCut < theirHome) && (threat < 0 || ticksToCut < threat)) cut = toTheirTrail
   }
   return { me, them, outside, myBlocked, theirTrail, home, ticksHome, threat, cut, ticksToCut }
@@ -196,10 +204,10 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   if (!plan && !outside) plan = makePlan(state, seat, params, random)
   if (plan && outside && !plan.started) plan = { ...plan, started: true }
 
-  // Frozen, it still picks the heading it'll take once it thaws.
+  // Frozen or flying home, it still picks the heading it'll take once it can move.
   const mySteps = Math.max(1, Math.ceil(speedMultiplier(me.effects, nextTick)))
   const fenced = isShielded(me.effects, nextTick)
-  const theirSteps = Math.ceil(speedMultiplier(them.effects, nextTick))
+  const theirSteps = isFlying(them, nextTick) ? 0 : Math.ceil(speedMultiplier(them.effects, nextTick))
   const threatened = new Set([at(them.head)])
   for (const d of [them.direction, LEFT_OF[them.direction], RIGHT_OF[them.direction]]) {
     let cell = them.head

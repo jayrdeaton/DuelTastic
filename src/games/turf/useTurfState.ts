@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { TURF_MAX_CLOCK_STEP_MS } from './constants'
 import { applyTurfCpu, type TurfCpuDifficulty, type TurfCpuPlan } from './cpu'
 import { applyTurfActivation, applyTurfTurn, createTurfState, finishTurfOnTime, startTurf, tickTurf } from './engine'
-import type { TurfLayout, TurfOptions, TurfSeat, TurfState } from './types'
+import type { TurfEvents, TurfLayout, TurfOptions, TurfSeat, TurfState } from './types'
 
 export interface UseTurfStateParams {
   // The board's size in px, measured once when the round screen mounts.
@@ -88,6 +88,9 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
           setState((s) => {
             let { round, plan } = s
             if (shouldTick) {
+              // Every tick's events, when a slow frame plays more than one, so a crash in the first
+              // still sounds.
+              const events: TurfEvents = { captured: { 1: 0, 2: 0 }, crashed: [], sentHome: [], collected: [] }
               for (let i = 0; i < steps && round.phase === 'playing'; i++) {
                 if (cpu) {
                   const decided = applyTurfCpu(round, 2, cpu, plan, options)
@@ -95,7 +98,13 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
                   plan = decided.plan
                 }
                 round = tickTurf(round, options)
+                events.captured[1] += round.events.captured[1]
+                events.captured[2] += round.events.captured[2]
+                events.crashed.push(...round.events.crashed)
+                events.sentHome.push(...round.events.sentHome)
+                events.collected.push(...round.events.collected)
               }
+              round = { ...round, events }
             }
             if (round.phase === 'playing' && nextElapsedMs >= roundMs) round = finishTurfOnTime(round)
             return { round, plan, elapsedMs: nextElapsedMs }

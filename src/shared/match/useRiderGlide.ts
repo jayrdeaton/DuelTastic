@@ -10,8 +10,8 @@ import { Easing, useSharedValue, withSequence, withTiming } from 'react-native-r
 export const GLIDE_OVERLAP_MS = 16
 
 // The furthest a rider rides in a straight line between two renders: two cells (Dash). A move
-// further than that, or not in a straight line, is a jump (a gate, a rider sent home) and is drawn
-// as one.
+// further than that, or not in a straight line, is a jump (a gate) and is drawn as one, or as a
+// flight when it's handed one (a Turf rider sent home, see flightMs).
 const MAX_RUN_CELLS = 2
 
 // One leg of a glide: where to, and how long it takes (0 for a jump).
@@ -84,12 +84,15 @@ export interface RiderGlideParams {
   msPerCell: number
   // Holds the head on its cell instead of gliding (a new round being set up).
   snap: boolean
+  // A jump to a new cell flies there instead, over this long, easing out and back in so it's easy to
+  // follow (a Turf rider sent home after a crash). Null for a plain jump (a gate).
+  flightMs?: number | null
 }
 
 // Where to draw a rider's head: gliding from cell to cell at the rider's own pace, keyed on its own
 // steps rather than the round's ticks, so a rider that steps more often (It in Tag) or less often
 // (under Mud) still moves at one even speed.
-export function useRiderGlide({ path, cellPx, msPerCell, snap }: RiderGlideParams) {
+export function useRiderGlide({ path, cellPx, msPerCell, snap, flightMs = null }: RiderGlideParams) {
   const head = path[path.length - 1]
   const initial = cellCenter(head, cellPx)
   const x = useSharedValue(initial.x)
@@ -100,9 +103,15 @@ export function useRiderGlide({ path, cellPx, msPerCell, snap }: RiderGlideParam
     const lastHead = lastHeadRef.current
     if (!snap && lastHead.x === head.x && lastHead.y === head.y) return
     lastHeadRef.current = head
+    const { x: hx, y: hy } = cellCenter(head, cellPx)
+    if (!snap && flightMs) {
+      const fly = (to: number) => withTiming(to, { duration: flightMs, easing: Easing.inOut(Easing.cubic) })
+      x.value = fly(hx)
+      y.value = fly(hy)
+      return
+    }
     const legs = snap ? null : glideRoute({ x: x.value, y: y.value }, lastHead, path, cellPx, msPerCell)
     if (!legs) {
-      const { x: hx, y: hy } = cellCenter(head, cellPx)
       x.value = hx
       y.value = hy
       return
@@ -112,7 +121,7 @@ export function useRiderGlide({ path, cellPx, msPerCell, snap }: RiderGlideParam
     const ys = legs.map((leg) => timing(leg.y, leg.ms))
     x.value = xs.length === 1 ? xs[0] : withSequence(...xs)
     y.value = ys.length === 1 ? ys[0] : withSequence(...ys)
-  }, [head, path, cellPx, msPerCell, snap, x, y])
+  }, [head, path, cellPx, msPerCell, snap, flightMs, x, y])
 
   return { x, y }
 }

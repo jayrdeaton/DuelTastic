@@ -2,8 +2,8 @@ import type { Direction, GridCell } from '@tastic/grid'
 
 import { type Effects, PICKUP_EDGE_MARGIN, PICKUP_FAIR_SLACK, PICKUP_MIN_DISTANCE, PICKUP_SPREAD, speedMultiplier } from '@/shared/powerups'
 
-import { TURF_EFFECT_TICKS } from '../constants'
-import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, startTurf, tickTurf, TURF_HOME_RADIUS } from '../engine'
+import { TURF_EFFECT_TICKS, TURF_FLIGHT_TICKS } from '../constants'
+import { applyTurfActivation, applyTurfTurn, countGround, createTurfState, finishTurfOnTime, groundShare, homeCell, startTurf, tickTurf, TURF_HOME_RADIUS } from '../engine'
 import { DEFAULT_TURF_RULES, type TurfPowerup, type TurfRules, type TurfSeat, type TurfState } from '../types'
 
 const HOME: TurfRules = { arena: 'open', crash: 'home', ownTrailDeadly: true, powerups: [] }
@@ -216,14 +216,47 @@ describe('crashing (out)', () => {
 })
 
 describe('crashing (home)', () => {
-  it('sends the rider back to where it left its ground, without its trail', () => {
+  it('sends the rider home without its trail, flying there', () => {
     const s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, HOME)
     expect(s.phase).toBe('playing')
     expect(s.players[1].head).toEqual({ x: 5, y: 15 })
     expect(s.players[1].trail).toEqual([])
     expect(s.players[1].alive).toBe(true)
     expect(s.players[1].crashCell).toEqual({ x: 5, y: 13 })
+    expect(s.players[1].flight).toEqual({ from: { x: 5, y: 13 }, startTick: 6, landsAtTick: 6 + TURF_FLIGHT_TICKS })
     expect(s.events.sentHome).toEqual([1])
+  })
+
+  it('stands still at home until it lands, then rides on', () => {
+    let s = run(setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR), 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, HOME)
+    const home = s.players[1].head
+    s = run(s, TURF_FLIGHT_TICKS, {}, HOME)
+    expect(s.players[1].head).toEqual(home)
+    expect(s.players[1].flight).toBeNull()
+    s = run(s, 1, {}, HOME)
+    expect(s.players[1].head).not.toEqual(home)
+  })
+
+  it('keeps a turn queued while it flies home', () => {
+    // Up out of its 5 x 5 square, right, down and left into its own trail on tick 7: home to the
+    // square's middle, where up and left have the most board ahead and up comes first.
+    let s = run(setup({ head: { x: 10, y: 10 }, direction: 'up' }, FAR, { radius: 2 }), 7, { 4: { 1: 'right' }, 5: { 1: 'down' }, 6: { 1: 'left' } }, HOME)
+    expect(s.events.sentHome).toEqual([1])
+    expect(s.players[1].head).toEqual({ x: 10, y: 10 })
+    expect(s.players[1].direction).toBe('up')
+    s = run(s, TURF_FLIGHT_TICKS + 1, { 2: { 1: 'left' } }, HOME)
+    expect(s.players[1].head).toEqual({ x: 9, y: 10 })
+  })
+
+  it('wins a head-on on its own ground while it stands there', () => {
+    // Player 1 rides off the top of its square on tick 3 and stands at its middle, (5, 2), until tick
+    // 13; player 2 rides up column 5 into it on tick 10.
+    let s = run(setup({ head: { x: 5, y: 2 }, direction: 'up' }, { head: { x: 5, y: 12 }, direction: 'up' }, { radius: 2 }), 3, {}, HOME)
+    expect(s.events.sentHome).toEqual([1])
+    expect(s.players[1].head).toEqual({ x: 5, y: 2 })
+    s = run(s, 7, {}, HOME)
+    expect(s.events.sentHome).toEqual([2])
+    expect(s.players[1].head).toEqual({ x: 5, y: 2 })
   })
 
   it('sends both home from a head-on on nobody’s ground', () => {
@@ -234,35 +267,74 @@ describe('crashing (home)', () => {
     expect(s.events.sentHome).toEqual([1, 2])
   })
 
-  it('turns a rider sent home to stay on its ground', () => {
+  it('heads a rider sent home away from the edge it hit', () => {
     let s = setup({ head: { x: 5, y: 2 }, direction: 'up' }, { head: { x: 15, y: 10 }, direction: 'down' })
     s = withGround(s, { 1: rect(4, 0, 6, 2), 2: [{ x: 15, y: 10 }] })
-    // From (5, 2) up to the edge: off the board on tick 3, back to (5, 0), the last cell of its ground.
+    // From (5, 2) up to the edge: off the board on tick 3, home to the square's middle, (5, 1). Its
+    // ground is a cell deep every way, and down has the most board ahead.
     s = run(s, 3, {}, HOME)
-    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
-    expect(s.players[1].direction).not.toBe('up')
+    expect(s.players[1].head).toEqual({ x: 5, y: 1 })
+    expect(s.players[1].direction).toBe('down')
   })
 
-  it('uses the nearest cell it owns once the cell it left from is taken', () => {
-    let s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR, { radius: 0 })
-    s = withGround(s, {
-      1: [
-        { x: 5, y: 15 },
-        { x: 2, y: 13 }
-      ],
-      2: [{ x: 15, y: 2 }]
-    })
-    s = run(s, 3, {}, HOME)
-    // Take (5, 15) away from it, then run it into its own trail.
-    s = withGround(s, {
-      1: [{ x: 2, y: 13 }],
-      2: [
-        { x: 15, y: 2 },
-        { x: 5, y: 15 }
-      ]
-    })
-    s = run(s, 3, { 0: { 1: 'right' }, 1: { 1: 'down' }, 2: { 1: 'left' } }, HOME)
-    expect(s.players[1].head).toEqual({ x: 2, y: 13 })
+  it('heads the way with the most of its own ground ahead', () => {
+    // A 5 x 3 strip on the bottom edge: off the board on tick 1, home to the strip's middle, where left
+    // and right have two cells of it ahead (up and down one), and left has more board.
+    let s = setup({ head: { x: 10, y: 19 }, direction: 'down' }, FAR)
+    s = withGround(s, { 1: rect(8, 17, 12, 19), 2: [{ x: 15, y: 2 }] })
+    s = run(s, 1, {}, HOME)
+    expect(s.players[1].head).toEqual({ x: 10, y: 18 })
+    expect(s.players[1].direction).toBe('left')
+  })
+
+  it('sends the rider to its biggest patch, not the one it left from', () => {
+    // A 3 x 3 patch it rides out of and a 7 x 7 one across the board: it crashes into its own trail on
+    // tick 6 and goes to the middle of the 7 x 7.
+    let s = setup({ head: { x: 5, y: 15 }, direction: 'up' }, FAR)
+    s = withGround(s, { 1: [...rect(4, 14, 6, 16), ...rect(11, 11, 17, 17)], 2: [{ x: 15, y: 2 }] })
+    s = run(s, 6, { 3: { 1: 'right' }, 4: { 1: 'down' }, 5: { 1: 'left' } }, HOME)
+    expect(s.events.sentHome).toEqual([1])
+    expect(s.players[1].head).toEqual({ x: 14, y: 14 })
+  })
+})
+
+describe('homeCell', () => {
+  const ownerOf = (cells: GridCell[], cols = 20, rows = 20) => {
+    const owner = new Uint8Array(cols * rows)
+    for (const c of cells) owner[c.y * cols + c.x] = 1
+    return owner
+  }
+  const GRID = { cols: 20, rows: 20 }
+
+  it('is the middle of a square', () => {
+    expect(homeCell(ownerOf(rect(3, 4, 9, 10)), GRID, 1)).toEqual({ x: 6, y: 7 })
+  })
+
+  it('is a cell of an L, at its corner, not the centroid outside it', () => {
+    // A 3-wide bar down and a 3-tall bar across the bottom: the centroid, about (5, 8), is outside the
+    // L; the corner where the bars meet is the deepest part nearest it.
+    const l = [...rect(2, 2, 4, 11), ...rect(5, 9, 11, 11)]
+    expect(homeCell(ownerOf(l), GRID, 1)).toEqual({ x: 4, y: 9 })
+  })
+
+  it('takes the biggest patch', () => {
+    expect(homeCell(ownerOf([...rect(0, 0, 2, 2), ...rect(10, 10, 14, 14)]), GRID, 1)).toEqual({ x: 12, y: 12 })
+  })
+
+  it('counts a hole in the patch (a pillar) as its edge too', () => {
+    // A 9 x 9 square with a pillar on its middle: the deepest cells are two in from both the square's
+    // edge and the pillar, and the first of those nearest the middle, row by row, is (8, 7).
+    const square = rect(5, 5, 13, 13).filter((c) => !(c.x === 9 && c.y === 9))
+    expect(homeCell(ownerOf(square), GRID, 1)).toEqual({ x: 8, y: 7 })
+  })
+
+  it('keeps off the other rider’s head and trail', () => {
+    const owner = ownerOf(rect(4, 4, 6, 6))
+    expect(homeCell(owner, GRID, 1, new Set([5 * 20 + 5]))).toEqual({ x: 5, y: 4 })
+  })
+
+  it('is null with no ground', () => {
+    expect(homeCell(new Uint8Array(400), GRID, 1)).toBeNull()
   })
 })
 
@@ -532,9 +604,9 @@ describe('Sod', () => {
 })
 
 describe('powerups on the home rule', () => {
-  it('holds a rider sent home mid-dash there for the rest of the tick', () => {
-    // At the top edge of its home square, dashing up: off the board on the tick's first cell, back to
-    // (5, 0) facing along its ground, and not moving on for the second.
+  it('holds a rider sent home mid-dash there until it lands', () => {
+    // At the top edge of its home square, dashing up: off the board on the tick's first cell, home to
+    // the square's middle, (5, 1), and not moving on for the second, nor while the Dash lasts.
     let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, FAR, { radius: 1 }), 1, {}, HOME)
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
     expect(s.players[1].trail).toEqual([])
@@ -542,7 +614,9 @@ describe('powerups on the home rule', () => {
     s = run(s, 1, {}, HOME)
     expect(s.events.sentHome).toEqual([1])
     expect(s.players[1].crashCell).toEqual({ x: 5, y: -1 })
-    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
-    expect(s.players[1].direction).toBe('right')
+    expect(s.players[1].head).toEqual({ x: 5, y: 1 })
+    expect(s.players[1].direction).toBe('down')
+    s = run(s, 3, {}, HOME)
+    expect(s.players[1].head).toEqual({ x: 5, y: 1 })
   })
 })

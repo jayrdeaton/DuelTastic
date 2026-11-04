@@ -84,7 +84,9 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
   // rider takes no steps to glide).
   const msPerCell = intervalMs / (speedMultiplier(player.effects, tick + 1) || 1)
   const path = useMemo(() => (player.trail.length > 0 ? player.trail : [player.head]), [player.trail, player.head])
-  const { x, y } = useRiderGlide({ path, cellPx, msPerCell, snap: false })
+  // Sent home after a crash, the head flies there, landing as the rider's wait at home runs out.
+  const flightMs = player.flight ? Math.max(0, player.flight.landsAtTick - tick) * intervalMs : null
+  const { x, y } = useRiderGlide({ path, cellPx, msPerCell, snap: false, flightMs })
   const cells = useMemo(() => trailCells(player), [player])
   const settled = useMemo(() => trailPath(cells.slice(0, -1), cellPx), [cells, cellPx])
   // The last stretch glides with the head, unless the head just came out of a gate.
@@ -94,12 +96,14 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
 
   // A crash under Crash Sends Home: by the time it's drawn the engine has already put the rider back
   // home without its trail, so the trail it lost is the one drawn last time. Kept in state, as the
-  // crash's own trail, so the burst and wipe play out while the rider rides on.
-  const [seen, setSeen] = useState({ cells, crashCell: player.crashCell })
+  // crash's own trail, so the burst and wipe play out while the rider flies home and rides on. Keyed
+  // on the flight, which lasts until it lands, rather than crashCell, which only lasts the crash's
+  // own tick and is gone if a second tick runs in the same frame.
+  const [seen, setSeen] = useState({ cells, flight: player.flight })
   const [crash, setCrash] = useState<{ tick: number; cell: GridCell; trail: GridCell[] } | null>(null)
-  if (seen.cells !== cells || seen.crashCell !== player.crashCell) {
-    if (player.crashCell && player.crashCell !== seen.crashCell) setCrash({ tick, cell: player.crashCell, trail: seen.cells })
-    setSeen({ cells, crashCell: player.crashCell })
+  if (seen.cells !== cells || seen.flight !== player.flight) {
+    if (player.flight && player.flight !== seen.flight) setCrash({ tick: player.flight.startTick, cell: player.flight.from, trail: seen.cells })
+    setSeen({ cells, flight: player.flight })
   }
 
   return (

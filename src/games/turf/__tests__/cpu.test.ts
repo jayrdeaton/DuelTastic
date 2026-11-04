@@ -70,6 +70,13 @@ describe('chooseTurfCpuMove', () => {
     expect(['left', 'right']).toContain(direction)
   })
 
+  it('keeps riding its loop while the other rider is still flying home', () => {
+    // The same two steps from the trail, but standing there for ten more ticks after a crash.
+    const s = outOnALoop({ x: 3, y: 12 })
+    const flying = { ...s, players: { ...s.players, 2: { ...s.players[2], flight: { from: { x: 0, y: 0 }, startTick: s.tick, landsAtTick: s.tick + 10 } } } }
+    expect(chooseTurfCpuMove(flying, 1, 'normal', keepGoingUp, HOME, seeded(1)).direction).toBe('up')
+  })
+
   it('goes for the other rider’s trail when it can cut it first', () => {
     const s = board(40, 20, { 1: rect(2, 15, 8, 19), 2: rect(30, 0, 34, 4) }, { 1: { head: { x: 5, y: 16 }, direction: 'right' }, 2: { head: { x: 5, y: 12 }, direction: 'left', trail: column(12, 12, 12).concat(rect(5, 12, 11, 12).reverse()), leftFrom: { x: 30, y: 4 } } })
     const { direction } = chooseTurfCpuMove(s, 1, 'hard', null, HOME, seeded(1))
