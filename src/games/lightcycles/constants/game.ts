@@ -86,7 +86,7 @@ export const POWERUP_ALL_TYPES: PowerupType[] = ['overdrive', 'stasis', 'shield'
 export const POWERUP_EFFECT_DURATION_TICKS: Record<'overdrive' | 'stasis' | 'shield' | 'hack' | 'overclock', number> = {
   overdrive: 40, // ~2.5s of self-boost
   stasis: 24, // ~1.5s of forced opponent freeze - long enough to box them in, short enough not to just stall the round
-  shield: 48, // ~3s armed window to actually reach a wall worth breaking through
+  shield: 48, // ~3s of riding through trails, walls and pillars (never the board's edge), however many it hits
   hack: 32, // ~2s of inverted opponent steering
   overclock: 32 // ~2s of forced opponent 2x speed
 }

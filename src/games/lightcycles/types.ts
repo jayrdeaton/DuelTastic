@@ -43,6 +43,9 @@ export interface ControlEffect {
   expiresAtTick: number
 }
 
+// Until expiresAtTick the rider rides through any trail (cutting it back to where it hit, see
+// tickGame), arena wall or pillar, as many as it meets, and wins a head-on against an unshielded
+// rider. The board's edge still crashes it.
 export interface ShieldEffect {
   expiresAtTick: number
 }

@@ -38,6 +38,9 @@ export interface ChooseCpuDirectionParams {
   // same "truth flows in, the difficulty-indexed logic decides how much of it to use" shape
   // CPU_POWERUP_AWARENESS already uses for pickups/shield/offense above it.
   wrapEdges?: boolean
+  // Whether this player's Shield covers this tick (see types.ts's ShieldEffect): trails, walls
+  // and pillars are then no hazard, only the edge, so the CPU rides through them toward open space.
+  shielded?: boolean
 }
 
 // Walks `ownSteps` cells ahead in `direction` from `head`, treating each intermediate cell as
@@ -53,7 +56,10 @@ export interface ChooseCpuDirectionParams {
 // into a live tunnel-trail hazard it has zero visibility into. `wrapEdges` defaults to false for the
 // same byte-identical-by-default reason - see this file's own ChooseCpuDirectionParams.wrapEdges
 // comment for why this takes the raw ground truth rather than doing its own difficulty gating.
-function candidateSafety(head: GridCell, direction: Direction, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, cap: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), tunnelOccupied: ReadonlySet<string> = new Set(), wrapEdges: boolean = false): { space: number; cell: GridCell | null } {
+// `shielded` (default false) lets every step through an occupied cell, as a Shield does, and counts
+// the space from wherever it lands as if that cell were open, so riding through a trail scores the
+// room on its far side.
+function candidateSafety(head: GridCell, direction: Direction, grid: GridSize, occupied: ReadonlySet<string>, ownSteps: number, cap: number, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), tunnelOccupied: ReadonlySet<string> = new Set(), wrapEdges: boolean = false, shielded: boolean = false): { space: number; cell: GridCell | null } {
   let cell = head
   let working: ReadonlySet<string> = occupied
   let tunnelWorking: ReadonlySet<string> = tunnelOccupied
@@ -65,13 +71,29 @@ function candidateSafety(head: GridCell, direction: Direction, grid: GridSize, o
     if (portals.has(key)) cell = portals.get(key)!
     const landedKey = cellKey(cell)
     const isTunnelCell = tunnelCellSet.has(landedKey)
-    if (!isInBounds(cell, grid) || (isTunnelCell ? tunnelWorking : working).has(landedKey)) return { space: -1, cell: null }
+    if (!isInBounds(cell, grid) || (!shielded && (isTunnelCell ? tunnelWorking : working).has(landedKey))) return { space: -1, cell: null }
     if (i < steps - 1) {
       if (isTunnelCell) tunnelWorking = new Set(tunnelWorking).add(landedKey)
       else working = new Set(working).add(landedKey)
     }
   }
+  if (shielded) {
+    const landedKey = cellKey(cell)
+    if (tunnelCellSet.has(landedKey) && tunnelWorking.has(landedKey)) tunnelWorking = withoutKey(tunnelWorking, landedKey)
+    else if (working.has(landedKey)) working = withoutKey(working, landedKey)
+  }
   return { space: countReachableCells(cell, grid, working, cap, portals, tunnelCellSet, tunnelWorking, wrapEdges), cell }
+}
+
+function withoutKey(set: ReadonlySet<string>, key: string): Set<string> {
+  const copy = new Set(set)
+  copy.delete(key)
+  return copy
+}
+
+// Whether `player`'s Shield covers the tick tickGame plays next (it compares against state.tick + 1).
+function isShielded(player: PlayerState, tick: number): boolean {
+  return player.effects.shield !== null && tick + 1 <= player.effects.shield.expiresAtTick
 }
 
 // True only when every legal (non-180°) direction is unsafe within the player's own lookahead -
@@ -95,7 +117,7 @@ function isCornered(player: PlayerState, grid: GridSize, occupied: ReadonlySet<s
 // directions that already score within `seekTieToleranceCells` of the best - it can never pull the
 // bot toward a pickup at the cost of a genuinely safer option, which is what keeps existing
 // survival behavior stable with powerups on.
-export function chooseCpuDirection({ player, grid, occupied, difficulty, random = Math.random, ownSteps = 1, pickups = [], heldPowerup = null, portals = new Map(), tunnelCellSet = new Set(), tunnelOccupied = new Set(), wrapEdges = false }: ChooseCpuDirectionParams): Direction {
+export function chooseCpuDirection({ player, grid, occupied, difficulty, random = Math.random, ownSteps = 1, pickups = [], heldPowerup = null, portals = new Map(), tunnelCellSet = new Set(), tunnelOccupied = new Set(), wrapEdges = false, shielded = false }: ChooseCpuDirectionParams): Direction {
   const head = player.trail[player.trail.length - 1]
   const candidates = ALL_DIRECTIONS.filter((direction) => !isOppositeDirection(direction, player.direction))
 
@@ -106,7 +128,7 @@ export function chooseCpuDirection({ player, grid, occupied, difficulty, random 
   // know the board.
   const wrapAware = wrapEdges && difficulty === 'hard'
 
-  const scored = candidates.map((direction) => ({ direction, ...candidateSafety(head, direction, grid, occupied, ownSteps, CPU_FLOOD_FILL_CAP, portals, tunnelCellSet, tunnelOccupied, wrapAware) })).sort((a, b) => b.space - a.space)
+  const scored = candidates.map((direction) => ({ direction, ...candidateSafety(head, direction, grid, occupied, ownSteps, CPU_FLOOD_FILL_CAP, portals, tunnelCellSet, tunnelOccupied, wrapAware, shielded) })).sort((a, b) => b.space - a.space)
 
   const maxSpace = scored[0].space
   const tiedForBest = scored.filter((s) => s.space === maxSpace)
@@ -191,7 +213,7 @@ export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupi
 
   const tunnelCellSet = buildTunnelCellSet(state.tunnels)
   const tunnelOccupied = buildTunnelOccupiedSet(state.players, tunnelCellSet, CPU_PLAYER)
-  const rawDirection = chooseCpuDirection({ player, grid: state.grid, occupied, difficulty, random, ownSteps: stepsFor(player.effects), pickups: state.pickups, heldPowerup: player.heldPowerup, portals, tunnelCellSet, tunnelOccupied, wrapEdges })
+  const rawDirection = chooseCpuDirection({ player, grid: state.grid, occupied, difficulty, random, ownSteps: stepsFor(player.effects), pickups: state.pickups, heldPowerup: player.heldPowerup, portals, tunnelCellSet, tunnelOccupied, wrapEdges, shielded: isShielded(player, state.tick) })
   const hacked = player.effects.control?.type === 'hack'
   const compensates = hacked && shouldCompensateForHack(difficulty, random ?? Math.random)
   const direction = hacked && !compensates ? applyControlInversion(rawDirection, true) : rawDirection

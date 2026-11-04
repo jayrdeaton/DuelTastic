@@ -366,8 +366,8 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
   let trail2 = p2.trail
   let heldPowerup1 = p1.heldPowerup
   let heldPowerup2 = p2.heldPowerup
-  let effects1 = p1.effects
-  let effects2 = p2.effects
+  const effects1 = p1.effects
+  const effects2 = p2.effects
   let pickups = state.pickups
   const working = new Set(occupied)
   const tunnelWorking1 = new Set(tunnelHazardFor1)
@@ -429,13 +429,10 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
     // A head-on is negated for a player only when THEY'RE shielded and the other one ISN'T - an
     // exactly-one-sided shield wins the head-on outright (a real, if rare, "clutch" moment) rather
     // than the usual mutual crash/draw; both or neither shielded stays an ordinary head-on for
-    // both. The shield is consumed here, immediately, rather than through the wall-break path
-    // below - the loser of a head-on always crashes this same sub-step, so that path (which only
-    // runs once BOTH sides have avoided crashing) is never reached for this case.
+    // both. The shield is never used up by what it saves you from, here or in a break below: it
+    // lasts its full time (Jay and the kids, 2026-11-04).
     const headOnSurvives1 = headOn && shield1Active && !shield2Active
     const headOnSurvives2 = headOn && shield2Active && !shield1Active
-    if (headOnSurvives1) effects1 = { ...effects1, shield: null }
-    if (headOnSurvives2) effects2 = { ...effects2, shield: null }
 
     const wallNegated1 = rawHit1 && shield1Active
     const wallNegated2 = rawHit2 && shield2Active
@@ -453,20 +450,19 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
       break
     }
 
-    // Shield breaks (wall case - see above for head-on) - consume the shield and destroy the
-    // broken trail back to (not including) the break point, before committing this sub-step's
-    // moves. Applied by CELL, not a precomputed index, so two shielded breaks landing on the same
-    // trail in the same sub-step (a rare but possible edge case) compose correctly regardless of
-    // order - each lookup re-finds its own cell in whatever the trail currently is, rather than
-    // risking a stale index into an already-shortened array.
+    // Shield breaks (wall case - see above for head-on) - destroy the broken trail back to (not
+    // including) the break point, before committing this sub-step's moves, every time the shielded
+    // rider hits one while the shield lasts. An arena wall or pillar isn't anyone's trail, so the
+    // rider just rides through it. Applied by CELL, not a precomputed index, so two shielded breaks
+    // landing on the same trail in the same sub-step (a rare but possible edge case) compose
+    // correctly regardless of order - each lookup re-finds its own cell in whatever the trail
+    // currently is, rather than risking a stale index into an already-shortened array.
     if (wallNegated1) {
-      effects1 = { ...effects1, shield: null }
       const owner = locateOccupyingTrail(next1!, trail1, trail2)
       if (owner === 1) trail1 = trimTrailAtCell(trail1, next1!)
       else if (owner === 2) trail2 = trimTrailAtCell(trail2, next1!)
     }
     if (wallNegated2) {
-      effects2 = { ...effects2, shield: null }
       const owner = locateOccupyingTrail(next2!, trail1, trail2)
       if (owner === 1) trail1 = trimTrailAtCell(trail1, next2!)
       else if (owner === 2) trail2 = trimTrailAtCell(trail2, next2!)

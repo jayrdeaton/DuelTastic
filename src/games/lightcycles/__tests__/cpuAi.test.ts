@@ -17,6 +17,17 @@ describe('chooseCpuDirection', () => {
     expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard' })).toBe('right')
   })
 
+  it('rides through a trail toward more room while shielded, but never off the edge', () => {
+    // 1-row strip: 'up' is out of bounds, 'left' opens onto 3 free cells, 'right' is a trail cell
+    // with 5 free cells behind it. Unshielded the trail is a wall; shielded it's the way to the room.
+    const grid = { cols: 10, rows: 1 }
+    const player = ps({ trail: [{ x: 3, y: 0 }], direction: 'up' })
+    const occupied = new Set(['3,0', '4,0'])
+
+    expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard' })).toBe('left')
+    expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard', shielded: true })).toBe('right')
+  })
+
   it('prefers continuing straight over an equally-good turn', () => {
     // 5x5 grid; 'left' is a sealed 1-cell pocket, 'up' and 'right' both open onto the same large
     // connected region (tied). Heading 'up' already, so the tie should resolve to 'up'.
@@ -299,6 +310,25 @@ describe('applyCpuTurn', () => {
     }
     const next = applyCpuTurn(state, 'hard')
     expect(next.players[2].pendingDirection).toBe('right')
+  })
+
+  it("steers through an arena wall while its Shield covers the next tick, and not once it doesn't", () => {
+    // Player 2 at (3,0) heading 'up' (out of bounds): 'left' has 2 free cells before player 1,
+    // 'right' a wall cell with 5 free cells behind it.
+    function shieldedState(expiresAtTick: number): GameState {
+      const state = baseState()
+      return {
+        ...state,
+        grid: { cols: 10, rows: 1 },
+        obstacles: [{ x: 4, y: 0 }],
+        players: {
+          1: ps({ trail: [{ x: 0, y: 0 }], direction: 'up', color: '#3B82F6' }),
+          2: ps({ trail: [{ x: 3, y: 0 }], direction: 'up', color: '#EF4444', effects: { speed: null, control: null, shield: { expiresAtTick } } })
+        }
+      }
+    }
+    expect(applyCpuTurn(shieldedState(1), 'hard').players[2].pendingDirection).toBe('right')
+    expect(applyCpuTurn(shieldedState(0), 'hard').players[2].pendingDirection).toBe('left')
   })
 
   describe('Hack compensation', () => {

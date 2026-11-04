@@ -32,7 +32,7 @@ const TRAIL_SPEED_OPTIONS: MenuOption<TrailSpeedTier>[] = [
 const POWERUP_OPTIONS: MenuOption<PowerupType>[] = [
   { value: 'overdrive', label: 'Overdrive', description: 'Boosts your speed', icon: POWERUP_ICONS.overdrive },
   { value: 'stasis', label: 'Stasis', description: 'Freezes your opponent', icon: POWERUP_ICONS.stasis },
-  { value: 'shield', label: 'Shield', description: 'Protects you from one crash', icon: POWERUP_ICONS.shield },
+  { value: 'shield', label: 'Shield', description: 'Ride through trails and walls', icon: POWERUP_ICONS.shield },
   { value: 'prune', label: 'Prune', description: "Cuts your opponent's trail", icon: POWERUP_ICONS.prune },
   { value: 'hack', label: 'Hack', description: "Reverses your opponent's controls", icon: POWERUP_ICONS.hack },
   { value: 'overclock', label: 'Overclock', description: 'Forces your opponent to boost', icon: POWERUP_ICONS.overclock }

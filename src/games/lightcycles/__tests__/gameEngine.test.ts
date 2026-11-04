@@ -511,7 +511,7 @@ describe('tickGame', () => {
   })
 
   describe('Shield', () => {
-    it('negates a trail-collision, consumes the shield, and destroys the broken trail back to the break point', () => {
+    it('negates a trail-collision, keeps the shield, and destroys the broken trail back to the break point', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
@@ -533,7 +533,7 @@ describe('tickGame', () => {
       const next = tickGame(state)
       expect(next.phase).toBe('playing')
       expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].effects.shield).toBeNull()
+      expect(next.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
       expect(next.players[1].trail).toEqual([
         { x: 2, y: 5 },
         { x: 3, y: 5 }
@@ -546,7 +546,7 @@ describe('tickGame', () => {
       ])
     })
 
-    it('wins a head-on outright when only one side is shielded, consuming that shield', () => {
+    it('wins a head-on outright when only one side is shielded, keeping that shield', () => {
       const state = makeState({
         players: {
           1: ps({ trail: [{ x: 4, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
@@ -556,7 +556,7 @@ describe('tickGame', () => {
       const next = tickGame(state)
       expect(next.outcome).toEqual({ type: 'win', winner: 1 })
       expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].effects.shield).toBeNull()
+      expect(next.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
       expect(next.players[2].alive).toBe(false)
     })
 
@@ -580,6 +580,74 @@ describe('tickGame', () => {
       })
       const next = tickGame(state)
       expect(next.outcome).toEqual({ type: 'win', winner: 2 })
+    })
+
+    it('lasts its full time, breaking through every trail it hits', () => {
+      // Player 2 stands frozen at the end of a U its trail makes across player 1's row, so
+      // player 1 hits it twice: at (4,5), then again at (6,5).
+      const frozen: PlayerEffects = { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 100 }, control: null, shield: null }
+      let state = makeState({
+        players: {
+          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
+          2: ps({
+            trail: [
+              { x: 4, y: 3 },
+              { x: 4, y: 4 },
+              { x: 4, y: 5 },
+              { x: 4, y: 6 },
+              { x: 5, y: 6 },
+              { x: 6, y: 6 },
+              { x: 6, y: 5 },
+              { x: 6, y: 4 }
+            ],
+            direction: 'up',
+            color: '#EF4444',
+            effects: frozen
+          })
+        }
+      })
+      for (let i = 0; i < 5; i++) state = tickGame(state)
+      expect(state.phase).toBe('playing')
+      expect(state.players[1].alive).toBe(true)
+      expect(state.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 7, y: 5 })
+      expect(state.players[2].trail).toEqual([{ x: 6, y: 4 }])
+    })
+
+    it('rides through an arena wall, however thick', () => {
+      let state = makeState({
+        obstacles: [
+          { x: 4, y: 5 },
+          { x: 5, y: 5 }
+        ],
+        players: {
+          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
+          2: ps({ trail: [{ x: 7, y: 0 }], direction: 'down', color: '#EF4444' })
+        }
+      })
+      for (let i = 0; i < 4; i++) state = tickGame(state)
+      expect(state.phase).toBe('playing')
+      expect(state.players[1].trail).toEqual([
+        { x: 2, y: 5 },
+        { x: 3, y: 5 },
+        { x: 4, y: 5 },
+        { x: 5, y: 5 },
+        { x: 6, y: 5 }
+      ])
+      expect(state.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
+    })
+
+    it('stops protecting once it runs out', () => {
+      const state = makeState({
+        obstacles: [{ x: 4, y: 5 }],
+        players: {
+          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 1 } } }),
+          2: ps({ trail: [{ x: 7, y: 0 }], direction: 'down', color: '#EF4444' })
+        }
+      })
+      const afterLastTick = tickGame(state)
+      expect(afterLastTick.players[1].effects.shield).toBeNull()
+      expect(tickGame(afterLastTick).outcome).toEqual({ type: 'win', winner: 2 })
     })
   })
 
@@ -907,7 +975,7 @@ describe('tickGame', () => {
       const next = tickGame(state)
       expect(next.phase).toBe('playing')
       expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].effects.shield).toBeNull()
+      expect(next.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
       expect(next.players[1].trail).toEqual([{ x: 2, y: 5 }, PORTAL_B])
       expect(next.players[2].trail).toEqual([PORTAL_B, { x: 9, y: 2 }])
     })
@@ -1074,7 +1142,7 @@ describe('tickGame', () => {
       const next = tickGame(state)
       expect(next.phase).toBe('playing')
       expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].effects.shield).toBeNull()
+      expect(next.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
       expect(next.players[1].trail).toEqual([
         { x: 2, y: 5 },
         { x: 3, y: 5 }
