@@ -64,7 +64,7 @@ function cellCenter(cell: GridCell, cellPx: number) {
 // ring's own stroke width above.
 const WALL_STROKE_WIDTH = 1.5
 const TRAIL_OPACITY = 1
-const HEAD_RING_OUTLINE_WIDTH = 2.2
+const HEAD_RING_OUTLINE_WIDTH = 1
 const HEAD_RING_WHITE_WIDTH = 1.5
 
 // Every live pickup renders identically, regardless of its actual (already-decided, see
@@ -666,7 +666,6 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
         <>
           {/* Underneath everything else - see tunnelHighlightPath's own comment. */}
           <Path path={tunnelPath} style='stroke' strokeWidth={trailWidth * 1.6} strokeCap='round' strokeJoin='round' color={player.color} opacity={0.35} />
-          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} outlineWidth={HEAD_RING_OUTLINE_WIDTH} ringWidth={HEAD_RING_WHITE_WIDTH} />
           <Path path={settledPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
           {/* The chain a Prune/Shield break just cut off `trail` entirely - no longer part of
           settledPath/tailEdgeEnd's own data at all, but still visibly eating itself away for a
@@ -680,6 +679,8 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
           between them right where the trail is shortest. There's nothing for this segment to add
           once the tail segment already spans tail-to-head on its own. */}
           {trail.length > 2 && <Line p1={edgeStart} p2={edgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />}
+          {/* Over the trail, so its whole ring shows. */}
+          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} outlineWidth={HEAD_RING_OUTLINE_WIDTH} ringWidth={HEAD_RING_WHITE_WIDTH} />
           {/* Active-effect "tell" rings, nested at increasing radii so more than one at once
           (e.g. Shield popped while already Overclocked) stays visually distinguishable rather
           than overlapping exactly. Colored by what's actually driving the effect (see

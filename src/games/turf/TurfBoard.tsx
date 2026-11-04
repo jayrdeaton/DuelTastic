@@ -40,7 +40,7 @@ const GROUND_OPACITY = 0.85
 const TRAIL_WIDTH = 0.6
 const TRAIL_OPACITY = 0.4
 const HEAD_RADIUS = 0.72
-const HEAD_RING_OUTLINE = 0.2
+const HEAD_RING_OUTLINE = 0.05
 const HEAD_RING_WHITE = 0.11
 const EDGE_STROKE_WIDTH = 1.5
 
@@ -108,9 +108,9 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
   const headRadius = cellPx * HEAD_RADIUS
   return (
     <>
-      {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} /> : null}
       <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TRAIL_OPACITY} />
       {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} opacity={TRAIL_OPACITY} />}
+      {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} /> : null}
       {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}
     </>
   )

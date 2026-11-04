@@ -41,7 +41,7 @@ const SEATS: readonly TagSeat[] = [1, 2]
 const HEAD_RADIUS = 0.42
 // It's head is drawn bigger, so who's It reads at a glance.
 const IT_HEAD_RADIUS = 0.52
-const HEAD_RING_OUTLINE = 0.2
+const HEAD_RING_OUTLINE = 0.05
 const HEAD_RING_WHITE = 0.1
 const TAIL_WIDTH = 0.3
 const TAIL_OPACITY = 0.4
@@ -96,9 +96,9 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
 
   return (
     <>
-      <RiderHead x={x} y={y} radius={radius} color={color} opacity={frozen ? FROZEN_OPACITY : 1} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} />
       <Path path={tail} style='stroke' strokeWidth={cellPx * TAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TAIL_OPACITY} />
       {last && <Line p1={vec(last.x, last.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TAIL_WIDTH} strokeCap='round' color={color} opacity={TAIL_OPACITY} />}
+      <RiderHead x={x} y={y} radius={radius} color={color} opacity={frozen ? FROZEN_OPACITY : 1} outlineWidth={cellPx * HEAD_RING_OUTLINE} ringWidth={cellPx * HEAD_RING_WHITE} />
       <EffectRings x={x} y={y} headRadius={radius} effects={player.effects} />
       {isIt && !frozen && <Circle cx={x} cy={y} r={ringRadius} style='stroke' strokeWidth={IT_RING_WIDTH} color={color} />}
       {frozen && <FreezeRing x={x} y={y} cellPx={cellPx} left={freezeLeft} />}
