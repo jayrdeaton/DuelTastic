@@ -18,12 +18,12 @@
 import { getColorRoles, useAutoPaperTheme } from '@rific/auto-paper'
 import { Canvas, Circle, Group, Path, Rect, Skia, type SkPath } from '@shopify/react-native-skia'
 import { cellToPixel } from '@tastic/grid'
-import { ObstacleRect } from '@tastic/sprites/shapes'
+import { MysteryPickup, ObstacleRect } from '@tastic/sprites/shapes'
 import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { StyleSheet } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedValue, withSequence, withTiming } from 'react-native-reanimated'
 
-import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, snakeDeathFadeMs } from '@/games/snake/constants/snake'
+import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, SNAKE_POWERUP_PULSE_DURATION_MS, SNAKE_POWERUP_PULSE_SCALE, SNAKE_POWERUP_SPAWN_FADE_MS, snakeDeathFadeMs } from '@/games/snake/constants/snake'
 import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
 import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
 import { splitWallPath } from '@/shared/match/SplitWalls'
@@ -1277,39 +1277,21 @@ function Tunnels({ tunnels, cellPx, color }: { tunnels: SnakeTunnel[]; cellPx: n
   )
 }
 
-// Pickups - styled after FoodDot above (the same shared `phase` pulse driver, the same filled-core-
-// plus-stroked-outline shape) for visual consistency with the rest of this board, rather than
-// LightCycles' own separate spawn-fade+pulse system, which has no equivalent driver here. Every
-// live pickup renders identically regardless of type - mystery-box style, matching
-// SnakePowerupPickup's own comment - the type is only ever revealed once collected, in the
-// holder's own HUD badge (see SnakePowerupHud.tsx).
-interface PickupGlyphProps {
-  pickup: SnakePowerupPickup
-  cellPx: number
-  phase: SharedValue<number>
-  color: string
-}
-
-function PickupGlyph({ pickup, cellPx, phase, color }: PickupGlyphProps) {
-  const center = cellCenter(pickup.cell, cellPx)
-  const baseRadius = cellPx * SNAKE_POWERUP_PICKUP_RADIUS_RATIO
-  const radius = useDerivedValue(() => baseRadius * (1 + 0.18 * Math.sin(phase.value * 2.1)))
-  const strokeOpacity = useDerivedValue(() => 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(phase.value * 2.1)))
-
+// Pickups - the pack's box (@tastic/sprites' MysteryPickup, the shape LightCycles', Turf's and Tag's
+// boxes are: a see-through fill under a solid ring, growing in when it turns up and then pulsing), so
+// it reads as a box and not as a second kind of food (it was a solid dot like FoodDot's, in player
+// 2's color). Kept at Snake's own size rather than the other games' (pickupRadiusPx, nearly two cells
+// across), since a snake only takes a box from its exact cell. Every live pickup renders identically
+// regardless of type - the type is only ever revealed once collected, in the holder's own HUD badge
+// (see SnakePowerupHud.tsx).
+function Pickups({ pickups, cellPx, color }: { pickups: SnakePowerupPickup[]; cellPx: number; color: string }) {
+  const radius = cellPx * SNAKE_POWERUP_PICKUP_RADIUS_RATIO
   return (
     <>
-      <Circle cx={center.x} cy={center.y} r={radius} color={color} />
-      <Circle cx={center.x} cy={center.y} r={radius} style='stroke' strokeWidth={1.5} color='#FFFFFF' opacity={strokeOpacity} />
-    </>
-  )
-}
-
-function Pickups({ pickups, cellPx, phase, color }: { pickups: SnakePowerupPickup[]; cellPx: number; phase: SharedValue<number>; color: string }) {
-  return (
-    <>
-      {pickups.map((pickup) => (
-        <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} phase={phase} color={color} />
-      ))}
+      {pickups.map((pickup) => {
+        const center = cellCenter(pickup.cell, cellPx)
+        return <MysteryPickup key={pickup.id} x={center.x} y={center.y} radius={radius} color={color} spawnFadeMs={SNAKE_POWERUP_SPAWN_FADE_MS} pulseDurationMs={SNAKE_POWERUP_PULSE_DURATION_MS} pulseScale={SNAKE_POWERUP_PULSE_SCALE} />
+      })}
     </>
   )
 }
@@ -1319,9 +1301,10 @@ function Pickups({ pickups, cellPx, phase, color }: { pickups: SnakePowerupPicku
 // third color, maximally distinct from both seats', that every snake's own centerline accent below
 // already uses (see SnakeBody) - a neutral role, not either player's own. Obstacles/tunnels are the
 // pack's arena gray (boardStructureColor, the same as every game's; they were the theme's outline,
-// which is tinted toward player 1's color) - distinguished from each other by shape, not color;
-// portals and pickups each get their own distinct accent (secondaryContainer, secondary) so all four
-// board features stay visually distinguishable from one another and from food/snakes.
+// which is tinted toward player 1's color) - distinguished from each other by shape, not color.
+// Boxes are the theme's text color (white on the dark board, near-black on the light one): no seat,
+// no food and no effect ring is drawn in it (they were the theme's secondary, player 2's red).
+// Portals are still secondaryContainer, a shade of player 2's color.
 // First-pass color choices - verify visually against the app's actual light/dark palettes.
 export function SnakeBoard({ snakes, food, obstacles, portals, tunnels, pickups, phase, cellPx, grid, tick, tickIntervalMs, wrapEdges, onboarding }: SnakeBoardProps) {
   const { colors } = useAutoPaperTheme()
@@ -1335,7 +1318,7 @@ export function SnakeBoard({ snakes, food, obstacles, portals, tunnels, pickups,
       <Tunnels tunnels={tunnels} cellPx={cellPx} color={structureColor} />
       <Portals portals={portals} cellPx={cellPx} color={colors.secondaryContainer} />
       <FoodDot food={food} cellPx={cellPx} phase={phaseDriver} color={colors.tertiary} />
-      <Pickups pickups={pickups} cellPx={cellPx} phase={phaseDriver} color={colors.secondary} />
+      <Pickups pickups={pickups} cellPx={cellPx} color={colors.onSurface} />
       {snakes.map((snake) => (
         <SnakeBody key={snake.id} snake={snake} cellPx={cellPx} phase={phaseDriver} tertiaryColor={colors.tertiary} surfaceColor={colors.surface} tick={tick} tickIntervalMs={tickIntervalMs} grid={grid} />
       ))}

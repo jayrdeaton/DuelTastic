@@ -117,7 +117,7 @@ export const SNAKE_POWERUP_CONSTRICT_FRACTION = 0.5
 export const SNAKE_POWERUP_PICKUP_RADIUS_RATIO = 0.42
 
 // On-board glyph animation timing - a quick grow/fade the instant a pickup spawns, then an endless
-// gentle pulse for as long as it sits uncollected (see SnakeBoardCanvas.tsx's PickupGlyph). Purely
+// gentle pulse for as long as it sits uncollected (see SnakeBoardCanvas.tsx's Pickups). Purely
 // cosmetic - never affects when it's actually collectible (collection is exact-cell, matching how
 // food collection already works in this app, unlike LightCycles' radius-based collection).
 export const SNAKE_POWERUP_SPAWN_FADE_MS = 260

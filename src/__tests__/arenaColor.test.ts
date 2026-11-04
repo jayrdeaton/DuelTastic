@@ -45,3 +45,19 @@ describe('the arena color', () => {
     expect(distance).toBeGreaterThan(120)
   })
 })
+
+// Snake's food is the theme's tertiary, the color the other games' boxes are, so its boxes can't be
+// that; they were the theme's secondary (player 2's red) and the same solid dot as the food, so they
+// read as player 2's food. They're the pack's box shape in the theme's text color (2026-11-04).
+describe("Snake's boxes", () => {
+  const source = readFileSync(join(GAMES, 'snake', 'components', 'SnakeBoardCanvas.tsx'), 'utf8')
+
+  it('are the pack box shape, in the theme text color', () => {
+    expect(source).toMatch(/<MysteryPickup\b/)
+    expect(source).toMatch(/<Pickups [^\n]*color=\{colors\.onSurface\}/)
+  })
+
+  it("are never a seat's color or the food's", () => {
+    expect(source).not.toMatch(/<Pickups [^\n]*color=\{colors\.(primary|secondary|tertiary)\}/)
+  })
+})
