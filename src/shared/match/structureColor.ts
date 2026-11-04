@@ -1,11 +1,12 @@
 import { getBlendedColor } from '@rific/auto-paper'
 
-// The one color every game draws its arena in (pillars, gauntlet walls, portals, tunnels). The theme's
-// outline on its own is blended toward player 1's color (auto-paper's useComputedTheme.ts), so it
-// read as player 1's; blending it halfway with tertiary (the neutral, belongs-to-neither-seat role
-// pickups use) makes it inert board structure, visible on a dark board and a light one. Never the
-// board's own background: Turf drew its arena in that and every pillar, wall, gate and tunnel was
-// invisible on unclaimed ground.
-export function boardStructureColor(colors: { tertiary: string; outline: string }): string {
-  return getBlendedColor(colors.tertiary, colors.outline, 0.5)
+// The one color every game draws its arena in (pillars, gauntlet walls, gates, tunnels): a neutral
+// gray halfway between the theme's text and background, so it reads as inert board structure on a
+// dark board and a light one and belongs to nothing that moves. Not the theme's outline, which is
+// blended toward player 1's color (auto-paper's useComputedTheme.ts); not the tertiary, which is the
+// powerup boxes' color (an arena blended with it read as part of the boxes, 2026-11-04); and never the
+// board's own background (Turf drew its arena in that and every pillar, wall, gate and tunnel was
+// invisible on unclaimed ground).
+export function boardStructureColor(colors: { onSurface: string; background: string }): string {
+  return getBlendedColor(colors.onSurface, colors.background, 0.5)
 }
