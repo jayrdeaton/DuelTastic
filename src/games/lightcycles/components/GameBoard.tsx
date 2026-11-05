@@ -16,7 +16,7 @@ import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import { leadingTrailPath, trailPath } from '@/shared/match/trailPath'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
-import { GLIDE_OVERLAP_MS, useRiderGlide } from '@/shared/match/useRiderGlide'
+import { GLIDE_LAG_MS, glideCellsBehind, useRiderGlide } from '@/shared/match/useRiderGlide'
 import type { Effects, SpeedKind } from '@/shared/powerups'
 
 export interface GameBoardProps {
@@ -234,11 +234,11 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
       severedProgress.value = 1
       return
     }
-    // Over the tick's own time plus the head's glide overlap (useRiderGlide), so the creep is still
-    // under way when the next tick lands rather than stopping and setting off again. Targets
+    // Over the tick's own time plus the head's lag behind its steps (useRiderGlide), so the creep is
+    // still under way when the next tick lands rather than stopping and setting off again. Targets
     // tailTarget (the fractional creep toward nextCenter - see tailProgress), not `tail` itself, so
     // this animates every tick under a non-static tier, not only the ones that trim a whole cell off.
-    const duration = tickIntervalMs + GLIDE_OVERLAP_MS
+    const duration = tickIntervalMs + GLIDE_LAG_MS
     tailAnimX.value = withTiming(tailTarget.x, { duration, easing: Easing.linear })
     tailAnimY.value = withTiming(tailTarget.y, { duration, easing: Easing.linear })
     // Only an actual new tick should retrigger this - tickIntervalMs changing mid-creep (speed ramp)
@@ -343,11 +343,11 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
   const foundIndex = trail.findIndex((c) => c.x === anchorCell.x && c.y === anchorCell.y)
   const boundaryIndex = foundIndex === -1 ? Math.max(0, trail.length - 2) : foundIndex
 
-  // The trail's front is drawn live from the cell before anchorCell (leadStart): a head still
-  // catching up to anchorCell when the next step lands (useRiderGlide's catch-up leg, up to a cell
-  // after a stalled frame) is on that last run, and a settled trail drawn up to anchorCell would run
-  // ahead of it.
-  const leadStart = Math.max(0, boundaryIndex - 1)
+  // The trail's front is drawn live from a few cells before anchorCell (leadStart): the head is drawn
+  // a little behind its steps (useRiderGlide), so when the next step lands it's still on its way to
+  // anchorCell, further back after a stalled frame, and a settled trail drawn up to anchorCell would
+  // run ahead of it. glideCellsBehind is as far back as it can be.
+  const leadStart = Math.max(0, boundaryIndex - glideCellsBehind(msPerCell))
   // Every settled cell except the first and the ones the front is drawn through (the tail's creep
   // and leadPath below draw those live, so both ends glide into place rather than snapping).
   const settledPath = useMemo(() => trailPath(trail.slice(1, leadStart + 1), cellPx), [trail, cellPx, leadStart])

@@ -38,8 +38,8 @@ export function trailPath(cells: readonly GridCell[], cellPx: number): SkPath {
 // The front of a trail as its head glides along it (LightCycles): from where the head last stopped
 // through the cells it's riding to (`cells`, oldest first), as far as the head at (x, y) has got, then
 // on to the head itself, as runs of points in px. The head is on one of the straight runs between
-// those cells, or still catching up to the first one (useRiderGlide's catch-up leg), or standing on
-// one. A jump between two cells (a gate, a wrap round the edge) starts a new run and is never ridden
+// those cells, or still on its way to the first one (useRiderGlide draws it a little behind its
+// steps), or standing on one. A jump between two cells (a gate, a wrap round the edge) starts a new run and is never ridden
 // along. Drawn this way the front follows the head round a corner instead of cutting across it, and
 // never runs ahead of it into a cell it hasn't reached. A worklet, called from a useDerivedValue
 // every frame; adjacency is checked inline, since an imported function isn't guaranteed to cross into
