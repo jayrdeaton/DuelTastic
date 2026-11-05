@@ -6,8 +6,9 @@ import type { Effects, Pickup } from '@/shared/powerups'
 
 // Tag: two riders on one board, one of them It. It touches the other rider (passing within a cell of
 // them) to make them It instead, and the new It stands frozen for a moment while the other gets away
-// (no tag-backs). Nothing crashes: the board's edge and its pillars just stop a rider until they turn,
-// and with no trail to run into, a rider can turn straight back. The clock decides the round.
+// (no tag-backs). Nothing crashes: riding into the board's edge or a pillar stops a rider, dazed for
+// a second, until they turn, and with no trail to run into, a rider can turn straight back. The clock
+// decides the round.
 
 export type TagSeat = 1 | 2
 
@@ -76,14 +77,20 @@ export interface TagPlayer {
   // swaps it.
   held: TagPowerup | null
   effects: Effects
+  // Dazed by riding into the edge or a pillar, it stands still, and as It can't tag, through this
+  // tick (TAG_DAZE_TICKS after the bump). Safe doesn't stop it. 0 when it hasn't been.
+  dazedThrough: number
+  // Up against the edge or a pillar since its last step, so riding on into it (or turning into
+  // another) doesn't daze it again: only the bump does.
+  stuck: boolean
 }
 
 // What happened on the last tick, for sounds, haptics and flashes. Reset every tick.
 export interface TagEvents {
   // The seat that was made It this tick, if anyone was tagged.
   tagged: TagSeat | null
-  // Seats a wall or a pillar stopped this tick.
-  blocked: TagSeat[]
+  // Seats that rode into the edge or a pillar this tick, and are dazed.
+  dazed: TagSeat[]
   // Seats that picked up a powerup.
   collected: TagSeat[]
 }

@@ -2,7 +2,7 @@ import { computeGridSize, type Direction, type GridCell } from '@tastic/grid'
 
 import { distanceField } from '@/shared/distanceField'
 
-import { TAG_CELL_PX, TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_TAIL_CELLS } from '../constants'
+import { TAG_CELL_PX, TAG_DAZE_TICKS, TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_TAIL_CELLS } from '../constants'
 import { applyTagActivation, applyTagTurn, cellIndex, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
 import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
 
@@ -31,6 +31,9 @@ function run(state: TagState, ticks: number, turns: Record<number, Partial<Recor
 
 // Seat 2, It, parked in a far corner riding into the edge, out of everyone's way.
 const PARKED: Start = { head: { x: 19, y: 0 }, direction: 'up' }
+
+// Gives a seat a powerup and uses it straight away.
+const use = (state: TagState, seat: TagSeat, held: TagPowerup) => applyTagActivation({ ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }, seat)
 
 describe('createTagState', () => {
   it('starts the riders apart, with the given seat It', () => {
@@ -135,22 +138,26 @@ describe('moving', () => {
     expect(s.players[1].direction).toBe('down')
   })
 
-  it('stops at the edge until turned', () => {
-    let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, PARKED), 3)
+  it('stops at the edge, dazed, until turned', () => {
+    let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, PARKED), 2)
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
-    expect(s.events.blocked).toContain(1)
-    s = run(s, 2, { 0: { 1: 'right' } })
+    expect(s.events.dazed).toEqual([1])
+    expect(s.players[1].dazedThrough).toBe(2 + TAG_DAZE_TICKS)
+    // A turn pressed while dazed waits for the daze to be over.
+    s = run(s, TAG_DAZE_TICKS, { 0: { 1: 'right' } })
+    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
+    s = run(s, 2)
     expect(s.players[1].head).toEqual({ x: 7, y: 0 })
   })
 
-  it('stops at a pillar', () => {
+  it('stops at a pillar, dazed', () => {
     // Rider 1 rides up the first pillar's column, from three cells below it.
     const pillar = createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace', starts: { 1: PARKED, 2: PARKED } }).pillars[0]
     const s0 = setup({ head: { x: pillar.x, y: pillar.y + pillar.height + 3 }, direction: 'up' }, PARKED, { arena: 'pillars' })
     expect(s0.pillars).toContainEqual(pillar)
-    const s = run(s0, 5)
+    const s = run(s0, 4)
     expect(s.players[1].head).toEqual({ x: pillar.x, y: pillar.y + pillar.height })
-    expect(s.events.blocked).toContain(1)
+    expect(s.events.dazed).toEqual([1])
   })
 
   it('holds a turn into a pillar until the way opens, riding on meanwhile', () => {
@@ -180,6 +187,55 @@ describe('moving', () => {
     const s = createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace' })
     expect(applyTagTurn(s, 1, 'left')).toBe(s)
     expect(tickTag(s)).toBe(s)
+  })
+})
+
+describe('a bump', () => {
+  it('dazes once, not again for riding on into the edge', () => {
+    let s = setup({ head: { x: 5, y: 0 }, direction: 'up' }, PARKED)
+    const dazes: number[] = []
+    for (let i = 0; i < TAG_DAZE_TICKS * 3; i++) {
+      s = tickTag(s)
+      if (s.events.dazed.includes(1)) dazes.push(s.tick)
+    }
+    expect(dazes).toEqual([1])
+    expect(s.players[1].stuck).toBe(true)
+  })
+
+  it('dazes again once the rider has moved and bumps again', () => {
+    let s = run(setup({ head: { x: 5, y: 0 }, direction: 'up' }, PARKED), 1 + TAG_DAZE_TICKS)
+    // Down a cell, then back up into the edge.
+    s = run(s, 3, { 0: { 1: 'down' }, 1: { 1: 'up' } })
+    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
+    expect(s.events.dazed).toEqual([1])
+    expect(s.players[1].dazedThrough).toBe(s.tick + TAG_DAZE_TICKS)
+  })
+
+  it('loses the rest of the tick’s steps', () => {
+    // Dashing two cells a tick from a cell below the edge: the first reaches it, the second bumps.
+    const s = run(use(setup({ head: { x: 5, y: 1 }, direction: 'up' }, PARKED), 1, 'dash'), 1)
+    expect(s.players[1].head).toEqual({ x: 5, y: 0 })
+    expect(s.events.dazed).toContain(1)
+  })
+
+  it('keeps a dazed It from tagging until the daze is over, and a dazed runner can be tagged', () => {
+    // It bumps the edge on the first tick as the runner rides up beside it, and the runner bumps it
+    // on the third.
+    let s = run(setup({ head: { x: 6, y: 2 }, direction: 'up' }, { head: { x: 5, y: 0 }, direction: 'up' }), 3)
+    expect(touching(s.players[1].head, s.players[2].head)).toBe(true)
+    s = run(s, TAG_DAZE_TICKS - 2)
+    expect(s.it).toBe(2)
+    expect(s.tags).toBe(0)
+    // It's daze (through tick 1 + TAG_DAZE_TICKS) is over; the runner's (a tick later) isn't.
+    s = run(s, 1)
+    expect(s.players[1].dazedThrough).toBeGreaterThan(s.tick)
+    expect(s.it).toBe(1)
+  })
+
+  it('dazes a Safe rider too', () => {
+    const s = run(use(setup({ head: { x: 5, y: 1 }, direction: 'up' }, PARKED), 1, 'safe'), 2)
+    expect(s.players[1].effects.shield).not.toBeNull()
+    expect(s.events.dazed).toEqual([1])
   })
 })
 
@@ -334,8 +390,6 @@ describe('the clock', () => {
   })
 })
 
-// Gives a seat a powerup and uses it straight away.
-const use = (state: TagState, seat: TagSeat, held: TagPowerup) => applyTagActivation({ ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }, seat)
 const ON: TagPowerup[] = ['dash', 'freeze']
 
 describe('pickups', () => {

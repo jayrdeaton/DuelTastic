@@ -6,6 +6,7 @@ import { useDerivedValue } from 'react-native-reanimated'
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
+import { DazeStars } from '@/shared/match/DazeStars'
 import { Gates } from '@/shared/match/Gates'
 import { RiderCrash } from '@/shared/match/RiderCrash'
 import { RiderHead } from '@/shared/match/RiderHead'
@@ -113,6 +114,8 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
       {crash && <Crash key={crash.tick} cell={crash.cell} trail={crash.trail} color={color} cellPx={cellPx} />}
       {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} /> : null}
       {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}
+      {/* Flying home and standing there until it lands is the crash's daze. */}
+      {player.alive && player.flight ? <DazeStars x={x} y={y} headRadius={headRadius} /> : null}
     </>
   )
 }

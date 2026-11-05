@@ -6,6 +6,7 @@ import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, 
 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
+import { DazeStars } from '@/shared/match/DazeStars'
 import { Gates } from '@/shared/match/Gates'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { SplitWalls } from '@/shared/match/SplitWalls'
@@ -15,6 +16,7 @@ import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
 import { TAG_IT_SPEED } from './constants'
+import { isDazed } from './engine'
 import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat, TagTunnel } from './types'
 
 export interface TagBoardProps {
@@ -73,7 +75,7 @@ function FreezeRing({ x, y, cellPx, left }: { x: SharedValue<number>; y: SharedV
   return <Path path={arc} style='stroke' strokeWidth={IT_RING_WIDTH} strokeCap='round' color={FROZEN_RING_COLOR} />
 }
 
-function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, pulse, phase }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; pulse: SharedValue<number>; phase: TagPhase }) {
+function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, dazed, pulse, phase }: { player: TagPlayer; color: string; cellPx: number; tick: number; intervalMs: number; isIt: boolean; freezeLeft: number; dazed: boolean; pulse: SharedValue<number>; phase: TagPhase }) {
   // Its own pace, as the engine steps it: It a little faster, Dash and Mud on top (a frozen rider
   // takes no steps to glide).
   const speed = (isIt ? TAG_IT_SPEED : 1) * (speedMultiplier(player.effects, tick + 1) || 1)
@@ -95,6 +97,7 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, puls
       <EffectRings x={x} y={y} headRadius={radius} effects={player.effects} />
       {isIt && !frozen && <Circle cx={x} cy={y} r={ringRadius} style='stroke' strokeWidth={IT_RING_WIDTH} color={color} />}
       {frozen && <FreezeRing x={x} y={y} cellPx={cellPx} left={freezeLeft} />}
+      {dazed && <DazeStars x={x} y={y} headRadius={radius} />}
     </>
   )
 }
@@ -122,7 +125,7 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
         {SEATS.map((seat) => (
-          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} pulse={pulse} phase={phase} />
+          <Rider key={seat} player={players[seat]} color={colors[seat]} cellPx={cellPx} tick={tick} intervalMs={intervalMs} isIt={seat === it} freezeLeft={phase === 'playing' ? freezeLeft : 0} dazed={phase === 'playing' && isDazed(players[seat], tick + 1)} pulse={pulse} phase={phase} />
         ))}
       </Canvas>
     </View>

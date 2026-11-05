@@ -68,6 +68,30 @@ describe('chooseTagCpuMove running', () => {
   })
 })
 
+describe('chooseTagCpuMove near the edge', () => {
+  it('turns off a heading whose second step this tick would bump the edge (Dash)', () => {
+    // Running up beside the top edge with It below: straight on reaches the edge on the first of its
+    // two steps and bumps it on the second.
+    const s0 = setup({ head: { x: 10, y: 1 }, direction: 'up' }, { head: { x: 10, y: 8 }, direction: 'up' })
+    const s: TagState = { ...s0, players: { ...s0.players, 1: { ...s0.players[1], effects: addEffect(NO_EFFECTS(), 'boost', 1000) } } }
+    expect(chooseTagCpuMove(s0, 1, 'easy', NO_WOBBLE)).toBe('up')
+    expect(['left', 'right']).toContain(chooseTagCpuMove(s, 1, 'easy', NO_WOBBLE))
+  })
+
+  it.each(['easy', 'normal', 'hard'] as const)('never bumps the edge or a pillar on %s, every powerup on but Tangle', (level) => {
+    for (const arena of ['pillars', 'gauntlet'] as const) {
+      const random = seeded(arena.length)
+      let s = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena, it: 2 }))
+      let dazes = 0
+      for (let i = 0; i < 900; i++) {
+        s = tickTag(applyTagCpu(applyTagCpu(s, 1, level, random), 2, level, random), ['dash', 'freeze', 'mud', 'safe'], random)
+        dazes += s.events.dazed.length
+      }
+      expect(dazes).toBe(0)
+    }
+  })
+})
+
 describe('applyTagCpu', () => {
   it('queues its heading', () => {
     const s = setup({ head: { x: 10, y: 15 }, direction: 'right' }, { head: { x: 4, y: 15 }, direction: 'up' })

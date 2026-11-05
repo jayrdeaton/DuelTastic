@@ -33,6 +33,12 @@ describe("every board's shared pieces", () => {
     expect(source(game)).toMatch(/<RiderCrash\b/)
   })
 
+  // Tag's bump and Turf's crash home leave a rider standing still for about a second, drawn the same
+  // way in both (2026-11-04).
+  it.each(['turf', 'tag'] as const)('%s draws a dazed rider with the shared stars', (game) => {
+    expect(source(game)).toMatch(/<DazeStars\b/)
+  })
+
   // The two games on the same fine cells draw the same size head (Turf's was half as big again).
   it.each(['lightcycles', 'turf'] as const)('%s sizes its head with the shared HEAD_RADIUS_CELLS', (game) => {
     expect(source(game)).toMatch(/cellPx \* HEAD_RADIUS_CELLS/)

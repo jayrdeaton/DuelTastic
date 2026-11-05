@@ -44,16 +44,20 @@ function TagRound({ width: widthAtMount, height: heightAtMount, liveWidth, liveH
   const held = useMemo(() => ({ 1: state.players[1].held, 2: state.players[2].held }), [state.players])
   const flow = useMatchFlow({ controls, phase: state.phase, outcome: state.outcome, humanPlayers, rematch, onRoundOutcome, resultDelayMs: () => TAG_RESULT_HOLD_MS })
 
-  // A tag lands with a sound and a buzz.
+  // A tag lands with a sound and a buzz, and so does a bump into the edge or a pillar, with the crash
+  // sound (Turf's crash home's).
   const playTag = useGameSound(require('../../../assets/sounds/notification.wav'))
+  const playBump = useGameSound(require('../../../assets/sounds/crash.wav'))
   const vibration = useVibration()
-  const feedbackRef = useRef({ playTag, vibration })
+  const feedbackRef = useRef({ playTag, playBump, vibration })
   useEffect(() => {
-    feedbackRef.current = { playTag, vibration }
-  }, [playTag, vibration])
+    feedbackRef.current = { playTag, playBump, vibration }
+  }, [playTag, playBump, vibration])
   useEffect(() => {
-    if (state.events.tagged === null) return
-    feedbackRef.current.playTag()
+    const { tagged, dazed } = state.events
+    if (tagged === null && dazed.length === 0) return
+    if (tagged !== null) feedbackRef.current.playTag()
+    if (dazed.length > 0) feedbackRef.current.playBump()
     feedbackRef.current.vibration.notification()
   }, [state.events])
 

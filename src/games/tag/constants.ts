@@ -18,6 +18,10 @@ export const TAG_IT_SPEED = 1.15
 // the other rider's head start, and what stops an instant tag-back.
 export const TAG_FREEZE_TICKS = 13
 
+// Ticks a rider stands dazed after riding into the edge or a pillar (about a second at the normal
+// speed): what a bump costs, now that nothing in Tag crashes.
+export const TAG_DAZE_TICKS = 8
+
 // How many cells of tail are drawn behind each rider.
 export const TAG_TAIL_CELLS = 5
 

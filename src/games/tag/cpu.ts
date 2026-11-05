@@ -2,10 +2,10 @@ import { ALL_DIRECTIONS, type Direction, type GridCell, isOppositeDirection, ste
 import { applyControlInversion } from '@tastic/input'
 
 import { distanceField } from '@/shared/distanceField'
-import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, ticksFor, ticksLeft } from '@/shared/powerups'
+import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '@/shared/powerups'
 
 import { TAG_IT_SPEED } from './constants'
-import { applyTagActivation, applyTagTurn, cellIndex, isOpen, otherSeat } from './engine'
+import { applyTagActivation, applyTagTurn, cellIndex, isDazed, isOpen, nextCell, otherSeat } from './engine'
 import type { TagSeat, TagState } from './types'
 
 export type TagCpuDifficulty = 'easy' | 'normal' | 'hard'
@@ -56,14 +56,29 @@ function best(options: Direction[], current: Direction, score: (d: Direction) =>
 // freeze it has left, its own speed, and any time it's Safe), so it circles a pillar or doubles back
 // rather than running into a corner. Holding nothing, normal and hard ride for a box in reach: as
 // It when it's much nearer than the other rider, running when they'd get there well before It.
+// Every level keeps off the edge and the pillars, since a bump dazes it: it only heads where every
+// cell it may cover before it next decides is open.
 export function chooseTagCpuMove(state: TagState, seat: TagSeat, difficulty: TagCpuDifficulty, random: () => number = Math.random): Direction {
   const params = PARAMS[difficulty]
   const { grid, blocked, tick } = state
   const me = state.players[seat]
   const them = state.players[otherSeat(seat)]
   const at = (cell: GridCell) => cellIndex(cell, grid)
-  const options = ALL_DIRECTIONS.filter((d) => isOpen(state, stepCell(me.head, d)))
-  if (options.length === 0) return me.direction
+  const open = ALL_DIRECTIONS.filter((d) => isOpen(state, nextCell(state, me.head, d)))
+  if (open.length === 0) return me.direction
+  // The cells it may cover before it next decides: one most ticks, two now and then as It or under
+  // Dash, so the second can't be a bump.
+  const reach = Math.max(1, Math.floor((me.stride + Math.round((state.it === seat ? TAG_IT_SPEED : 1) * 100) * speedMultiplier(me.effects, tick + 1)) / 100))
+  const clear = (d: Direction) => {
+    let cell = me.head
+    for (let i = 0; i < reach; i++) {
+      cell = nextCell(state, cell, d)
+      if (!isOpen(state, cell)) return false
+    }
+    return true
+  }
+  const cleared = open.filter(clear)
+  const options = cleared.length > 0 ? cleared : open
   if (params.wobble > 0 && random() < params.wobble) return options[Math.floor(random() * options.length)]
   const walk = (field: Int32Array, toward: boolean) => best(options, me.direction, (d) => (toward ? -1 : 1) * field[at(stepCell(me.head, d))])
 
@@ -88,11 +103,14 @@ export function chooseTagCpuMove(state: TagState, seat: TagSeat, difficulty: Tag
 
   const fromIt = distanceField(grid, [at(them.head)], blocked)
   // When It could be within a cell of each cell (so touching whoever's there), in ticks: never while
-  // this rider is Safe.
-  const frozenFor = Math.max(0, state.frozenThrough - tick)
+  // this rider is Safe, and not before It's freeze or daze is over.
+  const frozenFor = Math.max(0, state.frozenThrough - tick, them.dazedThrough - tick)
   const safeFor = ticksLeft(me.effects.shield, tick)
   const itArrives = (i: number) => Math.max(safeFor, frozenFor + ticksFor(Math.max(0, fromIt[i] - 1) / TAG_IT_SPEED, them.effects, tick))
-  if (toBox && ticksFor(toBox[at(me.head)], me.effects, tick) + 2 < itArrives(at(state.pickups[0].cell))) return walk(toBox, true)
+  // When this rider could get somewhere, after its own daze.
+  const dazedFor = Math.max(0, me.dazedThrough - tick)
+  const myTicks = (steps: number) => dazedFor + ticksFor(steps, me.effects, tick)
+  if (toBox && myTicks(toBox[at(me.head)]) + 2 < itArrives(at(state.pickups[0].cell))) return walk(toBox, true)
   if (!params.readsBoard) return walk(fromIt, false)
   return best(options, me.direction, (d) => {
     const next = stepCell(me.head, d)
@@ -101,7 +119,7 @@ export function chooseTagCpuMove(state: TagState, seat: TagSeat, difficulty: Tag
     for (let i = 0; i < mine.length; i++) {
       if (mine[i] < 0) continue
       const arrives = itArrives(i)
-      if (ticksFor(mine[i], me.effects, tick) + 1 < arrives) escape = Math.max(escape, arrives)
+      if (myTicks(mine[i]) + 1 < arrives) escape = Math.max(escape, arrives)
     }
     return ESCAPE_WEIGHT * escape + fromIt[at(next)]
   })
@@ -125,10 +143,10 @@ export function shouldTagCpuActivate(state: TagState, seat: TagSeat, difficulty:
   const nextTick = state.tick + 1
   const isIt = state.it === seat
   const apart = distanceField(grid, [cellIndex(them.head, grid)], blocked)[cellIndex(me.head, grid)]
-  const itCanTag = nextTick > state.frozenThrough && !isFrozen(state.players[state.it].effects, nextTick)
+  const itCanTag = nextTick > state.frozenThrough && !isFrozen(state.players[state.it].effects, nextTick) && !isDazed(state.players[state.it], nextTick)
   const trouble = !isIt && itCanTag && apart <= ABOUT_TO_TAG && !isShielded(me.effects, nextTick)
-  // As It, nothing's worth using until its own freeze after a tag is over.
-  const chasing = params.timesPowerups && isIt && nextTick > state.frozenThrough
+  // As It, nothing's worth using until its own freeze after a tag (or a daze) is over.
+  const chasing = params.timesPowerups && isIt && nextTick > state.frozenThrough && !isDazed(me, nextTick)
   switch (held) {
     case 'safe':
       if (trouble) return true
