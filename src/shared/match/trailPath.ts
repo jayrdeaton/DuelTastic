@@ -34,3 +34,63 @@ export function trailPath(cells: readonly GridCell[], cellPx: number): SkPath {
   }
   return path.detach()
 }
+
+// The front of a trail as its head glides along it (LightCycles): from where the head last stopped
+// through the cells it's riding to (`cells`, oldest first), as far as the head at (x, y) has got, then
+// on to the head itself, as runs of points in px. The head is on one of the straight runs between
+// those cells, or still catching up to the first one (useRiderGlide's catch-up leg), or standing on
+// one. A jump between two cells (a gate, a wrap round the edge) starts a new run and is never ridden
+// along. Drawn this way the front follows the head round a corner instead of cutting across it, and
+// never runs ahead of it into a cell it hasn't reached. A worklet, called from a useDerivedValue
+// every frame; adjacency is checked inline, since an imported function isn't guaranteed to cross into
+// a worklet.
+export function leadingRuns(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number): { x: number; y: number }[][] {
+  'worklet'
+  if (cells.length === 0) return []
+  const near = 0.5
+  const px = (c: { x: number; y: number }) => ({ x: c.x * cellPx + cellPx / 2, y: c.y * cellPx + cellPx / 2 })
+  const adjacent = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1
+  const between = (v: number, a: number, b: number) => v >= Math.min(a, b) - near && v <= Math.max(a, b) + near
+  // The last cell the head has passed: the one it's standing on, or the start of the run it's on.
+  let reached = 0
+  for (let i = cells.length - 1; i >= 0; i--) {
+    const b = px(cells[i])
+    if (Math.abs(x - b.x) < near && Math.abs(y - b.y) < near) {
+      reached = i
+      break
+    }
+    if (i > 0 && adjacent(cells[i - 1], cells[i])) {
+      const a = px(cells[i - 1])
+      const onRun = a.x === b.x ? Math.abs(x - a.x) < near && between(y, a.y, b.y) : Math.abs(y - a.y) < near && between(x, a.x, b.x)
+      if (onRun) {
+        reached = i - 1
+        break
+      }
+    }
+  }
+  const runs: { x: number; y: number }[][] = []
+  let run: { x: number; y: number }[] = []
+  for (let i = 0; i <= reached; i++) {
+    if (i > 0 && !adjacent(cells[i - 1], cells[i])) {
+      runs.push(run)
+      run = []
+    }
+    run.push(px(cells[i]))
+  }
+  run.push({ x, y })
+  runs.push(run)
+  return runs
+}
+
+// leadingRuns as a path, for a board's useDerivedValue.
+export function leadingTrailPath(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number): SkPath {
+  'worklet'
+  const path = Skia.PathBuilder.Make()
+  for (const run of leadingRuns(cells, x, y, cellPx)) {
+    run.forEach((point, i) => {
+      if (i === 0) path.moveTo(point.x, point.y)
+      else path.lineTo(point.x, point.y)
+    })
+  }
+  return path.detach()
+}

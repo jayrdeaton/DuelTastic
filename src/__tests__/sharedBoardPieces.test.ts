@@ -29,6 +29,13 @@ describe("every board's shared pieces", () => {
     expect(board).not.toMatch(/MysteryPickup|ObstacleRect|RoundedRect|addCircle/)
   })
 
+  // LightCycles' head glided over the time since the last tick until 2026-11-04, unevenly at its
+  // small grid size, as Turf's and Tag's had before them.
+  it.each(Object.keys(BOARDS) as (keyof typeof BOARDS)[])('%s glides its head with the shared useRiderGlide', (game) => {
+    expect(source(game)).toMatch(/\buseRiderGlide\(/)
+    expect(source(game)).not.toMatch(/lastTickAtRef/)
+  })
+
   it.each(['lightcycles', 'turf'] as const)('%s crashes with the shared burst and wipe', (game) => {
     expect(source(game)).toMatch(/<RiderCrash\b/)
   })

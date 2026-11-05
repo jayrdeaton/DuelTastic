@@ -1,12 +1,12 @@
 import { Canvas, Line, Path, Skia, vec } from '@shopify/react-native-skia'
-import { cellKey, cellToPixel, isAdjacent } from '@tastic/grid'
+import { cellKey, cellToPixel } from '@tastic/grid'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, TRAIL_SEVER_EAT_MAX_MS, TRAIL_SEVER_EAT_MIN_MS, TRAIL_SEVER_EAT_MS_PER_CELL } from '@/games/lightcycles/constants/game'
 import { GamePhase, GridCell, GridSize, OrientationMode, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, SpeedEffect, Tunnel } from '@/games/lightcycles/types'
-import { shouldTrimTrailAt } from '@/games/lightcycles/utils/gameEngine'
+import { shouldTrimTrailAt, stepsFor } from '@/games/lightcycles/utils/gameEngine'
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
 import { Gates } from '@/shared/match/Gates'
@@ -14,8 +14,9 @@ import { partialTrailPath, RiderCrash } from '@/shared/match/RiderCrash'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
-import { trailPath } from '@/shared/match/trailPath'
+import { leadingTrailPath, trailPath } from '@/shared/match/trailPath'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
+import { GLIDE_OVERLAP_MS, useRiderGlide } from '@/shared/match/useRiderGlide'
 import type { Effects, SpeedKind } from '@/shared/powerups'
 
 export interface GameBoardProps {
@@ -28,9 +29,9 @@ export interface GameBoardProps {
   // Only meaningful when orientationMode === 'sideBySide' - see useOrientationState and
   // TouchInputLayer.tsx's identical prop.
   p1OnRight: boolean
-  // Ticks elapsed this round - see GameState's own comment. Drives PlayerTrail's head-glide
-  // retrigger instead of trail.length, which a laggy trailSpeedTier can leave unchanged on a tick
-  // that both grows and trims the trail.
+  // Ticks elapsed this round - see GameState's own comment. Drives PlayerTrail's tail creep
+  // instead of trail.length, which a laggy trailSpeedTier can leave unchanged on a tick that both
+  // grows and trims the trail, and 0 holds the head on its starting cell for a new round.
   tick: number
   pickups: PowerupPickup[]
   // The app theme's tertiary color - pickups render in this, distinct from either player's own
@@ -192,31 +193,20 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
   const progress = tailProgress(tick, trailSpeedRate, trail.length)
   const tailTarget = { x: tail.x + (nextCenter.x - tail.x) * progress, y: tail.y + (nextCenter.y - tail.y) * progress }
 
-  // The game state advances in discrete grid steps (see gameEngine.ts) - snapping straight to
-  // each new cell every tick is what read as "choppy" at a tick rate well under the screen's own
-  // refresh rate. Animating the head (and the trail's last segment, which follows it) smoothly
-  // between cells over the tick's own duration decouples how it looks from how often the
-  // simulation actually steps, without touching the underlying grid logic at all. The tail end
-  // gets the identical treatment below it: under a laggy trailSpeedTier (see gameEngine.ts's
-  // shouldTrimTrailAt) it also advances, and snapping it forward a whole cell on every trim tick
-  // read exactly as janky as the head snapping did before this glide existed.
-  const animX = useSharedValue(head.x)
-  const animY = useSharedValue(head.y)
+  // The head glides from cell to cell at the rider's own pace, as in every game (useRiderGlide): the
+  // rider's own time for the cells it rode (two a tick under Overdrive or Overclock), keyed on its own
+  // steps, and round a corner rather than across it. A gate or a wrap round the edge is a jump, and a
+  // new round (tick 0) holds it on its starting cell. It used to glide over the time since the last
+  // tick, which lands on a frame: at the small grid size (about 2.5 frames a cell) a glide either
+  // finished early and stood still or was cut short and sped up, as Turf's did (CLAUDE.md, "Smooth
+  // riders in Turf and Tag").
+  const msPerCell = tickIntervalMs / (stepsFor(player.effects) || 1)
+  const { x: animX, y: animY } = useRiderGlide({ path: trail, cellPx, msPerCell, snap: tick === 0 })
+  // The tail end creeps too: under a laggy trailSpeedTier (see gameEngine.ts's shouldTrimTrailAt) it
+  // also advances, and snapping it forward a whole cell on every trim tick read as janky as the head
+  // snapping did before it glided.
   const tailAnimX = useSharedValue(tail.x)
   const tailAnimY = useSharedValue(tail.y)
-  // The head segment's fixed starting point. Deliberately a shared value snapshotted from
-  // animX/animY's own current position (see the tick effect below) rather than recomputed fresh
-  // from trail data each render - that was the real source of the jolt: trail data updates the
-  // instant a tick commits, but the previous glide's *duration* was only ever a best guess (see
-  // lastTickAtRef below), so it routinely hadn't actually finished yet at that instant. A fresh
-  // trail-derived anchor would snap straight to the new cell regardless, landing ahead of wherever
-  // animX/animY actually were and opening a visible gap/backtrack every single tick it happened on
-  // - which, under any jitter, was most of them.
-  const edgeStartX = useSharedValue(head.x)
-  const edgeStartY = useSharedValue(head.y)
-  // Wall-clock time (see lastTickAtRef below) the previous glide actually started at - always set
-  // by the reset branch before the animate branch can read it.
-  const lastTickAtRef = useRef(0)
   // The chain of cells a Prune or Shield break-through just severed from the front, ordered from
   // the break point (nearest the surviving trail) to the old tail (farthest) - see the severed-eat
   // effect and severedPath below. Grid coordinates, not pixels, so cellPx changing (it never does
@@ -232,17 +222,10 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
     if (tick === 0) {
       // First paint, or a fresh round via rematch - GameState.tick resets to 0 on every new round
       // (see createInitialGameState), which is what actually distinguishes this from a real tick:
-      // rematch resets game *state* but doesn't remount this component, so a plain "have we ever
-      // mounted" ref stayed true across rounds and this branch never re-ran - the animate branch
-      // below took over on round 2 and tried to glide from wherever the previous round ended all
-      // the way to the new spawn point. Jump straight to the starting cell instead.
-      animX.value = head.x
-      animY.value = head.y
+      // rematch resets game *state* but doesn't remount this component. Jump straight to the
+      // starting cell instead of creeping there from wherever the previous round ended.
       tailAnimX.value = tailTarget.x
       tailAnimY.value = tailTarget.y
-      edgeStartX.value = head.x
-      edgeStartY.value = head.y
-      lastTickAtRef.current = performance.now()
       // A break's own eat-away can still be mid-flight the instant its round ends (see the
       // severed-eat effect's own comment on why that's fine to just let vanish) - clear it here so
       // a rematch's fresh trail doesn't inherit a stale, unrelated severed segment left over from
@@ -251,48 +234,17 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
       severedProgress.value = 1
       return
     }
-    // Duration is measured against the actual gap since the previous tick's glide started, not
-    // the nominal tickIntervalMs the tick loop (useGameState.ts) is targeting - that loop only
-    // checks its own elapsed time once per rAF frame, so it can overshoot the target by up to a
-    // frame every tick. Capped at 3x the nominal interval so a real stall (backgrounded tab, GC
-    // pause) can't stretch a single glide across it.
-    const now = performance.now()
-    const duration = Math.max(1, Math.min(now - lastTickAtRef.current, tickIntervalMs * 3))
-    lastTickAtRef.current = now
-    // A portal crossing (see gameEngine.ts's tickGame) is the one way this tick's new head cell can
-    // land non-adjacent to the one before it - the ordinary pixel-space glide below assumes
-    // adjacency (it's a straight line from the old position to the new one), so a portal jump has
-    // to snap instantly instead, or it'd visibly slide the head across unrelated board geometry.
-    const prevHeadCell = trail.length > 1 ? trail[trail.length - 2] : null
-    const isPortalJump = prevHeadCell !== null && !isAdjacent(prevHeadCell, trail[trail.length - 1])
-
-    // Freeze wherever the head glide actually is *right now* - not its target - as the next
-    // segment's fixed anchor, before retargeting it below. See edgeStartX's own comment for why:
-    // this is what guarantees the fixed anchor and the animated point are always exactly
-    // coincident the instant a new segment starts, regardless of whether the glide this replaces
-    // had actually finished. A portal jump instead snaps this straight to the new head - there's no
-    // meaningful "in-flight position" to freeze when the segment about to start isn't a real,
-    // on-screen line at all.
-    edgeStartX.value = isPortalJump ? head.x : animX.value
-    edgeStartY.value = isPortalJump ? head.y : animY.value
-    if (isPortalJump) {
-      animX.value = head.x
-      animY.value = head.y
-    } else {
-      animX.value = withTiming(head.x, { duration, easing: Easing.linear })
-      animY.value = withTiming(head.y, { duration, easing: Easing.linear })
-    }
-    // Targets tailTarget (the fractional creep toward nextCenter - see tailProgress), not `tail`
-    // itself, so this animates every tick under a non-static tier, not only the ones that trim a
-    // whole cell off. That's what actually fixes the held-then-hop cadence: previously this only
-    // had two states, sitting at `tail` or gliding to a new `tail`, so any tick that didn't trim
-    // looked identical to the tail not following at all.
+    // Over the tick's own time plus the head's glide overlap (useRiderGlide), so the creep is still
+    // under way when the next tick lands rather than stopping and setting off again. Targets
+    // tailTarget (the fractional creep toward nextCenter - see tailProgress), not `tail` itself, so
+    // this animates every tick under a non-static tier, not only the ones that trim a whole cell off.
+    const duration = tickIntervalMs + GLIDE_OVERLAP_MS
     tailAnimX.value = withTiming(tailTarget.x, { duration, easing: Easing.linear })
     tailAnimY.value = withTiming(tailTarget.y, { duration, easing: Easing.linear })
-    // Only an actual new tick should retrigger this - tickIntervalMs changing mid-glide (speed
-    // ramp) should finish the current glide at its original pace, not restart it. Keyed on `tick`
-    // rather than trail.length: under a laggy trailSpeedTier, a tick that both appends and trims
-    // the trail leaves its length unchanged, which would otherwise silently skip the glide.
+    // Only an actual new tick should retrigger this - tickIntervalMs changing mid-creep (speed ramp)
+    // should finish the current creep at its original pace, not restart it. Keyed on `tick` rather
+    // than trail.length: under a laggy trailSpeedTier, a tick that both appends and trims the trail
+    // leaves its length unchanged, which would otherwise silently skip it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick])
 
@@ -324,15 +276,15 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
     // animated there, since the severed segment below is what now carries the "something just
     // happened" visual. Without this, the tick effect's own withTiming (see above - it runs first
     // within the same commit on a Shield break, which is tick-synchronized; this effect's plain
-    // assignment overrides it, same "last write this commit wins" trick edgeStartX's snapshot
-    // already relies on) would glide tailAnimX/Y from wherever it was toward the new, generally
+    // assignment overrides it, the last write in a commit winning) would glide tailAnimX/Y from
+    // wherever it was toward the new, generally
     // non-adjacent `tail` in a straight pixel-space line - the exact diagonal this whole mechanism
     // exists to get rid of. Fresh fractional creep toward the new nextCenter (see tailTarget)
     // resumes correctly from here on subsequent ticks with no special-casing needed.
     //
     // react-hooks/immutability doesn't recognize Reanimated's SharedValue as the deliberate,
     // React-Compiler-exempt mutable escape hatch it is - every .value assignment in this file
-    // (animX/tailAnimX/edgeStartX above included) has this identical shape, and this project
+    // (tailAnimX above included) has this identical shape, and this project
     // doesn't run the React Compiler itself (see eslint.config.cjs, where the rule is 'warn'-only
     // for exactly this reason: a heads-up for a future migration, not an enforced constraint now).
     /* eslint-disable react-hooks/immutability */
@@ -378,59 +330,41 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
     setAnchorCell(prevHeadCell)
     setPrevHeadCell(headCell)
   }
-  // Index of anchorCell within the CURRENT trail array - the front animated segment's true fixed
-  // anchor (settledPath below stops there; everything past it is this tick's own new movement,
-  // tracked live by animX/animY instead so it glides into place rather than snapping). Re-looked-up
-  // fresh every render, rather than cached as an index alongside anchorCell, so it stays correct
-  // even when the trail's FRONT also shifted since anchorCell was captured - a Prune/Shield severing
-  // cells off the front (see the severed-eat effect below) can land on any render, not just the ones
-  // where the head itself also happens to move, and a cached index would silently point at whatever
-  // cell now sits at that position instead of at anchorCell's actual, possibly-shifted one. -1 (not
-  // found - anchorCell itself got severed away too, or a fresh round's spawn cell has no relation to
-  // the last round's final trail) clamps to 0: the whole current trail counts as new movement.
+  // Index of anchorCell within the CURRENT trail array - the trail's front's fixed anchor
+  // (settledPath below stops there; everything past it is this tick's own new movement, drawn by
+  // leadPath up to wherever the gliding head has got). Re-looked-up fresh every render, rather than
+  // cached as an index alongside anchorCell, so it stays correct even when the trail's FRONT also
+  // shifted since anchorCell was captured - a Prune/Shield severing cells off the front (see the
+  // severed-eat effect below) can land on any render, not just the ones where the head itself also
+  // happens to move, and a cached index would silently point at whatever cell now sits at that
+  // position instead of at anchorCell's actual, possibly-shifted one. Not found (anchorCell itself
+  // got severed away, or a fresh round's spawn cell has no relation to the last round's final trail)
+  // counts only the head's own cell as new movement, so settledPath still draws the rest.
   const foundIndex = trail.findIndex((c) => c.x === anchorCell.x && c.y === anchorCell.y)
-  const boundaryIndex = foundIndex === -1 ? 0 : foundIndex
+  const boundaryIndex = foundIndex === -1 ? Math.max(0, trail.length - 2) : foundIndex
 
-  // Every settled cell except the first and the ones this tick's own movement just added (which
-  // are instead tracked live by (tailAnimX, tailAnimY) and (animX, animY) below so both ends glide
-  // into place rather than snapping).
-  const settledPath = useMemo(() => trailPath(trail.slice(1, boundaryIndex + 1), cellPx), [trail, cellPx, boundaryIndex])
+  // The trail's front is drawn live from the cell before anchorCell (leadStart): a head still
+  // catching up to anchorCell when the next step lands (useRiderGlide's catch-up leg, up to a cell
+  // after a stalled frame) is on that last run, and a settled trail drawn up to anchorCell would run
+  // ahead of it.
+  const leadStart = Math.max(0, boundaryIndex - 1)
+  // Every settled cell except the first and the ones the front is drawn through (the tail's creep
+  // and leadPath below draw those live, so both ends glide into place rather than snapping).
+  const settledPath = useMemo(() => trailPath(trail.slice(1, leadStart + 1), cellPx), [trail, cellPx, leadStart])
 
-  // trail[boundaryIndex] (this segment's true fixed anchor) and trail[1] (nextCell/nextCenter, the
-  // tail segment's own far end) are the exact same cell whenever boundaryIndex === 1 - the trail's
-  // only "middle" cell is both at once (the single-step-per-tick case this used to hardcode as
-  // trail.length === 3; boundaryIndex generalizes it to a boosted tick's larger step count too).
-  // settledPath (trail.slice(1, boundaryIndex+1)) is what's supposed to visually cover any slack
-  // between the two segments meeting there, but when boundaryIndex <= 1 that slice has at most one
-  // point - Skia strokes nothing for a path with no line segments - so there's no stroke left to
-  // mask even the small mismatch edgeStartX's own snapshot timing can leave (see its comment): the
-  // two segments could each land a pixel or two short of the shared cell and the result is a visible
-  // gap with nothing drawn between them. Using the real cell directly there instead of the snapshot
-  // costs nothing and guarantees the two segments meet exactly, independent of animation timing.
-  // boundaryIndex === 0 needs `tail` specifically, not `nextCenter` - trail[0] and trail[1] are
-  // DIFFERENT cells (unlike the boundaryIndex === 1 case, where trail[1] IS trail[boundaryIndex]),
-  // and substituting the wrong one here skips the tail-to-trail[1] cell entirely from this segment,
-  // opening a real gap wherever tailEdgeStart/tailEdgeEnd doesn't independently happen to cover the
-  // exact same span (see boundaryIndex's own comment for how it can land on 0: anchorCell itself
-  // getting severed away, or a boost active before the trail's grown past its own step count).
-  // Longer trails keep the snapshot: trail[boundaryIndex] is a cell neither `tail` nor `nextCenter`
-  // there.
-  const edgeAnchor = boundaryIndex === 0 ? tail : boundaryIndex === 1 ? nextCenter : null
-  const edgeStart = useDerivedValue(() => (edgeAnchor ? vec(edgeAnchor.x, edgeAnchor.y) : vec(edgeStartX.value, edgeStartY.value)))
-  const edgeEnd = useDerivedValue(() => vec(animX.value, animY.value))
+  // The trail's front: from leadStart through anchorCell and this tick's new cells as far as the
+  // gliding head has got, then on to the head (leadingTrailPath), so it follows the head round a
+  // corner and through a boosted tick's two cells instead of cutting across them, and never runs
+  // ahead of the head.
+  const leadCells = useMemo(() => trail.slice(leadStart).map((c) => ({ x: c.x, y: c.y })), [trail, leadStart])
+  const leadPath = useDerivedValue(() => leadingTrailPath(leadCells, animX.value, animY.value, cellPx))
 
   const tailEdgeStart = useDerivedValue(() => vec(tailAnimX.value, tailAnimY.value))
   // trail[1] (nextCell/nextCenter, computed above) IS the head itself once the trail's down to two
-  // cells or less - trimmed aggressively enough (see 'fast', or any tier early in a round before
-  // the trail has grown past a couple of cells) that there's nothing between the tail and the head
-  // to be a distinct fixed point. Using nextCenter's plain (unanimated) position there snapped this
-  // segment's far end straight to the head's *discrete* cell the instant that happened, while the
-  // head itself was still mid-glide toward it - the tail's line would already reach exactly where
-  // the head marker hadn't visually arrived yet, reading as the tail poking out ahead of the
-  // vehicle. Following animX/animY instead - the same live position the head marker itself uses -
-  // keeps the two exactly coincident the whole time, same fix as edgeStartX's own for the same
-  // underlying mismatch (a static, trail-derived point vs. a live animated one that hasn't caught
-  // up to it yet).
+  // cells or less - early in a round, before the trail has grown past a couple of cells - so there's
+  // nothing between the tail and the head to be a distinct fixed point. The segment's far end follows
+  // the gliding head there (the same live position the head marker itself uses), or it would reach
+  // the head's cell before the head had visually arrived, poking out ahead of it.
   const tailEdgeEnd = useDerivedValue(() => (trail.length > 2 ? vec(nextCenter.x, nextCenter.y) : vec(animX.value, animY.value)))
 
   // Where the crash (RiderCrash) bursts from - `player.crashCell` when set (populated even for an
@@ -451,13 +385,9 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
           beat rather than just vanishing. See severedPath's own comment. */}
           <Path path={severedPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
           <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />
-          {/* Skipped once the tail's own segment already reaches the head (trail.length <= 2 -
-          see tailEdgeEnd's comment): edgeStart is a snapshot of the head's own glide a moment
-          ago, updated on its own schedule, unrelated to tailAnimX's - the two segments could
-          each be "correct" on their own terms and still not meet exactly, leaving a visible gap
-          between them right where the trail is shortest. There's nothing for this segment to add
-          once the tail segment already spans tail-to-head on its own. */}
-          {trail.length > 2 && <Line p1={edgeStart} p2={edgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />}
+          {/* Skipped while the tail's own segment already reaches the head (trail.length <= 2 - see
+          tailEdgeEnd's comment): there's nothing for the front to add. */}
+          {trail.length > 2 && <Path path={leadPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />}
           {/* Over the trail, so its whole ring shows. */}
           <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} />
           {/* Every game's effect rings, colored by what's driving the effect, so Overdrive and
