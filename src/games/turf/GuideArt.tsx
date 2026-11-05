@@ -2,9 +2,13 @@ import { useAutoPaperTheme } from '@rific/auto-paper'
 import { StyleSheet, View } from 'react-native'
 import { Icon } from 'react-native-paper'
 
+import { TURF_TRAIL_OPACITY } from './constants'
+
 // Turf's picture for its How to Play cards: player 1's ground (a filled square), the trail looping
-// out from it and back, and the rider's head on its way home. Plain Views, like LightCycles' own
-// GuideArt, so it costs nothing to mount over Home. Colored from the live theme (primary = P1).
+// out from it and back, and the rider's head on its way home. Drawn as the board draws them: solid
+// ground and a lighter trail (TURF_TRAIL_OPACITY), its pieces meeting edge to edge so no corner is
+// drawn twice. Plain Views, like LightCycles' own GuideArt, so it costs nothing to mount over Home.
+// Colored from the live theme (primary = P1).
 export function GuideTurfClaim() {
   const { colors } = useAutoPaperTheme()
   return (
@@ -46,7 +50,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 36,
     left: 8,
-    opacity: 0.45,
     position: 'absolute',
     top: 36,
     width: 30
@@ -62,6 +65,7 @@ const styles = StyleSheet.create({
   cutTrail: {
     height: TRAIL,
     left: 38,
+    opacity: TURF_TRAIL_OPACITY,
     position: 'absolute',
     top: 51,
     width: 96
@@ -69,6 +73,7 @@ const styles = StyleSheet.create({
   cutterTrail: {
     height: 40,
     left: 75,
+    opacity: TURF_TRAIL_OPACITY,
     position: 'absolute',
     top: 64,
     width: TRAIL
@@ -77,7 +82,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 44,
     left: 20,
-    opacity: 0.45,
     position: 'absolute',
     top: 52,
     width: 52
@@ -97,22 +101,25 @@ const styles = StyleSheet.create({
   trailAcross: {
     height: TRAIL,
     left: 60,
+    opacity: TURF_TRAIL_OPACITY,
     position: 'absolute',
     top: 14,
     width: 67
   },
   trailDown: {
-    height: 54,
+    height: 48,
     left: 121,
+    opacity: TURF_TRAIL_OPACITY,
     position: 'absolute',
-    top: 14,
+    top: 14 + TRAIL,
     width: TRAIL
   },
   trailUp: {
-    height: 44,
+    height: 38,
     left: 60,
+    opacity: TURF_TRAIL_OPACITY,
     position: 'absolute',
-    top: 14,
+    top: 14 + TRAIL,
     width: TRAIL
   }
 })

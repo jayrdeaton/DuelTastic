@@ -20,6 +20,10 @@ export const TURF_MAX_CLOCK_STEP_MS = 250
 // waits for its own animation, deathAnimationDurationMs).
 export const TURF_RESULT_HOLD_MS = 900
 
+// A trail's opacity, over the board and over ground, which is solid: the lighter layer, so ground
+// reads as owned turf first. The board and How to Play's art both draw it.
+export const TURF_TRAIL_OPACITY = 0.4
+
 // Under Crash Sends Home, the ticks a crashed rider takes to fly home, standing still there until it
 // lands: about 0.9s at the normal speed. The same however far it flies, so a crash costs the same
 // wherever it happens.

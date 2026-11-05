@@ -17,6 +17,7 @@ import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
+import { TURF_TRAIL_OPACITY } from './constants'
 import type { TurfPhase, TurfPlayer, TurfPowerup, TurfSeat } from './types'
 
 export interface TurfBoardProps {
@@ -41,10 +42,9 @@ export interface TurfBoardProps {
 }
 
 const SEATS: readonly TurfSeat[] = [1, 2]
-// Ground reads as owned turf first; trail is the lighter layer above it.
-const GROUND_OPACITY = 0.85
+// Ground is solid, in the seat's own color (Jay), so it reads as owned turf first; the trail is the
+// lighter layer above it, and a head on its own ground stands out by its white ring and black line.
 const TRAIL_WIDTH = 0.6
-const TRAIL_OPACITY = 0.4
 const EDGE_STROKE_WIDTH = 1.5
 
 function cellCenter(cell: GridCell, cellPx: number) {
@@ -77,7 +77,7 @@ const trailCells = (player: TurfPlayer): GridCell[] => (player.leftFrom ? [playe
 // How a crash is drawn (RiderCrash), from the cell the rider crashed into and the trail it was riding.
 function Crash({ cell, trail, color, cellPx }: { cell: GridCell; trail: readonly GridCell[]; color: string; cellPx: number }) {
   const { x, y } = cellCenter(cell, cellPx)
-  return <RiderCrash x={x} y={y} trail={trail} cellPx={cellPx} headRadius={cellPx * HEAD_RADIUS_CELLS} trailWidth={cellPx * TRAIL_WIDTH} trailOpacity={TRAIL_OPACITY} color={color} />
+  return <RiderCrash x={x} y={y} trail={trail} cellPx={cellPx} headRadius={cellPx * HEAD_RADIUS_CELLS} trailWidth={cellPx * TRAIL_WIDTH} trailOpacity={TURF_TRAIL_OPACITY} color={color} />
 }
 
 function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSeat; player: TurfPlayer; color: string; cellPx: number; tick: number; intervalMs: number }) {
@@ -109,8 +109,8 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
 
   return (
     <>
-      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TRAIL_OPACITY} />
-      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} opacity={TRAIL_OPACITY} />}
+      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TURF_TRAIL_OPACITY} />
+      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} opacity={TURF_TRAIL_OPACITY} />}
       {crash && <Crash key={crash.tick} cell={crash.cell} trail={crash.trail} color={color} cellPx={cellPx} />}
       {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} /> : null}
       {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}
@@ -128,7 +128,7 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, pl
     <View style={styles.container}>
       <Canvas style={StyleSheet.absoluteFill}>
         {SEATS.map((seat, i) => (
-          <Path key={`ground-${seat}`} path={ground[i]} color={colors[seat]} opacity={GROUND_OPACITY} />
+          <Path key={`ground-${seat}`} path={ground[i]} color={colors[seat]} />
         ))}
         <ArenaBlocks cells={obstacles} cellPx={cellPx} color={structureColor} />
         {tunnels.map((tunnel, index) => (
@@ -148,7 +148,7 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, pl
           const { x, y } = cellCenter(p.head, cellPx)
           return (
             <Group key={`still-${seat}`}>
-              <Path path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} opacity={TRAIL_OPACITY} />
+              <Path path={trails[i]} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={colors[seat]} opacity={TURF_TRAIL_OPACITY} />
               <RiderHead x={x} y={y} radius={cellPx * HEAD_RADIUS_CELLS} color={colors[seat]} />
               <EffectRings x={x} y={y} headRadius={cellPx * HEAD_RADIUS_CELLS} effects={p.effects} />
             </Group>
