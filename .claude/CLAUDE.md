@@ -64,7 +64,7 @@ Step 2 of the plan: Snake came over from its own repo (`jayrdeaton/Snake`) as `s
 ```bash
 npm run lint          # expo lint .
 npm run fix            # expo lint . --fix
-npm test               # Jest (51 suites, 960 tests)
+npm test               # Jest (52 suites, 962 tests)
 npm run test:watch     # Jest --watchAll
 npm run typecheck      # tsc
 npm run verify         # lint + test + typecheck

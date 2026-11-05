@@ -40,19 +40,17 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // True once either player quits from a round card: the match is over, and it stays over.
   const [matchOver, setMatchOver] = useState(false)
-  // The round's phase, for the background pause below, which reads it only when the app leaves the
-  // foreground. Kept here rather than read off the game's state, which is declared after this hook.
-  const phaseRef = useRef<GamePhase>('onboarding')
-  const trackPhase = useCallback((phase: GamePhase) => {
-    phaseRef.current = phase
-  }, [])
+  // The round's phase, kept here because the game's state, which holds it, is declared after this
+  // hook. State, not a ref: the back gate below reads it while rendering, and a ref set in
+  // useMatchFlow's effect would leave that gate a render behind until something else re-rendered.
+  const [phase, trackPhase] = useState<GamePhase>('onboarding')
   // Asked only once there's a score to lose and we're not already in the round-over result card:
   // the first round's back exits at once, and once the round is over, the result card's own Quit/
   // Back buttons take the user straight back without a second confirmation layer. This avoids the
   // weird double-quit flow where a result-card back press opens a "Quit Match?" dialog that then
   // makes it look like the only way out is to go through another confirmation, even though the
   // card itself already offers the same exit path.
-  const shouldConfirmBack = roundHistory.length > 0 && !matchOver && phaseRef.current !== 'roundOver'
+  const shouldConfirmBack = roundHistory.length > 0 && !matchOver && phase !== 'roundOver'
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
   usePreventRemove(shouldConfirmBack, () => {
     requestBack()
@@ -60,7 +58,7 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // Leaving the app mid-match latches a pause that only the Paused dialog's Resume clears (see
   // @tastic/core's useBackgroundPause). Skipped once the round is over, or while a dialog already
   // holds the pause.
-  const { backgroundPaused, resume } = useBackgroundPause(() => phaseRef.current !== 'roundOver' && !settingsOpen && !confirmVisible)
+  const { backgroundPaused, resume } = useBackgroundPause(() => phase !== 'roundOver' && !settingsOpen && !confirmVisible)
   // Keeps the screen awake while a match is up, unless Keep Awake is off in Settings (@rific/core's,
   // from Providers.tsx's KeepAwakeBridge). The OS auto-lock only counts touches, so keyboard
   // steering or watching the CPU could otherwise let a release build lock mid-match.
