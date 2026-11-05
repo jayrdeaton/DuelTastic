@@ -1,5 +1,6 @@
-import { type GameDefinition, imageGameIcon } from '@tastic/shell'
+import type { GameDefinition } from '@tastic/shell'
 
+import { GameIcon } from './components/GameIcon'
 import { getGuideSteps } from './constants/guideSteps'
 import PlayScreen from './PlayScreen'
 import guide, { GUIDE_VERSION, guideActions, selectGuideVersionSeen } from './redux/guideSlice'
@@ -21,7 +22,7 @@ export const lightCycles: GameDefinition = {
   id: 'lightcycles',
   title: 'LightCycles',
   blurb: 'The classic light-trail duel. Box the other rider in.',
-  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
+  icon: GameIcon,
   seatTwo: ['cpu', 'person'],
   // Always face to face, on the web too: the board is one tall, fixed split (see MatchScreen), and
   // an upside-down hold never swaps who is at the bottom.

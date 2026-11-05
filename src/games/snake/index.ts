@@ -1,5 +1,6 @@
-import { type GameDefinition, imageGameIcon } from '@tastic/shell'
+import type { GameDefinition } from '@tastic/shell'
 
+import { GameIcon } from './components/GameIcon'
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
 import PlayScreen from './PlayScreen'
 import { playerSettings } from './settings'
@@ -20,7 +21,7 @@ export const snake: GameDefinition = {
   id: 'snake',
   title: 'Snake',
   blurb: 'The arcade classic. Eat, grow, and keep off the walls.',
-  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
+  icon: GameIcon,
   // Nobody is Solo: one snake, scored, the run ending on the first crash.
   seatTwo: ['cpu', 'person', 'nobody'],
   // On a phone 2 Player always splits face to face, snake 1 at the bottom, however it's held; a
