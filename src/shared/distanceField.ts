@@ -4,6 +4,8 @@ import type { GridSize } from '@tastic/grid'
 
 // Steps from the nearest source cell to every cell, moving up, down, left or right around blocked
 // cells; -1 where there's no way through. One fill answers "how far is X" for every cell at once.
+// The CPUs run several a tick on boards of thousands of cells, so the loop makes no function or
+// closure per cell.
 export function distanceField(grid: GridSize, sources: Iterable<number>, blocked: Uint8Array): Int32Array {
   const { cols } = grid
   const size = cols * grid.rows
@@ -19,15 +21,22 @@ export function distanceField(grid: GridSize, sources: Iterable<number>, blocked
     const i = queue[head]
     const x = i % cols
     const d = distance[i] + 1
-    const visit = (j: number) => {
-      if (distance[j] !== -1 || blocked[j]) return
-      distance[j] = d
-      queue[tail++] = j
+    if (x > 0 && distance[i - 1] === -1 && !blocked[i - 1]) {
+      distance[i - 1] = d
+      queue[tail++] = i - 1
     }
-    if (x > 0) visit(i - 1)
-    if (x < cols - 1) visit(i + 1)
-    if (i >= cols) visit(i - cols)
-    if (i < size - cols) visit(i + cols)
+    if (x < cols - 1 && distance[i + 1] === -1 && !blocked[i + 1]) {
+      distance[i + 1] = d
+      queue[tail++] = i + 1
+    }
+    if (i >= cols && distance[i - cols] === -1 && !blocked[i - cols]) {
+      distance[i - cols] = d
+      queue[tail++] = i - cols
+    }
+    if (i < size - cols && distance[i + cols] === -1 && !blocked[i + cols]) {
+      distance[i + cols] = d
+      queue[tail++] = i + cols
+    }
   }
   return distance
 }

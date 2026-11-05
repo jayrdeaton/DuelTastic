@@ -1,4 +1,4 @@
-import { Canvas, Group, Line, Path, Skia, type SkPath, vec } from '@shopify/react-native-skia'
+import { Canvas, Group, Path, Skia, type SkPath } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, type GridSize } from '@tastic/grid'
 import { useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -12,7 +12,7 @@ import { RiderCrash } from '@/shared/match/RiderCrash'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
-import { endsInJump, trailPath } from '@/shared/match/trailPath'
+import { leadingTrailPath, trailPath } from '@/shared/match/trailPath'
 import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
@@ -89,10 +89,11 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
   const flightMs = player.flight ? Math.max(0, player.flight.landsAtTick - tick) * intervalMs : null
   const { x, y } = useRiderGlide({ path, cellPx, msPerCell, snap: false, flightMs })
   const cells = useMemo(() => trailCells(player), [player])
-  const settled = useMemo(() => trailPath(cells.slice(0, -1), cellPx), [cells, cellPx])
-  // The last stretch glides with the head, unless the head just came out of a gate.
-  const lastSettled = cells.length > 1 && !endsInJump(cells) ? cellCenter(cells[cells.length - 2], cellPx) : null
-  const headPoint = useDerivedValue(() => vec(x.value, y.value))
+  // The trail as one path, built every frame through the cells as far as the gliding head has got
+  // and on to the head (leadingTrailPath), so it's one strength all along: it was the cells behind
+  // the head plus a line on to it, which doubled up just behind the head. Broken at a gate.
+  const leadCells = useMemo(() => cells.map((c) => ({ x: c.x, y: c.y })), [cells])
+  const trail = useDerivedValue(() => leadingTrailPath(leadCells, x.value, y.value, cellPx))
   const headRadius = cellPx * HEAD_RADIUS_CELLS
 
   // A crash under Crash Sends Home: by the time it's drawn the engine has already put the rider back
@@ -109,8 +110,7 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
 
   return (
     <>
-      <Path path={settled} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TURF_TRAIL_OPACITY} />
-      {lastSettled && <Line p1={vec(lastSettled.x, lastSettled.y)} p2={headPoint} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' color={color} opacity={TURF_TRAIL_OPACITY} />}
+      <Path path={trail} style='stroke' strokeWidth={cellPx * TRAIL_WIDTH} strokeCap='round' strokeJoin='round' color={color} opacity={TURF_TRAIL_OPACITY} />
       {crash && <Crash key={crash.tick} cell={crash.cell} trail={crash.trail} color={color} cellPx={cellPx} />}
       {player.alive ? <RiderHead x={x} y={y} radius={headRadius} color={color} /> : null}
       {player.alive ? <EffectRings key={`effects-${seat}`} x={x} y={y} headRadius={headRadius} effects={player.effects} /> : null}

@@ -1,9 +1,11 @@
 import { computeGridSize, type Direction, type GridCell } from '@tastic/grid'
 
 import { distanceField } from '@/shared/distanceField'
+import { GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
+import type { GridSizeTier } from '@/shared/match/types'
 
-import { TAG_CELL_PX, TAG_DAZE_TICKS, TAG_EFFECT_TICKS, TAG_FREEZE_TICKS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_TAIL_CELLS } from '../constants'
-import { applyTagActivation, applyTagTurn, cellIndex, createTagState, finishTagOnTime, freezeLeft, pillarsFor, startTag, tickTag, touching } from '../engine'
+import { TAG_EFFECT_MS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_PILLAR_SIZE_PX, TAG_POWERUPS, TAG_REACH_PX, TAG_SPEED_INTERVAL_MS, TAG_TAIL_CELLS, TAG_UNIT_PX } from '../constants'
+import { applyTagActivation, applyTagTurn, cellIndex, createTagState, finishTagOnTime, freezeLeft, measuresFor, pillarsFor, startTag, tickTag, touching } from '../engine'
 import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
 
 interface Start {
@@ -11,9 +13,19 @@ interface Start {
   direction: Direction
 }
 
+// Most of these play on Tag's old 22pt cells at its old 115ms normal pace, where its measures come
+// out as they always were (13 ticks of freeze, 8 of daze, a reach of a cell straight across), so the
+// rules read in whole cells and ticks. The ones about the grid size play on the shared cells.
+const OLD = { cellPx: TAG_UNIT_PX, intervalMs: 115 }
+const M = measuresFor(OLD.cellPx, OLD.intervalMs)
+
+const TIERS: GridSizeTier[] = ['small', 'medium', 'large']
+// The round's pace on a tier's cells at the normal speed, as the play screen sets it.
+const intervalFor = (tier: GridSizeTier) => scaleMsForCellPx(TAG_SPEED_INTERVAL_MS.normal, GRID_CELL_PX[tier])
+
 // A playing round on an open board unless asked for pillars, seat 2 It unless told otherwise.
 function setup(p1: Start, p2: Start, { cols = 20, rows = 20, it = 2 as TagSeat, arena = 'open' as TagArena } = {}): TagState {
-  return startTag(createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, it, starts: { 1: p1, 2: p2 } }))
+  return startTag(createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, it, starts: { 1: p1, 2: p2 }, ...OLD }))
 }
 
 // Runs `ticks` ticks, applying `turns[i]` just before tick i (counting from 0).
@@ -35,17 +47,36 @@ const PARKED: Start = { head: { x: 19, y: 0 }, direction: 'up' }
 // Gives a seat a powerup and uses it straight away.
 const use = (state: TagState, seat: TagSeat, held: TagPowerup) => applyTagActivation({ ...state, players: { ...state.players, [seat]: { ...state.players[seat], held } } }, seat)
 
+// Tag moved onto the shared grid size (GRID_CELL_PX) on 2026-11-05 from cells of its own (16, 22 and
+// 30pt). Its distances are in px and its times in ms, turned into cells and ticks for the round.
+describe('measuresFor', () => {
+  it('comes out as Tag always played on its old 22pt cells at 115ms', () => {
+    expect(M).toEqual({ unit: 1, reach: TAG_REACH_PX / TAG_UNIT_PX, freezeTicks: 13, dazeTicks: 8, effectTicks: { dash: 22, freeze: 13, mud: 26, safe: 26, tangle: 17 } })
+  })
+
+  it.each(TIERS)('keeps the same reach and times on screen on the %s cells', (tier) => {
+    const cellPx = GRID_CELL_PX[tier]
+    const intervalMs = intervalFor(tier)
+    const m = measuresFor(cellPx, intervalMs)
+    expect(m.reach * cellPx).toBeCloseTo(TAG_REACH_PX)
+    expect(m.unit * cellPx).toBeCloseTo(TAG_UNIT_PX)
+    expect(Math.abs(m.freezeTicks * intervalMs - 1500)).toBeLessThanOrEqual(intervalMs / 2)
+    expect(Math.abs(m.dazeTicks * intervalMs - 900)).toBeLessThanOrEqual(intervalMs / 2)
+    for (const p of TAG_POWERUPS) expect(Math.abs(m.effectTicks[p] * intervalMs - TAG_EFFECT_MS[p])).toBeLessThanOrEqual(intervalMs / 2)
+  })
+})
+
 describe('createTagState', () => {
   it('starts the riders apart, with the given seat It', () => {
-    const s = createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', it: 1 })
+    const s = createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', it: 1, ...OLD })
     expect(s.phase).toBe('onboarding')
     expect(s.it).toBe(1)
     expect(s.players[1].head.y).toBeGreaterThan(s.players[2].head.y)
-    expect(touching(s.players[1].head, s.players[2].head)).toBe(false)
+    expect(touching(s.players[1].head, s.players[2].head, M.reach)).toBe(false)
   })
 
   it('lays pillars evenly, away from both starting cells', () => {
-    const s = createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace' })
+    const s = createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', ...OLD })
     expect(s.pillars.length).toBeGreaterThan(4)
     for (const seat of [1, 2] as const) {
       const { x, y } = s.players[seat].head
@@ -61,7 +92,7 @@ describe('createTagState', () => {
       [45, 36],
       [20, 31]
     ]) {
-      const pillars = pillarsFor({ cols, rows }, [])
+      const pillars = pillarsFor({ cols, rows }, [], OLD.cellPx)
       const key = (x: number, y: number) => `${x},${y}`
       const cells = new Set<string>()
       for (const p of pillars) for (let y = p.y; y < p.y + p.height; y++) for (let x = p.x; x < p.x + p.width; x++) cells.add(key(x, y))
@@ -73,16 +104,19 @@ describe('createTagState', () => {
     }
   })
 
-  // At the Large size a phone's board is 12 or 13 cells across: room for one column of pillars, the
-  // riders' own, so the ones by their starts went and Pillars had 0 or 1. Those boards get the tighter
-  // lattice, two columns either side of the riders.
-  it.each([
+  // Pillars on an iPhone SE's and an iPhone 15's board at every grid size: at least TAG_MIN_PILLARS
+  // (a narrow board gets the tighter lattice, two columns either side of the riders), about
+  // TAG_PILLAR_SIZE_PX across whatever the cell size, clear of both starts, with a way between them.
+  const PHONE_BOARDS = [
     [375, 600],
     [393, 720]
-  ])('lays at least TAG_MIN_PILLARS pillars at the Large size on a %ix%i phone, clear of both starts', (width, height) => {
-    const grid = computeGridSize(width, height, TAG_CELL_PX.large)
-    const s = createTagState({ grid, layout: 'faceToFace', arena: 'pillars' })
+  ].flatMap(([width, height]) => TIERS.map((tier) => ({ tier, cellPx: GRID_CELL_PX[tier], ...computeGridSize(width, height, GRID_CELL_PX[tier]) })))
+
+  it.each(PHONE_BOARDS)('lays pillars about TAG_PILLAR_SIZE_PX across on a $cols x $rows board ($tier), clear of both starts', ({ cellPx, cols, rows }) => {
+    const grid = { cols, rows }
+    const s = createTagState({ grid, layout: 'faceToFace', arena: 'pillars', cellPx })
     expect(s.pillars.length).toBeGreaterThanOrEqual(TAG_MIN_PILLARS)
+    for (const p of s.pillars) expect(Math.abs(Math.min(p.width, p.height) * cellPx - TAG_PILLAR_SIZE_PX)).toBeLessThanOrEqual(cellPx)
     for (const seat of [1, 2] as const) {
       const { x, y } = s.players[seat].head
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) expect(s.blocked[(y + dy) * grid.cols + x + dx]).toBe(0)
@@ -92,7 +126,7 @@ describe('createTagState', () => {
 
   it('keeps the usual lattice where it already lays enough pillars', () => {
     // 17 across: the usual lattice's two columns, 7 apart, not the tighter one's.
-    const columns = new Set(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'pillars' }).pillars.map((p) => p.x))
+    const columns = new Set(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'pillars', ...OLD }).pillars.map((p) => p.x))
     expect([...columns].sort((a, b) => a - b)).toEqual([4, 11])
   })
 
@@ -100,22 +134,17 @@ describe('createTagState', () => {
     expect(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'open' }).pillars).toEqual([])
   })
 
-  // Tag's cells are about three times LightCycles', so the shared builder's fine tuning left a
-  // phone's board at the default size with no Gauntlet, Holes or Tunnels: an open board. Each one,
-  // on the boards an iPhone SE and an iPhone 15 give at every grid size, face to face.
+  // The shared arenas, built as LightCycles and Turf build them now that Tag's cells are theirs, on the
+  // boards an iPhone SE and an iPhone 15 give at every grid size, face to face.
   describe.each(['gauntlet', 'portals', 'underpass'] as const)('the %s arena on a phone', (arena) => {
-    const boards = [
-      [375, 600],
-      [393, 720]
-    ].flatMap(([width, height]) => (['small', 'medium', 'large'] as const).map((tier) => computeGridSize(width, height, TAG_CELL_PX[tier])))
-
-    it.each(boards)('is built on a $cols x $rows board', (grid) => {
-      const s = createTagState({ grid, layout: 'faceToFace', arena })
+    it.each(PHONE_BOARDS)('is built on a $cols x $rows board ($tier)', ({ cellPx, cols, rows }) => {
+      const s = createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, cellPx })
       expect(s.pillars.length + s.portals.length + s.tunnels.length).toBeGreaterThan(0)
     })
 
-    it.each(boards)('leaves a way between the riders on a $cols x $rows board, clear of both', (grid) => {
-      const s = createTagState({ grid, layout: 'faceToFace', arena })
+    it.each(PHONE_BOARDS)('leaves a way between the riders on a $cols x $rows board ($tier), clear of both', ({ cellPx, cols, rows }) => {
+      const grid = { cols, rows }
+      const s = createTagState({ grid, layout: 'faceToFace', arena, cellPx })
       const heads = [s.players[1].head, s.players[2].head]
       expect(distanceField(grid, [cellIndex(heads[0], grid)], s.blocked)[cellIndex(heads[1], grid)]).toBeGreaterThan(0)
       const cells = [...s.pillars, ...s.portals.flatMap((p) => [p.a, p.b]), ...s.tunnels.flatMap((t) => t.cells)]
@@ -125,11 +154,11 @@ describe('createTagState', () => {
 })
 
 describe('moving', () => {
-  it('rides a cell a tick and keeps a short tail', () => {
-    const s = run(setup({ head: { x: 5, y: 18 }, direction: 'up' }, PARKED), 8)
-    expect(s.players[1].head).toEqual({ x: 5, y: 10 })
+  it('rides a cell a tick and keeps the cells for its tail', () => {
+    const s = run(setup({ head: { x: 5, y: 38 }, direction: 'up' }, PARKED, { rows: 40 }), 25)
+    expect(s.players[1].head).toEqual({ x: 5, y: 13 })
     expect(s.players[1].recent).toHaveLength(TAG_TAIL_CELLS)
-    expect(s.players[1].recent[TAG_TAIL_CELLS - 1]).toEqual({ x: 5, y: 10 })
+    expect(s.players[1].recent[TAG_TAIL_CELLS - 1]).toEqual({ x: 5, y: 13 })
   })
 
   it('can turn straight back', () => {
@@ -142,9 +171,9 @@ describe('moving', () => {
     let s = run(setup({ head: { x: 5, y: 1 }, direction: 'up' }, PARKED), 2)
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
     expect(s.events.dazed).toEqual([1])
-    expect(s.players[1].dazedThrough).toBe(2 + TAG_DAZE_TICKS)
+    expect(s.players[1].dazedThrough).toBe(2 + M.dazeTicks)
     // A turn pressed while dazed waits for the daze to be over.
-    s = run(s, TAG_DAZE_TICKS, { 0: { 1: 'right' } })
+    s = run(s, M.dazeTicks, { 0: { 1: 'right' } })
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
     s = run(s, 2)
     expect(s.players[1].head).toEqual({ x: 7, y: 0 })
@@ -152,7 +181,7 @@ describe('moving', () => {
 
   it('stops at a pillar, dazed', () => {
     // Rider 1 rides up the first pillar's column, from three cells below it.
-    const pillar = createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace', starts: { 1: PARKED, 2: PARKED } }).pillars[0]
+    const pillar = createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace', starts: { 1: PARKED, 2: PARKED }, ...OLD }).pillars[0]
     const s0 = setup({ head: { x: pillar.x, y: pillar.y + pillar.height + 3 }, direction: 'up' }, PARKED, { arena: 'pillars' })
     expect(s0.pillars).toContainEqual(pillar)
     const s = run(s0, 4)
@@ -194,7 +223,7 @@ describe('a bump', () => {
   it('dazes once, not again for riding on into the edge', () => {
     let s = setup({ head: { x: 5, y: 0 }, direction: 'up' }, PARKED)
     const dazes: number[] = []
-    for (let i = 0; i < TAG_DAZE_TICKS * 3; i++) {
+    for (let i = 0; i < M.dazeTicks * 3; i++) {
       s = tickTag(s)
       if (s.events.dazed.includes(1)) dazes.push(s.tick)
     }
@@ -203,12 +232,12 @@ describe('a bump', () => {
   })
 
   it('dazes again once the rider has moved and bumps again', () => {
-    let s = run(setup({ head: { x: 5, y: 0 }, direction: 'up' }, PARKED), 1 + TAG_DAZE_TICKS)
+    let s = run(setup({ head: { x: 5, y: 0 }, direction: 'up' }, PARKED), 1 + M.dazeTicks)
     // Down a cell, then back up into the edge.
     s = run(s, 3, { 0: { 1: 'down' }, 1: { 1: 'up' } })
     expect(s.players[1].head).toEqual({ x: 5, y: 0 })
     expect(s.events.dazed).toEqual([1])
-    expect(s.players[1].dazedThrough).toBe(s.tick + TAG_DAZE_TICKS)
+    expect(s.players[1].dazedThrough).toBe(s.tick + M.dazeTicks)
   })
 
   it('loses the rest of the tick’s steps', () => {
@@ -222,11 +251,11 @@ describe('a bump', () => {
     // It bumps the edge on the first tick as the runner rides up beside it, and the runner bumps it
     // on the third.
     let s = run(setup({ head: { x: 6, y: 2 }, direction: 'up' }, { head: { x: 5, y: 0 }, direction: 'up' }), 3)
-    expect(touching(s.players[1].head, s.players[2].head)).toBe(true)
-    s = run(s, TAG_DAZE_TICKS - 2)
+    expect(touching(s.players[1].head, s.players[2].head, M.reach)).toBe(true)
+    s = run(s, M.dazeTicks - 2)
     expect(s.it).toBe(2)
     expect(s.tags).toBe(0)
-    // It's daze (through tick 1 + TAG_DAZE_TICKS) is over; the runner's (a tick later) isn't.
+    // It's daze (through tick 1 + M.dazeTicks) is over; the runner's (a tick later) isn't.
     s = run(s, 1)
     expect(s.players[1].dazedThrough).toBeGreaterThan(s.tick)
     expect(s.it).toBe(1)
@@ -292,7 +321,7 @@ describe('a tick played in parts', () => {
     let s = setup({ head: { x: 5, y: 0 }, direction: 'up' }, { head: { x: 5, y: 4 }, direction: 'up' })
     while (s.tags === 0) s = tickTag(s, [], Math.random, 0.1)
     const tagged = s.players[1].head
-    for (let i = 0; i < (TAG_FREEZE_TICKS - 1) * 10; i++) s = tickTag(applyTagTurn(s, 1, 'down'), [], Math.random, 0.1)
+    for (let i = 0; i < (M.freezeTicks - 1) * 10; i++) s = tickTag(applyTagTurn(s, 1, 'down'), [], Math.random, 0.1)
     expect(s.it).toBe(1)
     expect(s.players[1].head).toEqual(tagged)
   })
@@ -312,16 +341,28 @@ describe('tagging', () => {
     expect(s.it).toBe(1)
     expect(s.tags).toBe(1)
     expect(s.events.tagged).toBe(1)
-    expect(touching(s.players[1].head, s.players[2].head)).toBe(true)
+    expect(touching(s.players[1].head, s.players[2].head, M.reach)).toBe(true)
   })
 
-  it('counts a diagonal touch', () => {
-    // Seat 1 held in the corner by the edge; It rides up the next column over.
-    let s = tickTag(setup({ head: { x: 0, y: 0 }, direction: 'up' }, { head: { x: 1, y: 3 }, direction: 'up' }))
-    expect(s.players[2].head).toEqual({ x: 1, y: 2 })
+  // Within TAG_REACH_PX, head center to head center, the edge of It's glow, rather than within a cell:
+  // the same reach on screen whatever the grid size.
+  it('reaches TAG_REACH_PX, straight across or at an angle', () => {
+    const { reach } = measuresFor(GRID_CELL_PX.medium, intervalFor('medium'))
+    // On 8pt cells, 28pt is three and a half cells.
+    expect(touching({ x: 0, y: 0 }, { x: 3, y: 0 }, reach)).toBe(true)
+    expect(touching({ x: 0, y: 0 }, { x: 2, y: 2 }, reach)).toBe(true)
+    expect(touching({ x: 0, y: 0 }, { x: 4, y: 0 }, reach)).toBe(false)
+    expect(touching({ x: 0, y: 0 }, { x: 3, y: 2 }, reach)).toBe(false)
+  })
+
+  it('tags from the edge of the reach on the shared cells', () => {
+    // Seat 1 held in the corner by the edge; It rides up three columns over, on 8pt cells.
+    let s = startTag(createTagState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace', arena: 'open', it: 2, starts: { 1: { head: { x: 0, y: 0 }, direction: 'up' }, 2: { head: { x: 3, y: 5 }, direction: 'up' } }, cellPx: GRID_CELL_PX.medium, intervalMs: intervalFor('medium') }))
+    s = run(s, 3)
+    expect(s.players[2].head).toEqual({ x: 3, y: 2 })
     expect(s.it).toBe(2)
-    s = tickTag(s)
-    expect(s.players[2].head).toEqual({ x: 1, y: 1 })
+    s = run(s, 1)
+    expect(s.players[2].head).toEqual({ x: 3, y: 1 })
     expect(s.it).toBe(1)
   })
 
@@ -329,7 +370,7 @@ describe('tagging', () => {
     let s = headOn()
     while (s.it === 2) s = tickTag(s)
     const frozenAt = s.players[1].head
-    s = run(s, TAG_FREEZE_TICKS, Object.fromEntries([[0, { 2: 'left' as const }]]))
+    s = run(s, M.freezeTicks, Object.fromEntries([[0, { 2: 'left' as const }]]))
     // Seat 1 hasn't moved; seat 2 got away and wasn't tagged back even while they touched.
     expect(s.players[1].head).toEqual(frozenAt)
     expect(s.it).toBe(1)
@@ -341,8 +382,8 @@ describe('tagging', () => {
     expect(freezeLeft(s)).toBe(0)
     while (s.it === 2) s = tickTag(s)
     expect(freezeLeft(s)).toBe(1)
-    s = run(s, TAG_FREEZE_TICKS - 1)
-    expect(freezeLeft(s)).toBeCloseTo(1 / TAG_FREEZE_TICKS)
+    s = run(s, M.freezeTicks - 1)
+    expect(freezeLeft(s)).toBeCloseTo(1 / M.freezeTicks)
     s = run(s, 1)
     expect(freezeLeft(s)).toBe(0)
   })
@@ -350,10 +391,10 @@ describe('tagging', () => {
   it('tags back once the freeze is over', () => {
     let s = headOn()
     while (s.it === 2) s = tickTag(s)
-    // Seat 2 stays put against... nothing: hold it in place by riding into the edge from a cell away.
+    // Both held in place riding into the top edge, side by side.
     s = { ...s, players: { ...s.players, 2: { ...s.players[2], head: { x: s.players[1].head.x + 1, y: 0 }, direction: 'up' } } }
-    s = { ...s, players: { ...s.players, 1: { ...s.players[1], head: { x: s.players[2].head.x - 1, y: 1 }, direction: 'up' } } }
-    s = run(s, TAG_FREEZE_TICKS)
+    s = { ...s, players: { ...s.players, 1: { ...s.players[1], head: { x: s.players[2].head.x - 1, y: 0 }, direction: 'up' } } }
+    s = run(s, M.freezeTicks)
     expect(s.it).toBe(1)
     s = run(s, 1)
     expect(s.it).toBe(2)
@@ -438,7 +479,7 @@ describe('powerups', () => {
     expect(s.players[2].head).toEqual({ x: 6, y: 8 })
     expect(s.players[1].head).toEqual({ x: 5, y: 8 })
     expect(s.it).toBe(2)
-    s = run(s, TAG_EFFECT_TICKS.freeze)
+    s = run(s, M.effectTicks.freeze)
     expect(s.players[1].head.y).toBeLessThan(8)
   })
 
@@ -455,7 +496,7 @@ describe('powerups', () => {
   it('Safe keeps the runner from being tagged until it runs out', () => {
     // It parked against the edge right beside the runner, who's parked against it too.
     let s = use(setup({ head: { x: 5, y: 0 }, direction: 'up' }, { head: { x: 6, y: 0 }, direction: 'up' }), 1, 'safe')
-    s = run(s, TAG_EFFECT_TICKS.safe)
+    s = run(s, M.effectTicks.safe)
     expect(s.it).toBe(2)
     s = run(s, 1)
     expect(s.it).toBe(1)
@@ -470,9 +511,9 @@ describe('powerups', () => {
 
   it('Tangle lands on the other rider for its run', () => {
     let s = use(setup({ head: { x: 5, y: 15 }, direction: 'up' }, PARKED), 1, 'tangle')
-    expect(s.players[2].effects.reverse).toEqual({ expiresAtTick: TAG_EFFECT_TICKS.tangle })
+    expect(s.players[2].effects.reverse).toEqual({ expiresAtTick: M.effectTicks.tangle })
     expect(s.players[1].held).toBeNull()
-    s = run(s, TAG_EFFECT_TICKS.tangle)
+    s = run(s, M.effectTicks.tangle)
     expect(s.players[2].effects.reverse).toBeNull()
   })
 

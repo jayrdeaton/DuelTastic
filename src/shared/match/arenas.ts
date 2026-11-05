@@ -170,12 +170,11 @@ export const TUNNEL_MIN_LENGTH_CELLS = 6
 export const TUNNEL_SPAWN_CLEARANCE_CELLS = 5
 
 // ─── Tuning ─────────────────────────────────────────────────────────────────
-// Every count above is in cells, tuned for GRID_CELL_PX (LightCycles' and Turf's 5-14px cells). A
-// game with much bigger cells has far fewer of them on the same screen, so it falls under every
-// minimum and its arenas come out empty: Tag's 16-30px cells gave a phone a 17 x 32 board at the
-// default size, and Gauntlet, Holes and Tunnels there were an open board. So the builders take the
-// counts as a tuning: FINE_ARENA_TUNING (the constants above, the default) or COARSE_ARENA_TUNING.
-// The fractions stay shared: they scale with the board on their own.
+// Every count above is in cells, tuned for GRID_CELL_PX, the cell size every game that builds these
+// arenas is on. The builders take the counts as a tuning, FINE_ARENA_TUNING by default. There was a
+// coarse one for Tag's bigger cells (16-30px, which fell under every minimum here and left a phone
+// with open boards) until Tag moved onto GRID_CELL_PX on 2026-11-05. The fractions stay shared: they
+// scale with the board on their own.
 export interface ArenaTuning {
   pillarMinAlong: number
   pillarMinCross: number
@@ -222,34 +221,6 @@ export const FINE_ARENA_TUNING: ArenaTuning = {
   tunnelLength: TUNNEL_LENGTH_CELLS,
   tunnelMinLength: TUNNEL_MIN_LENGTH_CELLS,
   tunnelSpawnClearance: TUNNEL_SPAWN_CLEARANCE_CELLS
-}
-
-// For cells about three times GRID_CELL_PX.medium (Tag's), close to Snake's own arenas.ts numbers,
-// with the minimums low enough that a phone at Tag's biggest cells (12 x 20 on an iPhone SE) still
-// gets every arena. Gap widths stay at the fine tuning's: a gap has to be wide enough to ride
-// through whatever the cell size. First pass, for Jay to tune by feel.
-export const COARSE_ARENA_TUNING: ArenaTuning = {
-  pillarMinAlong: 13,
-  pillarMinCross: 9,
-  pillarBlockRadius: 1,
-  pillarSpawnClearance: 2,
-  portalCornerMargin: 3,
-  portalMinCols: 12,
-  portalMinRows: 12,
-  portalSpawnClearance: 2,
-  portalMinPairDistance: 4,
-  gauntletMinAlong: 16,
-  gauntletMinCross: 8,
-  gauntletThreeWallMinAlong: 40,
-  gauntletSpawnClearance: 3,
-  gauntletWallSpacing: 2,
-  gauntletGapWidthMin: GAUNTLET_GAP_WIDTH_MIN_CELLS,
-  gauntletGapWidthMax: GAUNTLET_GAP_WIDTH_MAX_CELLS,
-  tunnelMinAlong: 18,
-  tunnelMinCross: 7,
-  tunnelLength: 6,
-  tunnelMinLength: 6,
-  tunnelSpawnClearance: 2
 }
 
 // ─── Axis helpers ───────────────────────────────────────────────────────────

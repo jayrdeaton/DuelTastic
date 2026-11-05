@@ -82,11 +82,53 @@ export function leadingRuns(cells: readonly { x: number; y: number }[], x: numbe
   return runs
 }
 
-// leadingRuns as a path, for a board's useDerivedValue.
+// leadingRuns as a path, for a board's useDerivedValue. One path, so a see-through trail (Turf's,
+// Tag's tail) is the same strength all along: drawn as two pieces, a settled part and a line on to
+// the head, it doubled where they overlapped, a brighter patch just behind the head.
 export function leadingTrailPath(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number): SkPath {
   'worklet'
   const path = Skia.PathBuilder.Make()
   for (const run of leadingRuns(cells, x, y, cellPx)) {
+    run.forEach((point, i) => {
+      if (i === 0) path.moveTo(point.x, point.y)
+      else path.lineTo(point.x, point.y)
+    })
+  }
+  return path.detach()
+}
+
+// The last `length` px of leadingRuns, measured back from the head (a jump between runs counts for
+// nothing), oldest first: a tail of one length (Tag's) whose back end slides along with the head,
+// rather than dropping a whole cell every step.
+export function trimmedRuns(runs: { x: number; y: number }[][], length: number): { x: number; y: number }[][] {
+  'worklet'
+  const kept: { x: number; y: number }[][] = []
+  let left = length
+  for (let r = runs.length - 1; r >= 0 && left > 0; r--) {
+    const run = runs[r]
+    const back = [run[run.length - 1]]
+    for (let i = run.length - 1; i > 0 && left > 0; i--) {
+      const a = run[i]
+      const b = run[i - 1]
+      const d = Math.hypot(b.x - a.x, b.y - a.y)
+      if (d <= left) {
+        back.push(b)
+        left -= d
+      } else {
+        back.push({ x: a.x + ((b.x - a.x) * left) / d, y: a.y + ((b.y - a.y) * left) / d })
+        left = 0
+      }
+    }
+    if (back.length > 1) kept.unshift(back.reverse())
+  }
+  return kept
+}
+
+// A tail `length` px long behind the head at (x, y), as one path (trimmedRuns of leadingRuns).
+export function tailTrailPath(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number, length: number): SkPath {
+  'worklet'
+  const path = Skia.PathBuilder.Make()
+  for (const run of trimmedRuns(leadingRuns(cells, x, y, cellPx), length)) {
     run.forEach((point, i) => {
       if (i === 0) path.moveTo(point.x, point.y)
       else path.lineTo(point.x, point.y)

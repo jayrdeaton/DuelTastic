@@ -4,6 +4,7 @@ import { safeBack } from '@tastic/shell'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { View } from 'react-native'
 
+import { GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
 import { MatchOverlays } from '@/shared/match/MatchOverlays'
 import { type MatchRoundProps, MatchScreen } from '@/shared/match/MatchScreen'
 import { boardStructureColor } from '@/shared/match/structureColor'
@@ -12,7 +13,7 @@ import { type Direction, humanPlayersFor, type Player } from '@/shared/match/typ
 import { useMatchControls, useMatchFlow } from '@/shared/match/useMatchFlow'
 import { useGameSound } from '@/shared/useGameSound'
 
-import { TAG_CELL_PX, TAG_RESULT_HOLD_MS, TAG_SPEED_INTERVAL_MS } from './constants'
+import { TAG_RESULT_HOLD_MS, TAG_SPEED_INTERVAL_MS } from './constants'
 import { freezeLeft } from './engine'
 import { DEFAULT_SETTINGS } from './settings'
 import { tagStats } from './stats'
@@ -32,8 +33,10 @@ function TagRound({ width: widthAtMount, height: heightAtMount, liveWidth, liveH
 
   const controls = useMatchControls(roundHistory)
   const options = useMemo<TagOptions>(() => ({ rule: settings.rule, arena: settings.arena, roundSeconds: settings.roundSeconds, powerups: settings.powerups }), [settings.rule, settings.arena, settings.roundSeconds, settings.powerups])
-  const cellPx = TAG_CELL_PX[settings.gridSizeTier]
-  const intervalMs = TAG_SPEED_INTERVAL_MS[settings.speedTier]
+  // The shared grid size, as in every game, and a pace scaled to it, so a rider crosses the screen as
+  // fast at every grid size.
+  const cellPx = GRID_CELL_PX[settings.gridSizeTier]
+  const intervalMs = scaleMsForCellPx(TAG_SPEED_INTERVAL_MS[settings.speedTier], cellPx)
   const startingIt: TagSeat = roundHistory.length % 2 === 0 ? 2 : 1
   const { state, turn, activate, beginPlaying, rematch, timeLeftMs } = useTagState({ width, height, cellPx, intervalMs, layout: orientationMode, p1OnRight, options, startingIt, cpu: gameMode === 'vsCpu' ? settings.cpuDifficulty : null, paused: controls.paused })
 

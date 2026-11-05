@@ -24,9 +24,18 @@ describe("every board's shared pieces", () => {
     expect(board).toMatch(/<Gates\b/)
     expect(board).toMatch(/<ArenaBlocks\b/)
     expect(board).toMatch(/<RiderHead\b/)
-    expect(board).toMatch(/\btrailPath\(/)
+    expect(board).toMatch(/\b(trailPath|leadingTrailPath|tailTrailPath)\(/)
     // No board draws its own box, gate or block.
     expect(board).not.toMatch(/MysteryPickup|ObstacleRect|RoundedRect|addCircle/)
+  })
+
+  // Turf's trail and Tag's tail are see-through, and were the cells behind the head plus a line on to
+  // it, which doubled up into a bright patch just behind the head (and Tag's back end dropped a cell
+  // every step) until 2026-11-05. Each is one path now, built from the gliding head.
+  it.each(['turf', 'tag'] as const)('%s draws its trail as one path, with no separate line on to the head', (game) => {
+    const board = source(game)
+    expect(board).toMatch(game === 'tag' ? /\btailTrailPath\(/ : /\bleadingTrailPath\(/)
+    expect(board).not.toMatch(/<Line\b/)
   })
 
   // LightCycles' head glided over the time since the last tick until 2026-11-04, unevenly at its

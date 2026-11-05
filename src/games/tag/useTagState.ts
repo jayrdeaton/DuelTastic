@@ -35,7 +35,7 @@ interface RoundState {
 // turn (and its powerup) decided at the start of each tick, and the clock run alongside, ending the
 // round when it's up.
 export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, startingIt, cpu, paused }: UseTagStateParams) {
-  const fresh = useCallback((): RoundState => ({ round: createTagState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena, it: startingIt }), elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena, startingIt])
+  const fresh = useCallback((): RoundState => ({ round: createTagState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena, it: startingIt, cellPx, intervalMs }), elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena, startingIt, intervalMs])
   const [state, setState] = useState(fresh)
   // The round as played: the frame loop moves the riders' strides on every frame, but React only
   // gets a new state when something on screen changes (a step, a tick, a daze, the clock's second).

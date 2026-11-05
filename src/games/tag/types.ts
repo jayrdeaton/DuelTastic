@@ -4,8 +4,8 @@ import type { SharedArenaVariant } from '@/shared/match/arenaOptions'
 import type { CpuDifficulty, GridSizeTier, KeyScheme, SpeedTier } from '@/shared/match/types'
 import type { Effects, Pickup } from '@/shared/powerups'
 
-// Tag: two riders on one board, one of them It. It touches the other rider (passing within a cell of
-// them) to make them It instead, and the new It stands frozen for a moment while the other gets away
+// Tag: two riders on one board, one of them It. It touches the other rider (coming within reach of
+// them, TAG_REACH_PX: the edge of It's glow) to make them It instead, and the new It stands frozen for a moment while the other gets away
 // (no tag-backs). Nothing crashes: riding into the board's edge or a pillar stops a rider, dazed for
 // a second, until they turn, and with no trail to run into, a rider can turn straight back. The clock
 // decides the round.
@@ -78,7 +78,7 @@ export interface TagPlayer {
   held: TagPowerup | null
   effects: Effects
   // Dazed by riding into the edge or a pillar, it stands still, and as It can't tag, through this
-  // tick (TAG_DAZE_TICKS after the bump). Safe doesn't stop it. 0 when it hasn't been.
+  // tick (TagMeasures.dazeTicks after the bump). Safe doesn't stop it. 0 when it hasn't been.
   dazedThrough: number
   // Up against the edge or a pillar since its last step, so riding on into it (or turning into
   // another) doesn't daze it again: only the bump does.
@@ -118,6 +118,20 @@ export interface TagState {
   // part a frame, so each rider steps on its own clock (see tickTag).
   sinceTick: number
   events: TagEvents
+  measures: TagMeasures
+}
+
+// Tag's distances and times in this round's cells and ticks, from the px and ms they're set in
+// (constants.ts) and the round's cell size and speed, so Tag plays the same on screen at every grid
+// size and speed.
+export interface TagMeasures {
+  // Cells per TAG_UNIT_PX, for what's tuned in units of Tag's old cells (the CPU's distances).
+  unit: number
+  // How near It has to come to tag, head center to head center, in cells (TAG_REACH_PX).
+  reach: number
+  freezeTicks: number
+  dazeTicks: number
+  effectTicks: Record<TagPowerup, number>
 }
 
 // Tag's loadout, saved per player (see settings.ts): its own rules, plus the speed, grid size, CPU

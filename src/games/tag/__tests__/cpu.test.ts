@@ -1,11 +1,18 @@
-import type { Direction, GridCell } from '@tastic/grid'
+import { computeGridSize, type Direction, type GridCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
 
+import { GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
 import { addEffect, NO_EFFECTS } from '@/shared/powerups'
 
+import { TAG_SPEED_INTERVAL_MS, TAG_UNIT_PX } from '../constants'
 import { applyTagCpu, chooseTagCpuMove, shouldTagCpuActivate, type TagCpuDifficulty } from '../cpu'
 import { createTagState, startTag, tickTag } from '../engine'
 import type { TagArena, TagPowerup, TagSeat, TagState } from '../types'
+
+// Most of these play on Tag's old 22pt cells at its old 115ms normal pace, where the CPU's distances
+// (in units of those cells) are whole cells and it plays as it always did. The last ones play on a
+// phone's board at the shared medium size.
+const OLD = { cellPx: TAG_UNIT_PX, intervalMs: 115 }
 
 // A small seeded random, so every run of these tests plays the same games.
 function seeded(seed: number): () => number {
@@ -27,7 +34,7 @@ interface Start {
 }
 
 function setup(p1: Start, p2: Start, { cols = 20, rows = 20, it = 2 as TagSeat, arena = 'open' as TagArena } = {}): TagState {
-  return startTag(createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, it, starts: { 1: p1, 2: p2 } }))
+  return startTag(createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, it, starts: { 1: p1, 2: p2 }, ...OLD }))
 }
 
 describe('chooseTagCpuMove as It', () => {
@@ -81,7 +88,7 @@ describe('chooseTagCpuMove near the edge', () => {
   it.each(['easy', 'normal', 'hard'] as const)('never bumps the edge or a pillar on %s, every powerup on but Tangle', (level) => {
     for (const arena of ['pillars', 'gauntlet'] as const) {
       const random = seeded(arena.length)
-      let s = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena, it: 2 }))
+      let s = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena, it: 2, ...OLD }))
       let dazes = 0
       for (let i = 0; i < 900; i++) {
         s = tickTag(applyTagCpu(applyTagCpu(s, 1, level, random), 2, level, random), ['dash', 'freeze', 'mud', 'safe'], random)
@@ -163,7 +170,7 @@ function chaseTicks(runner: TagCpuDifficulty, chaser: TagCpuDifficulty): number 
   let caught = 0
   for (let seed = 1; seed <= 6; seed++) {
     const random = seeded(seed)
-    const fresh = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'pillars', it: 2 }))
+    const fresh = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'pillars', it: 2, ...OLD }))
     let s = fresh
     let since = 0
     for (let i = 0; i < 600; i++) {
@@ -190,5 +197,23 @@ describe('the difficulty levels', () => {
     // About 9 ticks a second at the normal speed.
     expect(chaseTicks('hard', 'easy')).toBeLessThan(9 * 30)
     expect(chaseTicks('easy', 'hard')).toBeGreaterThan(9 * 2)
+  })
+})
+
+// Tag's board has been the shared grid size since 2026-11-05: on an iPhone 15's board at the medium
+// size (46 x 90 cells of 8pt, ticking every 42ms), a minute of normal against normal on Pillars.
+describe('on the shared cells', () => {
+  it('keeps tagging, and never bumps the edge or a pillar', () => {
+    const cellPx = GRID_CELL_PX.medium
+    const intervalMs = scaleMsForCellPx(TAG_SPEED_INTERVAL_MS.normal, cellPx)
+    const random = seeded(7)
+    let s = startTag(createTagState({ grid: computeGridSize(393, 720, cellPx), layout: 'faceToFace', arena: 'pillars', it: 2, cellPx, intervalMs }))
+    let dazes = 0
+    for (let i = 0; i < Math.round(60000 / intervalMs); i++) {
+      s = tickTag(applyTagCpu(applyTagCpu(s, 1, 'normal', random), 2, 'normal', random), [], random)
+      dazes += s.events.dazed.length
+    }
+    expect(dazes).toBe(0)
+    expect(s.tags).toBeGreaterThanOrEqual(2)
   })
 })

@@ -1,4 +1,4 @@
-import { endsInJump, leadingRuns, trailRuns } from '@/shared/match/trailPath'
+import { endsInJump, leadingRuns, trailRuns, trimmedRuns } from '@/shared/match/trailPath'
 
 const cells = (...pairs: [number, number][]) => pairs.map(([x, y]) => ({ x, y }))
 
@@ -66,5 +66,35 @@ describe('leadingRuns', () => {
 
   it('has no runs for no cells', () => {
     expect(leadingRuns([], 0, 0, PX)).toEqual([])
+  })
+})
+
+// Tag's tail is cut to a set length behind the head, so its back end slides along with the head
+// rather than dropping a whole cell every step (the inchworm Jay saw).
+describe('trimmedRuns', () => {
+  const points = (...pairs: [number, number][]) => pairs.map(([x, y]) => ({ x, y }))
+
+  it('cuts a straight run partway along a segment', () => {
+    expect(trimmedRuns([points([0, 0], [10, 0], [20, 0], [25, 0])], 12)).toEqual([points([13, 0], [20, 0], [25, 0])])
+  })
+
+  it('follows the run back round a corner', () => {
+    expect(trimmedRuns([points([0, 10], [0, 0], [10, 0], [14, 0])], 20)).toEqual([points([0, 6], [0, 0], [10, 0], [14, 0])])
+  })
+
+  it('keeps a run shorter than the length whole', () => {
+    expect(trimmedRuns([points([0, 0], [10, 0], [14, 0])], 30)).toEqual([points([0, 0], [10, 0], [14, 0])])
+  })
+
+  it('counts nothing for a jump between runs', () => {
+    // 5 px in the run the head is on, then the other 5 from the end of the run before the gate.
+    expect(trimmedRuns([points([90, 0], [100, 0]), points([0, 0], [5, 0])], 10)).toEqual([points([95, 0], [100, 0]), points([0, 0], [5, 0])])
+  })
+
+  it('slides its back end along by however far the head moved', () => {
+    const before = trimmedRuns([points([0, 0], [10, 0], [20, 0], [24, 0])], 15)
+    const after = trimmedRuns([points([0, 0], [10, 0], [20, 0], [27, 0])], 15)
+    expect(before[0][0]).toEqual({ x: 9, y: 0 })
+    expect(after[0][0]).toEqual({ x: 12, y: 0 })
   })
 })
