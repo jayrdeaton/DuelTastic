@@ -116,6 +116,11 @@ Open for Jay: whether PuckTastic should start dark and set Paper's text in `MONO
    - ✅ **Snake's portals were a shade of player 2's color** (done 2026-11-04, **for Jay to judge on a device**). They were rings in the theme's secondaryContainer with nothing to tell the pairs apart; now they're the shared gates (`Gates.tsx`: the arena gray, one dot for the first pair and two for the second) at the size of Snake's own boxes, about a cell across, close to the old rings. At that size the second pair's two dots sit close together; if they blur into one on a phone, the gates need to be bigger in Snake.
    - **Seen once, not chased:** the Bot (normal) CPU in Turf crashed about two seconds into a round with player 1 riding straight at it; and in the hidden Browser pane the loadout's menus only opened on every other click (likely the pane, not checked elsewhere).
 
+7. **Found in the iOS Simulator (2026-11-04), not today's changes, for Jay to decide:**
+   - **The status bar is invisible on Home** when the phone's own appearance is light: the app's dark theme draws a black Home, and the status bar follows the system appearance (react-native-screens' default `auto`, see CLAUDE.md "Status bar: per-screen options"), so its text is dark on black. It should follow the app's theme.
+   - **Light corners during screen transitions:** pushing or popping a screen (Home to a loadout and back) shows light gray in the screen's rounded corners, with the app in its dark theme and the phone light. Like the status bar, something there follows the system appearance rather than the app's theme (`useThemedRootBackground` in the shell, CLAUDE.md "Fleet package extraction round 2").
+   - **Reduce Motion freezes the daze stars and It's pulsing ring:** Reanimated finishes timed animations at once when the phone's Reduce Motion is on. They still show, standing still. Whether game animations should ignore it (they say what's happening rather than decorate) is Jay's call.
+
 ## NOTES
 
 I think (and my kids agree) that the shield should last for a certain amount of time, and not go away after first contact.  Shield maybe should allow you to crash through gauntlet walls, pillars, and screen edges.
