@@ -26,6 +26,7 @@ import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedV
 import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, SNAKE_POWERUP_PULSE_DURATION_MS, SNAKE_POWERUP_PULSE_SCALE, SNAKE_POWERUP_SPAWN_FADE_MS, snakeDeathFadeMs } from '@/games/snake/constants/snake'
 import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
 import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
+import { Gates } from '@/shared/match/Gates'
 import { splitWallPath } from '@/shared/match/SplitWalls'
 import { boardStructureColor } from '@/shared/match/structureColor'
 
@@ -1221,29 +1222,6 @@ function Obstacles({ obstacles, cellPx, color }: { obstacles: GridCell[]; cellPx
   )
 }
 
-// Portals - a stroked ring at each mouth of every pair (see utils/arenas.ts's buildArenaPortals and
-// types/index.ts's SnakePortal), both ends of a pair sharing one color so the linkage reads
-// visually even with no line literally connecting them across the board.
-const PORTAL_RING_RADIUS_RATIO = 0.38
-
-function Portals({ portals, cellPx, color }: { portals: SnakePortal[]; cellPx: number; color: string }) {
-  return (
-    <>
-      {portals.map(({ a, b }, i) => {
-        const centerA = cellCenter(a, cellPx)
-        const centerB = cellCenter(b, cellPx)
-        const radius = cellPx * PORTAL_RING_RADIUS_RATIO
-        return (
-          <Fragment key={i}>
-            <Circle cx={centerA.x} cy={centerA.y} r={radius} style='stroke' strokeWidth={2} color={color} />
-            <Circle cx={centerB.x} cy={centerB.y} r={radius} style='stroke' strokeWidth={2} color={color} />
-          </Fragment>
-        )
-      })}
-    </>
-  )
-}
-
 // Tunnels - Snake's own adapted 'underpass' arena (see types/index.ts's SnakeTunnel comment for how
 // its collision semantics differ from LightCycles'): a translucent corridor highlight along the
 // whole run, plus a ring at each mouth so a player can see where to enter. Always a single straight
@@ -1304,7 +1282,9 @@ function Pickups({ pickups, cellPx, color }: { pickups: SnakePowerupPickup[]; ce
 // which is tinted toward player 1's color) - distinguished from each other by shape, not color.
 // Boxes are the theme's text color (white on the dark board, near-black on the light one): no seat,
 // no food and no effect ring is drawn in it (they were the theme's secondary, player 2's red).
-// Portals are still secondaryContainer, a shade of player 2's color.
+// Portals are every game's gates (shared/match/Gates.tsx: a ring in the arena gray, with one dot for
+// the first pair and two for the second, so a snake can see where one comes out), at the size of
+// Snake's own boxes (they were rings in secondaryContainer, a shade of player 2's color).
 // First-pass color choices - verify visually against the app's actual light/dark palettes.
 export function SnakeBoard({ snakes, food, obstacles, portals, tunnels, pickups, phase, cellPx, grid, tick, tickIntervalMs, wrapEdges, onboarding }: SnakeBoardProps) {
   const { colors } = useAutoPaperTheme()
@@ -1316,7 +1296,7 @@ export function SnakeBoard({ snakes, food, obstacles, portals, tunnels, pickups,
       <Walls snakes={snakes} grid={grid} cellPx={cellPx} wrapEdges={wrapEdges} onboarding={onboarding} />
       <Obstacles obstacles={obstacles} cellPx={cellPx} color={structureColor} />
       <Tunnels tunnels={tunnels} cellPx={cellPx} color={structureColor} />
-      <Portals portals={portals} cellPx={cellPx} color={colors.secondaryContainer} />
+      <Gates portals={portals} cellPx={cellPx} color={structureColor} radius={cellPx * SNAKE_POWERUP_PICKUP_RADIUS_RATIO} />
       <FoodDot food={food} cellPx={cellPx} phase={phaseDriver} color={colors.tertiary} />
       <Pickups pickups={pickups} cellPx={cellPx} color={colors.onSurface} />
       {snakes.map((snake) => (

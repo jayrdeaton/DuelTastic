@@ -35,6 +35,14 @@ describe('the arena color', () => {
     expect(source).not.toMatch(/(Obstacles|Tunnels) [^\n]*color=\{colors\.outline\}/)
   })
 
+  // Snake's portals were rings in the theme's secondaryContainer, a shade of player 2's color, with
+  // nothing to tell the two pairs apart (2026-11-04).
+  it("is Snake's portals' too, drawn as every game's gates", () => {
+    const source = readFileSync(join(GAMES, 'snake', 'components', 'SnakeBoardCanvas.tsx'), 'utf8')
+    expect(source).toMatch(/<Gates [^\n]*color=\{structureColor\}/)
+    expect(source).not.toMatch(/colors\.secondaryContainer/)
+  })
+
   it.each(Object.entries(THEMES))('is a mid gray, well apart from the boxes, in the %s theme', (_, theme) => {
     const arena = rgb(boardStructureColor(theme))
     expect(Math.max(...arena) - Math.min(...arena)).toBeLessThanOrEqual(8)
