@@ -1,7 +1,8 @@
-import { type GameDefinition, imageGameIcon } from '@tastic/shell'
+import type { GameDefinition } from '@tastic/shell'
 
 import type { KeyScheme } from '@/shared/match/types'
 
+import { GameIcon } from './GameIcon'
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
 import PlayScreen from './PlayScreen'
 import { playerSettings } from './settings'
@@ -23,7 +24,7 @@ export const turf: GameDefinition = {
   id: 'turf',
   title: 'Turf',
   blurb: 'Loop out from your ground to claim more. Cut their trail.',
-  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
+  icon: GameIcon,
   seatTwo: ['cpu', 'person'],
   // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
   twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
