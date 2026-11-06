@@ -122,6 +122,17 @@ Open for Jay: whether PuckTastic should start dark and set Paper's text in `MONO
    - ✅ **Light corners during screen transitions** (done 2026-11-05, the same release): pushing or popping a screen (Home to a loadout and back) showed light gray in the sliding screens' rounded corners and between them. Not the system appearance after all: expo-router gives its navigation container no theme, so React Navigation's default theme painted its light gray (`rgb(242, 242, 242)`) behind the screens, whatever the phone's setting. The shell's stack now sits in a navigation theme on the root background's own color. Checked in the Simulator with the phone light: the status bar shows on Home and the corners stay black.
    - **Reduce Motion freezes the daze stars and It's pulsing ring:** Reanimated finishes timed animations at once when the phone's Reduce Motion is on. They still show, standing still. Whether game animations should ignore it (they say what's happening rather than decorate) is Jay's call.
 
+## Open from the Copilot review (2026-11-06)
+
+Calls for Jay from the review of Copilot's 2026-10-26 commits; what each change is now is in CLAUDE.md, "Copilot's 2026-10-26 changes". Its three bugs are fixed ("Quit, Tunnels and Turf's CPU").
+
+1. **Should the Vs CPU back and settings chips turn with the phone again?** They stay in the screen's physical top corners since 911a608; Home's buttons turn.
+2. **One name per arena across the pack, or each game's own?** Today LightCycles says Portals and Underpass, Snake Holes and Tunnels, Tag Holes, Turf Gates.
+3. **Powerup copy:** "opponent" (the loadout's lines) or "the other rider" (How to Play), and do Turf's and Tag's own lines come back?
+4. **Take the portrait lock's settings and the second App Group out of `app.json`?** `@tastic/core`'s plugin owns them. Needs a new native build.
+5. **Seat-colored board edges in Turf and Tag, or the arena gray?** On Turf's solid ground a seat's own half of the edge disappears.
+6. **Snake's loadout icons:** the shared vehicles and animals, or Snake's own.
+
 ## NOTES
 
 I think (and my kids agree) that the shield should last for a certain amount of time, and not go away after first contact.  Shield maybe should allow you to crash through gauntlet walls, pillars, and screen edges.
