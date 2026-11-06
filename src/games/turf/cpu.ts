@@ -133,8 +133,9 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
   const outside = me.trail.length > 0
   const myTrail = trailMask(grid, me.trail, state.blocked)
   const theirTrail = trailMask(grid, them.trail, state.blocked)
-  const myBlocked = rules.ownTrailDeadly ? myTrail : new Uint8Array(myTrail.length)
-  const theirBlocked = rules.ownTrailDeadly ? theirTrail : new Uint8Array(theirTrail.length)
+  // With Cross Your Own Trail on, a rider's own trail is no wall to it, but the arena's walls still are.
+  const myBlocked = rules.ownTrailDeadly ? myTrail : state.blocked
+  const theirBlocked = rules.ownTrailDeadly ? theirTrail : state.blocked
   const home = distanceField(grid, groundCells(owner, seat), myBlocked)
   const ticksHome = ticksForRider(stepsFrom(home, grid, me.head, me.direction), me, tick)
   const reach = outside ? ticksForRider(stepsFrom(distanceField(grid, me.trail.map(at), theirBlocked), grid, them.head, them.direction), them, tick) : -1

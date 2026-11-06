@@ -12,20 +12,18 @@ import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import { tailTrailPath } from '@/shared/match/trailPath'
-import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
 import { TAG_IT_SPEED, TAG_REACH_PX, TAG_TAIL_PX } from './constants'
 import { isDazed } from './engine'
-import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat, TagTunnel } from './types'
+import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat } from './types'
 
 export interface TagBoardProps {
   grid: GridSize
   cellPx: number
   pillars: TagPillar[]
   portals: TagPortal[]
-  tunnels: TagTunnel[]
   players: Record<TagSeat, TagPlayer>
   it: TagSeat
   orientationMode: 'faceToFace' | 'sideBySide'
@@ -122,7 +120,7 @@ function Rider({ player, color, cellPx, tick, intervalMs, isIt, freezeLeft, daze
   )
 }
 
-export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it, orientationMode, p1OnRight, freezeLeft, colors, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TagBoardProps) {
+export function TagBoard({ grid, cellPx, pillars, portals, players, it, orientationMode, p1OnRight, freezeLeft, colors, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TagBoardProps) {
   // Every arena's blocks as cells, so the Pillars arena's pillars and the shared arenas' walls are
   // drawn the same as in every game (ArenaBlocks).
   const blockCells = useMemo(() => pillars.flatMap((p) => Array.from({ length: p.width * p.height }, (_, i) => ({ x: p.x + (i % p.width), y: p.y + Math.floor(i / p.width) }))), [pillars])
@@ -137,9 +135,6 @@ export function TagBoard({ grid, cellPx, pillars, portals, tunnels, players, it,
       <Canvas style={StyleSheet.absoluteFill}>
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         <ArenaBlocks cells={blockCells} cellPx={cellPx} color={structureColor} />
-        {tunnels.map((tunnel, index) => (
-          <TunnelRoad key={`tunnel-${index}`} tunnel={tunnel} cellPx={cellPx} color={structureColor} strokeWidth={EDGE_STROKE_WIDTH} />
-        ))}
         <Gates portals={portals} cellPx={cellPx} color={structureColor} />
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />

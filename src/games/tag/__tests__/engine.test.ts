@@ -136,10 +136,10 @@ describe('createTagState', () => {
 
   // The shared arenas, built as LightCycles and Turf build them now that Tag's cells are theirs, on the
   // boards an iPhone SE and an iPhone 15 give at every grid size, face to face.
-  describe.each(['gauntlet', 'portals', 'underpass'] as const)('the %s arena on a phone', (arena) => {
+  describe.each(['gauntlet', 'portals'] as const)('the %s arena on a phone', (arena) => {
     it.each(PHONE_BOARDS)('is built on a $cols x $rows board ($tier)', ({ cellPx, cols, rows }) => {
       const s = createTagState({ grid: { cols, rows }, layout: 'faceToFace', arena, cellPx })
-      expect(s.pillars.length + s.portals.length + s.tunnels.length).toBeGreaterThan(0)
+      expect(s.pillars.length + s.portals.length).toBeGreaterThan(0)
     })
 
     it.each(PHONE_BOARDS)('leaves a way between the riders on a $cols x $rows board ($tier), clear of both', ({ cellPx, cols, rows }) => {
@@ -147,7 +147,7 @@ describe('createTagState', () => {
       const s = createTagState({ grid, layout: 'faceToFace', arena, cellPx })
       const heads = [s.players[1].head, s.players[2].head]
       expect(distanceField(grid, [cellIndex(heads[0], grid)], s.blocked)[cellIndex(heads[1], grid)]).toBeGreaterThan(0)
-      const cells = [...s.pillars, ...s.portals.flatMap((p) => [p.a, p.b]), ...s.tunnels.flatMap((t) => t.cells)]
+      const cells = [...s.pillars, ...s.portals.flatMap((p) => [p.a, p.b])]
       for (const cell of cells) for (const head of heads) expect(Math.max(Math.abs(cell.x - head.x), Math.abs(cell.y - head.y))).toBeGreaterThanOrEqual(2)
     })
   })

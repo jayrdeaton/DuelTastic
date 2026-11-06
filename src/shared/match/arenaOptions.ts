@@ -4,11 +4,11 @@ export type SharedArenaVariant = 'open' | 'pillars' | 'gauntlet' | 'portals' | '
 
 type ArenaPickerMode = 'lightcycles' | 'snake' | 'tag' | 'turf'
 
-const ARENA_LABELS: Record<ArenaPickerMode, Record<SharedArenaVariant, string>> = {
+const ARENA_LABELS: Record<ArenaPickerMode, Partial<Record<SharedArenaVariant, string>>> = {
   lightcycles: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Portals', underpass: 'Underpass' },
   snake: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Holes', underpass: 'Tunnels' },
-  tag: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Holes', underpass: 'Tunnels' },
-  turf: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Gates', underpass: 'Tunnels' }
+  tag: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Holes' },
+  turf: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Gates' }
 }
 
 const ARENA_ICONS: Record<SharedArenaVariant, string> = {
@@ -19,7 +19,7 @@ const ARENA_ICONS: Record<SharedArenaVariant, string> = {
   underpass: 'tunnel'
 }
 
-const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Record<SharedArenaVariant, string>> = {
+const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Partial<Record<SharedArenaVariant, string>>> = {
   lightcycles: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
@@ -38,20 +38,23 @@ const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Record<SharedArenaVariant, str
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked holes',
-    underpass: 'Safe crossing tunnel'
+    portals: 'Linked holes'
   },
   turf: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
-    portals: 'Linked gates',
-    underpass: 'Safe crossing tunnel'
+    portals: 'Linked gates'
   }
 }
 
 const ORDER: SharedArenaVariant[] = ['open', 'pillars', 'gauntlet', 'portals', 'underpass']
 
+// Each game's arenas in menu order: those it has a label for. Turf and Tag have no Tunnels, which only
+// mean something where a rider can cross its own trail in them (LightCycles, Snake).
 export function sharedArenaOptions<T extends SharedArenaVariant>(mode: ArenaPickerMode): MenuOption<T>[] {
-  return ORDER.map((value) => ({ value: value as T, label: ARENA_LABELS[mode][value], description: ARENA_DESCRIPTIONS[mode][value], icon: ARENA_ICONS[value] }))
+  return ORDER.flatMap((value) => {
+    const label = ARENA_LABELS[mode][value]
+    return label ? [{ value: value as T, label, description: ARENA_DESCRIPTIONS[mode][value], icon: ARENA_ICONS[value] }] : []
+  })
 }

@@ -21,7 +21,9 @@ export type TurfLayout = 'faceToFace' | 'sideBySide'
 // 'home' is the gentler one: the rider loses their trail and flies back to the middle of their
 // biggest patch of ground to start again, so a round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
-export type TurfArena = SharedArenaVariant
+// Every shared arena but Tunnels, which only means something where a rider can cross its own trail
+// in it (LightCycles, Snake): Turf has its Cross Your Own Trail rule for that.
+export type TurfArena = Exclude<SharedArenaVariant, 'underpass'>
 
 // Turf's powerups, Turf's names for the effects every game shares (src/games/shared/powerups.ts:
 // same colors and icons everywhere; TURF_POWERUP_EFFECTS in constants.ts says which is which):
@@ -103,7 +105,6 @@ export interface TurfState {
   grid: GridSize
   obstacles: GridCell[]
   portals: { a: GridCell; b: GridCell }[]
-  tunnels: { cells: GridCell[] }[]
   // The static blocked cells from obstacle arenas.
   blocked: Uint8Array
   // Who owns each cell, row by row (index y * cols + x): 0 for nobody, else the seat.

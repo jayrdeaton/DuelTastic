@@ -29,6 +29,8 @@ export interface MatchControls {
   cancelBack: () => void
   backgroundPaused: boolean
   resume: () => void
+  // Quit Match?'s and Paused's Quit: leaves the match, past the back block.
+  quit: () => void
   // Settings, Quit Match? or the Paused dialog is up: the game's steps (and clock) stop.
   paused: boolean
   // Told the round's phase by useMatchFlow, which is the first to know it.
@@ -52,9 +54,18 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // card itself already offers the same exit path.
   const shouldConfirmBack = roundHistory.length > 0 && !matchOver && phase !== 'roundOver'
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
-  usePreventRemove(shouldConfirmBack, () => {
-    requestBack()
+  // The block stops every navigation off this screen while it's on, Quit's own included, so quit()
+  // marks the way out first and the block lets that one through with `repeat` (expo-router's way to
+  // carry on with a navigation it stopped). A system back or swipe opens Quit Match? instead.
+  const leavingRef = useRef(false)
+  usePreventRemove(shouldConfirmBack, ({ repeat }) => {
+    if (leavingRef.current) repeat()
+    else requestBack()
   })
+  const quit = useCallback(() => {
+    leavingRef.current = true
+    safeBack()
+  }, [])
   // Leaving the app mid-match latches a pause that only the Paused dialog's Resume clears (see
   // @tastic/core's useBackgroundPause). Skipped once the round is over, or while a dialog already
   // holds the pause.
@@ -63,7 +74,7 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // from Providers.tsx's KeepAwakeBridge). The OS auto-lock only counts touches, so keyboard
   // steering or watching the CPU could otherwise let a release build lock mid-match.
   useKeepAwake('game')
-  return { settingsOpen, setSettingsOpen, matchOver, setMatchOver, confirmVisible, requestBack, cancelBack, backgroundPaused, resume, paused: settingsOpen || confirmVisible || backgroundPaused, trackPhase }
+  return { settingsOpen, setSettingsOpen, matchOver, setMatchOver, confirmVisible, requestBack, cancelBack, backgroundPaused, resume, quit, paused: settingsOpen || confirmVisible || backgroundPaused, trackPhase }
 }
 
 export interface UseMatchFlowParams {

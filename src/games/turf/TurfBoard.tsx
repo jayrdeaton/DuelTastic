@@ -13,7 +13,6 @@ import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
 import { leadingTrailPath, trailPath } from '@/shared/match/trailPath'
-import { TunnelRoad } from '@/shared/match/TunnelRoad'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
@@ -26,7 +25,6 @@ export interface TurfBoardProps {
   owner: Uint8Array
   obstacles: GridCell[]
   portals: { a: GridCell; b: GridCell }[]
-  tunnels: { cells: GridCell[] }[]
   players: Record<TurfSeat, TurfPlayer>
   colors: Record<TurfSeat, string>
   orientationMode: 'faceToFace' | 'sideBySide'
@@ -35,7 +33,7 @@ export interface TurfBoardProps {
   tick: number
   // Milliseconds per step, for how long each glide from cell to cell takes.
   intervalMs: number
-  // The arena (pillars, gauntlet walls, gates, tunnels), in the pack's boardStructureColor.
+  // The arena (pillars, gauntlet walls, gates), in the pack's boardStructureColor.
   structureColor: string
   pickups: Pickup<TurfPowerup>[]
   pickupColor: string
@@ -120,7 +118,7 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
   )
 }
 
-export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TurfBoardProps) {
+export function TurfBoard({ grid, cellPx, owner, obstacles, portals, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TurfBoardProps) {
   const ground = useMemo(() => SEATS.map((seat) => groundPath(owner, grid, cellPx, seat)), [owner, grid, cellPx])
   const trails = useMemo(() => SEATS.map((seat) => trailPath(trailCells(players[seat]), cellPx)), [players, cellPx])
 
@@ -131,9 +129,6 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, tunnels, pl
           <Path key={`ground-${seat}`} path={ground[i]} color={colors[seat]} />
         ))}
         <ArenaBlocks cells={obstacles} cellPx={cellPx} color={structureColor} />
-        {tunnels.map((tunnel, index) => (
-          <TunnelRoad key={`tunnel-${index}`} tunnel={tunnel} cellPx={cellPx} color={structureColor} strokeWidth={EDGE_STROKE_WIDTH} />
-        ))}
         <Gates portals={portals} cellPx={cellPx} color={structureColor} />
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         {pickups.map((pickup) => (

@@ -267,3 +267,39 @@ describe('the difficulty levels', () => {
     expect(hardWins).toBeGreaterThanOrEqual(9)
   })
 })
+
+// Two CPUs on an arena with walls, under the 'home' rule so a crash doesn't end the game. Returns how
+// many times one rode into a wall.
+function wallCrashes(arena: TurfRules['arena'], ownTrailDeadly: boolean, seed: number, ticks: number) {
+  const random = seeded(seed)
+  const rules: TurfRules = { arena, crash: 'home', ownTrailDeadly, powerups: [] }
+  let s = startTurf(createTurfState({ grid: { cols: 48, rows: 100 }, layout: 'faceToFace', arena }))
+  expect(s.obstacles.length).toBeGreaterThan(0)
+  const plans: Record<TurfSeat, TurfCpuPlan | null> = { 1: null, 2: null }
+  let crashes = 0
+  for (let i = 0; i < ticks && s.phase === 'playing'; i++) {
+    for (const seat of [1, 2] as const) {
+      const cpu = applyTurfCpu(s, seat, 'hard', plans[seat], rules, random)
+      plans[seat] = cpu.plan
+      s = cpu.state
+    }
+    s = tickTurf(s, rules, random)
+    for (const seat of s.events.crashed) {
+      const at = s.players[seat].crashCell!
+      if (isInBounds(at, s.grid) && s.blocked[at.y * s.grid.cols + at.x] === 1) crashes++
+    }
+  }
+  return crashes
+}
+
+describe('the CPU on an arena with walls', () => {
+  // Cross Your Own Trail used to empty the mask the CPU steers by, walls and all (the review of
+  // 167f893), so it rode straight into pillars and gauntlet walls.
+  for (const arena of ['pillars', 'gauntlet'] as const) {
+    for (const ownTrailDeadly of [true, false]) {
+      it(`never rides into a wall on ${arena}${ownTrailDeadly ? '' : ', crossing its own trail'}`, () => {
+        for (let seed = 1; seed <= 4; seed++) expect(wallCrashes(arena, ownTrailDeadly, seed, 800)).toBe(0)
+      })
+    }
+  }
+})

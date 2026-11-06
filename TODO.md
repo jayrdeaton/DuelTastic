@@ -8,11 +8,11 @@ Nothing open: the 2026-10-15 live checks passed and keep-awake is in (see CLAUDE
 
 ## After launch
 
-1. ✅ **Android hardware back and web browser back skip "Quit Match?"** (audit F093) — fixed 2026-10-26 by adding route-level back prevention on match screens that routes back attempts through the existing Quit Match confirmation flow.
-2. ✅ **The Update Available prompt and toasts stay portrait while the screen is turned** (audit F007) — fixed 2026-10-26 by passing live rotation to UpdateDialog and mounting root toasts in a rotated frame.
-3. ✅ **Home's hero trails keep animating under `/lobby` and `/game`** (audit F016) — fixed 2026-10-26 by gating hero-trail animation on Home focus and active app state.
-4. ✅ **The tick loop rounds every tick up to a whole frame** (audit F065) — fixed 2026-10-26 in LightCycles and Snake by switching to fixed-step accumulation with bounded catch-up and retuning speed intervals to preserve feel.
-5. ✅ **A lobby shared-setting dropdown can open toward the wrong edge during the panel-swap fade** (audit F225; from reading the code, not reproduced) — fixed 2026-10-26 by threading panel-layout rotation through shared setting dropdown triggers.
+1. ✅ **Android hardware back and web browser back skip "Quit Match?"** (audit F093). Fixed 2026-10-26 with a route-level back block (`usePreventRemove`) that sends a back through Quit Match?. That block also stopped Quit's own navigation, so Quit Match?'s and Paused's Quit did nothing once a round had been played; fixed 2026-11-06 (CLAUDE.md, "Quit, Tunnels and Turf's CPU on walls").
+2. ✅ **The Update Available prompt and toasts stay portrait while the screen is turned** (audit F007). Fixed 2026-10-26 by passing live rotation to UpdateDialog and mounting root toasts in a rotated frame.
+3. ✅ **Home's hero trails keep animating under `/lobby` and `/game`** (audit F016). Fixed 2026-10-26 by gating hero-trail animation on Home focus and active app state.
+4. ✅ **The tick loop rounds every tick up to a whole frame** (audit F065). Fixed 2026-10-26 in LightCycles and Snake by switching to fixed-step accumulation with bounded catch-up and retuning speed intervals to preserve feel.
+5. ✅ **A lobby shared-setting dropdown can open toward the wrong edge during the panel-swap fade** (audit F225; from reading the code, not reproduced). Fixed 2026-10-26 by threading panel-layout rotation through shared setting dropdown triggers.
 
 ## Expo SDK 58 follow-ups (2026-10-16)
 

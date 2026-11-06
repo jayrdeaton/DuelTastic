@@ -2,7 +2,7 @@ import { useAutoPaperTheme } from '@rific/auto-paper'
 import { IconButton } from '@rific/feedback-press'
 import { getFixedZoneRotation, getViewRotation, useOrientationState } from '@tastic/core'
 import { ConfirmDialog } from '@tastic/hud'
-import { safeBack, SettingsDialog } from '@tastic/shell'
+import { SettingsDialog } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -55,6 +55,8 @@ export interface MatchOverlaysProps {
   // useMatchControls' background-pause latch and its resume, for the Paused dialog below.
   backgroundPaused: boolean
   onResume: () => void
+  // useMatchControls' quit, for Quit Match?'s and Paused's Quit.
+  onConfirmQuit: () => void
 }
 
 // Every floating in-match dialog, shared by LightCycles' and Turf's round screens and rendered as
@@ -74,7 +76,7 @@ export interface MatchOverlaysProps {
 // whole overlay distorted a full-width/half-height zone into a narrow, tall sliver that no longer
 // lined up with where a player could actually touch. FakeLandscapeView is still the right tool for
 // genuinely-whole-screen content with no fixed shape to match - just not this.
-export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, desktopWeb, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume }: MatchOverlaysProps) {
+export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, desktopWeb, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume, onConfirmQuit }: MatchOverlaysProps) {
   // The ONE orientation read in this component, feeding both angles below. Lock Orientation freezes
   // it app-wide (see the shell's RootLayout, OrientationBridge), so while that's on, every overlay here
   // holds still together: fixed-zone and single-seat content alike, including a two-player fixed-zone
@@ -146,10 +148,10 @@ export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen,
       approved, deliberate trade-off. The pip row (same component OnboardingOverlay itself uses) is
       kept as the dialog's message content, showing exactly what's at stake instead of a sentence
       restating the round count. */}
-      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={safeBack} onCancel={cancelBack} rotation={singleSeatRotation} />
+      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={onConfirmQuit} onCancel={cancelBack} rotation={singleSeatRotation} />
       {/* Shown when the app comes back from the background mid-match (see useBackgroundPause above):
       play stays frozen until Resume, so a match never restarts before the player is back and ready. */}
-      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={onResume} onCancel={safeBack} rotation={singleSeatRotation} />
+      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={onResume} onCancel={onConfirmQuit} rotation={singleSeatRotation} />
 
       {/* Back (onboarding only) + Settings chip buttons - here rather than in the round screen for the
       identical reason as every other floating overlay in this component: they need the live

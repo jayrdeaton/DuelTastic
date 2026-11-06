@@ -1,6 +1,6 @@
 import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
 
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
+import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 // Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
@@ -8,7 +8,7 @@ import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
 
 import { TAG_DAZE_MS, TAG_EFFECT_MS, TAG_FREEZE_MS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_PILLAR_MARGIN_PX, TAG_PILLAR_MARGIN_TIGHT_PX, TAG_PILLAR_SIZE_PX, TAG_PILLAR_SPACING_PX, TAG_PILLAR_SPACING_TIGHT_PX, TAG_POWERUP_EFFECTS, TAG_POWERUPS, TAG_REACH_PX, TAG_SPEED_INTERVAL_MS, TAG_TAIL_CELLS, TAG_UNIT_PX } from './constants'
-import type { TagArena, TagEvents, TagLayout, TagMeasures, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState, TagTunnel } from './types'
+import type { TagArena, TagEvents, TagLayout, TagMeasures, TagOutcome, TagPillar, TagPlayer, TagPowerup, TagRule, TagSeat, TagState } from './types'
 
 const SEATS: readonly TagSeat[] = [1, 2]
 
@@ -132,7 +132,6 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
       : buildArenaObstacles(arena, grid, layout, p1OnRight)
   const pillars = arena === 'pillars' ? pillarBlocks : obstacles.map((cell) => ({ x: cell.x, y: cell.y, width: 1, height: 1 }))
   const portals = buildArenaPortals(arena, grid, layout, p1OnRight)
-  const tunnels: TagTunnel[] = buildArenaTunnels(arena, grid, layout, p1OnRight)
   const blocked = new Uint8Array(grid.cols * grid.rows)
   for (const cell of obstacles) {
     blocked[cell.y * grid.cols + cell.x] = 1
@@ -141,7 +140,7 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
     const { head, direction } = start(seat)
     return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS(), dazedThrough: 0, stuck: false }
   }
-  return { phase: 'onboarding', grid, pillars, portals, tunnels, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS(), measures: measuresFor(cellPx, intervalMs) }
+  return { phase: 'onboarding', grid, pillars, portals, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS(), measures: measuresFor(cellPx, intervalMs) }
 }
 
 export function startTag(state: TagState): TagState {

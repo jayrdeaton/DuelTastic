@@ -58,3 +58,31 @@ describe('backing out around the end of a round', () => {
     expect(safeBack).not.toHaveBeenCalled()
   })
 })
+
+// The callback usePreventRemove was last handed: what runs when the block stops a navigation.
+const onBlocked = () => jest.mocked(usePreventRemove).mock.calls.at(-1)![1]!
+
+describe('Quit past the back block', () => {
+  it('lets the navigation Quit fires through', async () => {
+    const rendered = await renderHook(useRound, { initialProps: { phase: 'playing' as GamePhase } })
+    expect(backHeld()).toBe(true)
+
+    await act(async () => rendered.result.current.quit())
+    expect(safeBack).toHaveBeenCalledTimes(1)
+    // The block stops that navigation, as expo-router's does while it's on, and carries it on.
+    const repeat = jest.fn()
+    await act(async () => onBlocked()({ data: { action: { type: 'GO_BACK' } }, repeat } as never))
+    expect(repeat).toHaveBeenCalledTimes(1)
+    expect(rendered.result.current.confirmVisible).toBe(false)
+  })
+
+  it('asks Quit Match? for any other navigation it stops (a system back or swipe)', async () => {
+    const rendered = await renderHook(useRound, { initialProps: { phase: 'playing' as GamePhase } })
+
+    const repeat = jest.fn()
+    await act(async () => onBlocked()({ data: { action: { type: 'GO_BACK' } }, repeat } as never))
+    expect(repeat).not.toHaveBeenCalled()
+    expect(rendered.result.current.confirmVisible).toBe(true)
+    expect(safeBack).not.toHaveBeenCalled()
+  })
+})

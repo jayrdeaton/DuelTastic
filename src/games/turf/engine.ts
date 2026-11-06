@@ -2,7 +2,7 @@ import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, isOp
 
 // Shared with LightCycles: each rider starts at the middle of their own half, facing the other. Moves
 // to shared/ when this repo takes the pack layout.
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
+import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, cellsOnTick, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, takePickup } from '@/shared/powerups'
 
@@ -51,7 +51,6 @@ export interface CreateTurfStateParams {
 export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open', homeRadius = TURF_HOME_RADIUS, starts = {} }: CreateTurfStateParams): TurfState {
   const obstacles = buildArenaObstacles(arena, grid, layout, p1OnRight)
   const portals = buildArenaPortals(arena, grid, layout, p1OnRight)
-  const tunnels = buildArenaTunnels(arena, grid, layout, p1OnRight)
   const blocked = new Uint8Array(grid.cols * grid.rows)
   for (const cell of obstacles) blocked[cellIndex(cell, grid)] = 1
   const owner = new Uint8Array(grid.cols * grid.rows)
@@ -66,7 +65,7 @@ export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open
     return { head, direction, pendingDirection: null, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS(), flight: null }
   }
   const players = { 1: player(1), 2: player(2) }
-  return { phase: 'onboarding', grid, obstacles, portals, tunnels, blocked, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
+  return { phase: 'onboarding', grid, obstacles, portals, blocked, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
 }
 
 export function startTurf(state: TurfState): TurfState {
@@ -214,12 +213,6 @@ function buildPortalLookup(portals: { a: GridCell; b: GridCell }[]): Map<string,
   return lookup
 }
 
-function buildTunnelCellSet(tunnels: { cells: GridCell[] }[]): Set<string> {
-  const cells = new Set<string>()
-  for (const tunnel of tunnels) for (const cell of tunnel.cells) cells.add(cellKey(cell))
-  return cells
-}
-
 // Adds claims to the board, the biggest first, so where two overlap the tighter loop keeps the cells.
 // Two claims of the same size that overlap leave the shared cells as they were.
 function applyClaims(owner: Uint8Array, blocked: Uint8Array, ground: Record<TurfSeat, number>, captured: Record<TurfSeat, number>, claims: { seat: TurfSeat; cells: number[] }[]) {
@@ -269,7 +262,6 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   if (state.phase !== 'playing') return state
   const { grid } = state
   const portalLookup = buildPortalLookup(state.portals)
-  const tunnelCellSet = buildTunnelCellSet(state.tunnels)
   const tick = state.tick + 1
   const stepsOf = (p: TurfPlayer) => (isFlying(p, tick) ? 0 : cellsOnTick(p.effects, tick))
   const steps: Record<TurfSeat, number> = { 1: stepsOf(state.players[1]), 2: stepsOf(state.players[2]) }
@@ -293,20 +285,10 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   const events = NO_EVENTS()
 
   // Each cell's trails, one bit per seat (trails can overlap where a Fence let one rider through).
-  // Tunnel cells live on their own layer so riders can cross over surface trails there.
-  const surfaceTrails = new Uint8Array(grid.cols * grid.rows)
-  const tunnelTrails = new Uint8Array(grid.cols * grid.rows)
-  for (const seat of SEATS) {
-    for (const cell of players[seat].trail) {
-      const target = tunnelCellSet.has(cellKey(cell)) ? tunnelTrails : surfaceTrails
-      target[cellIndex(cell, grid)] |= seat
-    }
-  }
+  const trails = new Uint8Array(grid.cols * grid.rows)
+  for (const seat of SEATS) for (const cell of players[seat].trail) trails[cellIndex(cell, grid)] |= seat
   const clearTrail = (seat: TurfSeat) => {
-    for (const cell of players[seat].trail) {
-      const target = tunnelCellSet.has(cellKey(cell)) ? tunnelTrails : surfaceTrails
-      target[cellIndex(cell, grid)] &= ~seat
-    }
+    for (const cell of players[seat].trail) trails[cellIndex(cell, grid)] &= ~seat
   }
 
   // Sent home this tick: done moving until the next one.
@@ -370,8 +352,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
 
     for (const seat of movers) {
       if (!onBoard(seat)) continue
-      const target = tunnelCellSet.has(cellKey(next[seat]!)) ? tunnelTrails : surfaceTrails
-      const bits = target[cellIndex(next[seat]!, grid)]
+      const bits = trails[cellIndex(next[seat]!, grid)]
       if (bits & other(seat)) crash(other(seat))
       if (bits & seat && rules.ownTrailDeadly) crash(seat)
     }
@@ -397,8 +378,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
         }
         players[seat] = { ...p, head: cell, direction: directions[seat], pendingDirection: null, trail: [], leftFrom: null }
       } else {
-        const target = tunnelCellSet.has(cellKey(cell)) ? tunnelTrails : surfaceTrails
-        target[cellIndex(cell, grid)] |= seat
+        trails[cellIndex(cell, grid)] |= seat
         players[seat] = { ...p, head: cell, direction: directions[seat], pendingDirection: null, trail: [...p.trail, cell], leftFrom: p.trail.length === 0 ? p.head : p.leftFrom }
       }
     }
@@ -435,7 +415,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
 
   if (rules.powerups.length > 0 && pickups.length === 0) {
     // Never next to a trail, and on nobody's ground when it can, so going for it means leaving home.
-    const cell = pickupCell({ grid, heads: [players[1].head, players[2].head], blocked: (i) => surfaceTrails[i] !== 0 || tunnelTrails[i] !== 0 || state.blocked[i] === 1, preferred: (i) => owner[i] === 0 && state.blocked[i] === 0 }, random)
+    const cell = pickupCell({ grid, heads: [players[1].head, players[2].head], blocked: (i) => trails[i] !== 0 || state.blocked[i] === 1, preferred: (i) => owner[i] === 0 && state.blocked[i] === 0 }, random)
     if (cell) pickups = [newPickup(tick, cell, rules.powerups, random)]
   }
 

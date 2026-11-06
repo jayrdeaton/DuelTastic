@@ -147,9 +147,18 @@ export default function PlayScreen() {
 
   // See localPhase's own comment above.
   const phase: GamePhase = state.phase === 'roundOver' ? 'gameOver' : localPhase
-  usePreventRemove(phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), () => {
-    requestBack()
+  // The block stops every navigation off this screen while it's on, Quit's own included, so
+  // handleQuit marks the way out first and the block lets that one through with `repeat`
+  // (expo-router's way to carry on with a navigation it stopped), as the pack's useMatchControls does.
+  const leavingRef = useRef(false)
+  usePreventRemove(phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), ({ repeat }) => {
+    if (leavingRef.current) repeat()
+    else requestBack()
   })
+  const handleQuit = useCallback(() => {
+    leavingRef.current = true
+    safeBack()
+  }, [])
 
   const handleBeginPlaying = useCallback(() => {
     beginPlaying()
@@ -520,10 +529,10 @@ export default function PlayScreen() {
       {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/LightCycles'/
       Pong's identical "Quit Match?" prompt - see onBackPress's own comment above for why it's
       gated on there being an actual score to lose. Its message is progressMessage above. */}
-      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={safeBack} onCancel={cancelBack} rotation={overlayRotation} />
+      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={handleQuit} onCancel={cancelBack} rotation={overlayRotation} />
       {/* Shown when the app comes back from the background mid-match (see useBackgroundPause above):
       play stays frozen until Resume, so a match never restarts before the player is back and ready. */}
-      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={resume} onCancel={safeBack} rotation={overlayRotation} />
+      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={resume} onCancel={handleQuit} rotation={overlayRotation} />
     </View>
   )
 }

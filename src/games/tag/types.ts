@@ -22,8 +22,9 @@ export type TagLayout = 'faceToFace' | 'sideBySide'
 // loses. 'leastIt': whoever spent less of the round as It wins.
 export type TagRule = 'hotPotato' | 'leastIt'
 
-// What's on the board besides the riders.
-export type TagArena = SharedArenaVariant
+// What's on the board besides the riders: every shared arena but Tunnels, which only means something
+// where a rider can cross a trail in it, and Tag has no trails to cross.
+export type TagArena = Exclude<SharedArenaVariant, 'underpass'>
 
 // Tag's powerups, Tag's names for the effects every game shares (src/games/shared/powerups.ts: same
 // colors and icons everywhere; TAG_POWERUP_EFFECTS in constants.ts says which is which):
@@ -57,10 +58,6 @@ export interface TagPillar {
 export interface TagPortal {
   a: GridCell
   b: GridCell
-}
-
-export interface TagTunnel {
-  cells: GridCell[]
 }
 
 export interface TagPlayer {
@@ -100,7 +97,6 @@ export interface TagState {
   grid: GridSize
   pillars: TagPillar[]
   portals: TagPortal[]
-  tunnels: TagTunnel[]
   // The blocked cells, row by row (index y * cols + x): 1 where nobody can ride.
   blocked: Uint8Array
   players: Record<TagSeat, TagPlayer>
