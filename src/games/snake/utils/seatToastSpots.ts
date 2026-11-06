@@ -12,7 +12,7 @@ export function seatToastSpots(split: SeatSplit, orientation: Pick<OrientationSt
   const rotation = getFixedZoneRotation(orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown)
   // A browser window wider than tall: side by side at one screen, both upright, each on their own side.
   if (split.orientationMode === 'sideBySide') return split.p1OnRight ? { 1: { rotation, zone: 'right' }, 2: { rotation, zone: 'left' } } : { 1: { rotation, zone: 'left' }, 2: { rotation, zone: 'right' } }
-  // Snake 1's half is the bottom, snake 2's the top: face to face, snake 2 turned across the table; in a landscape hold, side by side, both
-  // turned the same quarter (see @tastic/core's getOpposingZoneRotation).
+  // Snake 1's half is the bottom, snake 2's the top: face to face, snake 2 turned across the table (see @tastic/core's
+  // getOpposingZoneRotation). Since @tastic/core 0.15 nothing is turned a quarter.
   return { 1: { rotation, zone: 'bottom' }, 2: { rotation: getOpposingZoneRotation(rotation), zone: 'top' } }
 }

@@ -7,8 +7,8 @@ import type { SeatToastSpot } from '@/shared/SeatToasters'
 
 /** Where each 2 Player seat's countdown, round card and unlock toasts go (OnboardingOverlay, RoundOverDialog, SeatToasters): the half of the
  * screen that's theirs, turned the way they read it from the live hold (`orientation`). On a phone that's their half of the always
- * face-to-face board (zoneSideFor: player 1 the bottom, player 2 the top, where their touch zones are): face to face, player 2 turned across
- * the table; in a landscape hold, both turned the same quarter (side by side). At a computer, or in a browser window wider than tall, the
+ * face-to-face board (zoneSideFor: player 1 the bottom, player 2 the top, where their touch zones are), player 2 turned across the table.
+ * Since @tastic/core 0.15 the reading is the window's shape and nothing is turned a quarter. At a computer, or in a browser window wider than tall, the
  * players sit side by side at a landscape screen (Jay, 2026-10-20), so it's the left and right halves, player 1 on the left (WASD by
  * default) and player 2 on the right (the arrow keys), both upright. */
 export function seatToastSpots(orientation: Pick<OrientationState, 'orientationMode' | 'p1OnRight' | 'upsideDown'>, desktopWeb: boolean, boardOrientationMode: OrientationMode, p1OnRight: boolean, web = Platform.OS === 'web'): Record<Player, SeatToastSpot> {

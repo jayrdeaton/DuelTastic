@@ -11,9 +11,11 @@ describe('seatToastSpots', () => {
     expect(seatToastSpots({ ...portrait, upsideDown: true }, false, 'faceToFace', true, false)).toEqual({ 1: { rotation: 0, zone: 'bottom' }, 2: { rotation: 180, zone: 'top' } })
   })
 
-  it('keeps players side by side in a landscape hold on their own half, both turned the same quarter', () => {
-    expect(seatToastSpots({ orientationMode: 'sideBySide', p1OnRight: true, upsideDown: false }, false, 'faceToFace', true, false)).toEqual({ 1: { rotation: -90, zone: 'bottom' }, 2: { rotation: -90, zone: 'top' } })
-    expect(seatToastSpots({ orientationMode: 'sideBySide', p1OnRight: false, upsideDown: false }, false, 'faceToFace', true, false)).toEqual({ 1: { rotation: 90, zone: 'bottom' }, 2: { rotation: 90, zone: 'top' } })
+  it('turns nothing a quarter for a wide window on native: the halves stay face to face', () => {
+    // Since @tastic/core 0.15 the reading is the window's shape, and nothing is drawn turned (getFixedZoneRotation is always 0).
+    const faceToFace = { 1: { rotation: 0, zone: 'bottom' }, 2: { rotation: 180, zone: 'top' } }
+    expect(seatToastSpots({ orientationMode: 'sideBySide', p1OnRight: true, upsideDown: false }, false, 'faceToFace', true, false)).toEqual(faceToFace)
+    expect(seatToastSpots({ orientationMode: 'sideBySide', p1OnRight: false, upsideDown: false }, false, 'faceToFace', true, false)).toEqual(faceToFace)
   })
 
   it('splits a computer screen, or a browser window wider than tall, left and right, both upright', () => {
