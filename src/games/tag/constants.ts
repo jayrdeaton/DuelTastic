@@ -24,6 +24,12 @@ export const TAG_IT_SPEED = 1.15
 // grid size (it was "within a cell" on 22pt cells, 22pt straight across and 31pt diagonally).
 export const TAG_REACH_PX = 28
 
+// It's glow, out to its reach in its own color: held at TAG_GLOW_OPACITY from its middle out past the
+// head, to TAG_GLOW_HOLD of its radius, then fading to nothing at its rim. The board's glow and the
+// Home icon's (GameIcon.tsx) both.
+export const TAG_GLOW_OPACITY = 0.55
+export const TAG_GLOW_HOLD = 0.55
+
 // How long a new It stands frozen after being tagged: the other rider's head start, and what stops an
 // instant tag-back.
 export const TAG_FREEZE_MS = 1500

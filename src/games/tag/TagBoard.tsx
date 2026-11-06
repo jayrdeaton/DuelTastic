@@ -15,7 +15,7 @@ import { tailTrailPath } from '@/shared/match/trailPath'
 import { useRiderGlide } from '@/shared/match/useRiderGlide'
 import { type Pickup, speedMultiplier } from '@/shared/powerups'
 
-import { TAG_IT_SPEED, TAG_REACH_PX, TAG_TAIL_PX } from './constants'
+import { TAG_GLOW_HOLD, TAG_GLOW_OPACITY, TAG_IT_SPEED, TAG_REACH_PX, TAG_TAIL_PX } from './constants'
 import { isDazed } from './engine'
 import type { TagPhase, TagPillar, TagPlayer, TagPortal, TagPowerup, TagSeat } from './types'
 
@@ -52,12 +52,10 @@ const TAIL_OPACITY = 0.4
 // sat among the powerup effect rings, 4 to 10pt outside a head, in the same thin stroke, and in a
 // seat color like cyan or gold read as Safe or Dash). At its biggest it's It's reach, TAG_REACH_PX: a
 // rider touching it is tagged. It breathes in from there by IT_GLOW_PULSE of its radius, and its
-// opacity is held from its middle out past the head (to IT_GLOW_HOLD of its radius), then fades to
+// opacity is held from its middle out past the head (to TAG_GLOW_HOLD of its radius), then fades to
 // nothing at its rim.
 const IT_GLOW_PULSE = 0.12
-const IT_GLOW_OPACITY = 0.55
-const IT_GLOW_HOLD = 0.55
-const IT_GLOW_POSITIONS = [0, IT_GLOW_HOLD, 1]
+const IT_GLOW_POSITIONS = [0, TAG_GLOW_HOLD, 1]
 const IT_PULSE_MS = 620
 // A frozen It's countdown ring, at its reach: It can't tag until the ring is gone.
 const FREEZE_RING_WIDTH = 3
@@ -84,7 +82,7 @@ function ItGlow({ x, y, color, pulse }: { x: SharedValue<number>; y: SharedValue
   const center = useDerivedValue(() => vec(x.value, y.value))
   const colors = useMemo(() => {
     const [red, green, blue] = Skia.Color(color)
-    const held = Float32Array.of(red, green, blue, IT_GLOW_OPACITY)
+    const held = Float32Array.of(red, green, blue, TAG_GLOW_OPACITY)
     return [held, held, Float32Array.of(red, green, blue, 0)]
   }, [color])
   return (

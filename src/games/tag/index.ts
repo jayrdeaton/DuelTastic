@@ -1,7 +1,8 @@
-import { type GameDefinition, imageGameIcon } from '@tastic/shell'
+import type { GameDefinition } from '@tastic/shell'
 
 import type { KeyScheme } from '@/shared/match/types'
 
+import { GameIcon } from './GameIcon'
 import { getGuideSteps, GUIDE_VERSION, guideActions, guideReducer, selectGuideVersionSeen } from './guide'
 import PlayScreen from './PlayScreen'
 import { playerSettings } from './settings'
@@ -23,7 +24,7 @@ export const tag: GameDefinition = {
   id: 'tag',
   title: 'Tag',
   blurb: 'The playground classic. Catch the other rider, then run.',
-  icon: imageGameIcon({ light: require('./art/icon-light.png'), dark: require('./art/icon-dark.png') }),
+  icon: GameIcon,
   seatTwo: ['cpu', 'person'],
   // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
   twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
