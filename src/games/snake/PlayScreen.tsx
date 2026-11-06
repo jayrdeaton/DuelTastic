@@ -3,7 +3,7 @@ import { useKeepAwake } from '@rific/core'
 import { IconButton, useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
-import { computeContentBounds, FakeLandscapeView, getFixedZoneRotation, getViewRotation, rotateInsets, useBackgroundPause, useOrientationState, useRotation, useSettledWindowDimensions } from '@tastic/core'
+import { computeContentBounds, useBackgroundPause, useSettledWindowDimensions } from '@tastic/core'
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
 import { liveplayActions, safeBack, SettingsDialog, useActiveRound, useProfiles } from '@tastic/shell'
@@ -299,11 +299,9 @@ export default function PlayScreen() {
   const [newHighScoreSeats, setNewHighScoreSeats] = useState<Partial<Record<SnakeId, boolean>>>({})
   // Where each 2 Player seat's unlock toasts go (SeatToasters below): the half of the screen that's
   // theirs, turned the way they read it, so seat 2, rotated 180° from seat 1 face to face, reads its
-  // own the right way up, and players side by side each get theirs on their own side. Lock
-  // Orientation freezes the reading this comes from, as it does the countdown's.
+  // own the right way up, and players side by side each get theirs on their own side.
   const seatSplit = useSeatSplit()
-  const orientation = useOrientationState()
-  const seatSpots = useMemo(() => seatToastSpots({ orientationMode: seatSplit.orientationMode, p1OnRight: seatSplit.p1OnRight }, { orientationMode: orientation.orientationMode, p1OnRight: orientation.p1OnRight, upsideDown: orientation.upsideDown }), [seatSplit.orientationMode, seatSplit.p1OnRight, orientation.orientationMode, orientation.p1OnRight, orientation.upsideDown])
+  const seatSpots = useMemo(() => seatToastSpots({ orientationMode: seatSplit.orientationMode, p1OnRight: seatSplit.p1OnRight }), [seatSplit.orientationMode, seatSplit.p1OnRight])
 
   useEffect(() => {
     if (phase !== 'gameOver') {
@@ -409,14 +407,6 @@ export default function PlayScreen() {
     if (phase === 'playing') clearToasts()
   }, [phase, clearToasts])
 
-  // SettingsDialog, GameOverDialog and the Quit Match? ConfirmDialog are each a single centered card
-  // with no second seat's zone to stay neutral for (see each one's own doc): useRotation's
-  // getViewRotation, not getFixedZoneRotation, so a portrait upside-down hold repositions/flips them
-  // too instead of being silently ignored, same as Home's own identical rotation for its
-  // Settings dialog. Lock Orientation needs nothing here: the shell's OrientationBridge
-  // freezes the shared reading this (and GameActionChips' own read below) comes from.
-  const overlayRotation = useRotation()
-
   useEffect(() => {
     if (state.phase !== 'roundOver') return undefined
     const deadSnakes = state.snakes.filter((s) => !s.alive)
@@ -515,16 +505,16 @@ export default function PlayScreen() {
       stale timers. */}
       {phase === 'onboarding' && !paused && state.snakes[0] && <OnboardingOverlay onComplete={handleBeginPlaying} humanPlayers={humanPlayers} seatSpots={mode === 'twoPlayer' ? seatSpots : undefined} colors={state.snakes[1] ? { snake1: state.snakes[0].color, snake2: state.snakes[1].color } : { snake1: state.snakes[0].color }} />}
 
-      {phase === 'gameOver' && showGameOverDialog && <GameOverDialog score={humanScore} highScore={Math.max(seatStats(1).byMode[mode].bestScore, humanScore)} isNewHighScore={newHighScoreSeats[1] ?? false} onRetry={handleRetry} onHome={safeBack} outcome={gameOverOutcome} opponentScore={mode !== 'solo' ? opponentScore : undefined} seatResults={mode === 'twoPlayer' && state.outcome ? { 1: gameOverSeatResult(1), 2: gameOverSeatResult(2) } : undefined} seatSpots={seatSpots} rotation={overlayRotation} />}
+      {phase === 'gameOver' && showGameOverDialog && <GameOverDialog score={humanScore} highScore={Math.max(seatStats(1).byMode[mode].bestScore, humanScore)} isNewHighScore={newHighScoreSeats[1] ?? false} onRetry={handleRetry} onHome={safeBack} outcome={gameOverOutcome} opponentScore={mode !== 'solo' ? opponentScore : undefined} seatResults={mode === 'twoPlayer' && state.outcome ? { 1: gameOverSeatResult(1), 2: gameOverSeatResult(2) } : undefined} seatSpots={seatSpots} />}
 
       {/* Kept as its own sibling of the board/gesture tree above, mirroring LightCycles'/BoxHockey's
-      identically-motivated MatchOverlays split - this live tilt subscription's re-renders should
-      never cascade into the board/touch-input subtree. showBack now matches showSettings' own
+      identically-motivated MatchOverlays split - its live window read's re-renders should never
+      cascade into the board/touch-input subtree. showBack now matches showSettings' own
       gameOver gating (previously back-only during onboarding) - matches BoxHockey's/AirHockey's/
       Pong's identical always-available back button, so there's a consistent way out of a finished
       round beyond GameOverDialog's own Home button. */}
       <GameActionChips showBack={controlsVisible} showSettings={controlsVisible} onBack={requestBack} onSettings={() => setSettingsOpen(true)} humanPlayerCount={humanPlayers.length} desktopWeb={isDesktopWeb} />
-      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} rotation={overlayRotation} />
+      <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} />
 
       {/* 2 Player's unlock toasts, a Toaster per seat turned to face it (see the gameOver effect
       above); every other toast stays on the app's main Toaster (@tastic/shell's Providers.tsx). */}
@@ -533,10 +523,10 @@ export default function PlayScreen() {
       {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/LightCycles'/
       Pong's identical "Quit Match?" prompt - see onBackPress's own comment above for why it's
       gated on there being an actual score to lose. Its message is progressMessage above. */}
-      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={handleQuit} onCancel={cancelBack} rotation={overlayRotation} />
+      <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={handleQuit} onCancel={cancelBack} />
       {/* Shown when the app comes back from the background mid-match (see useBackgroundPause above):
       play stays frozen until Resume, so a match never restarts before the player is back and ready. */}
-      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={resume} onCancel={handleQuit} rotation={overlayRotation} />
+      <ConfirmDialog visible={backgroundPaused} title='Paused' message={progressMessage} confirmLabel='Resume' cancelLabel='Quit' icon='pause-circle-outline' destructive={false} onConfirm={resume} onCancel={handleQuit} />
     </View>
   )
 }
@@ -558,31 +548,19 @@ interface GameActionChipsProps {
 // Back/settings chips. Two structurally different layouts, not just two positions:
 //
 // Shared neutral zone (needsSharedNeutralZone - 2 human players, face-to-face): both players read
-// this same pair of chips from opposite sides of the device, so they sit on whichever dividing line
-// is actually live right now rather than a fixed corner - unlike LightCycles'/BoxHockey's boards
-// (always face-to-face, so the wall/midline is always horizontal), Snake's board genuinely supports
-// both face-to-face AND side-by-side (see TouchInputLayer.tsx/OnboardingOverlay.tsx's own zone
-// splits, both of which switch on the same live orientationMode) - but needsSharedNeutralZone is
-// only ever true for face-to-face (side-by-side already gives each seat its own dedicated half, see
-// its own doc), so the neutral line itself is always the horizontal seam OnboardingOverlay's
-// zoneTop/zoneBottom split already establishes; edgeSlotVertical (full height, fixed left/right edge,
-// vertically centered) lands exactly on it. Each chip only ever rotates its own glyph in place here
-// (getFixedZoneRotation): repositioning it under a live tilt would put it inside whichever seat's
-// zone is now upside-down to the OTHER seat instead of staying neutral, the same reason BoxHockey's
-// board-anchored buttons never move either.
+// this same pair of chips from opposite sides of the device, so they sit on the dividing line rather
+// than a fixed corner - unlike LightCycles'/BoxHockey's boards (always face-to-face, so the
+// wall/midline is always horizontal), Snake's board genuinely supports both face-to-face AND
+// side-by-side (see useSeatSplit) - but needsSharedNeutralZone is only ever true for face-to-face
+// (side-by-side already gives each seat its own dedicated half, see its own doc), so the neutral
+// line itself is always the horizontal seam OnboardingOverlay's zoneTop/zoneBottom split already
+// establishes; edgeSlotVertical (full height, fixed left/right edge, vertically centered) lands
+// exactly on it.
 //
 // Corner layout (solo, vsCpu, or 2P side-by-side - no second seat's zone to protect): the same
 // top-left/top-right corners every other screen in the fleet uses (see Home's stats/settings
-// buttons), wrapped in FakeLandscapeView so the pair actually MOVES to wherever "top" visually is
-// right now - including a portrait upside-down hold, which the neutral branch's fixed-zone rotation
-// deliberately ignores - rather than just spinning in place while staying glued to the device's fixed
-// physical top edge.
-//
-// Both branches read the one shared orientation reading, so Lock Orientation (frozen app-wide by
-// the shell's OrientationBridge) holds both of them still, the neutral branch included: which
-// branch shows, and where, stays put for as long as the lock is on.
+// buttons).
 function GameActionChips({ showBack, showSettings, onBack, onSettings, humanPlayerCount, desktopWeb }: GameActionChipsProps) {
-  const { orientationMode, p1OnRight, upsideDown } = useOrientationState()
   const seatSplit = useSeatSplit()
   const insets = useSafeAreaInsets()
   const { dark } = useAutoPaperTheme()
@@ -592,48 +570,21 @@ function GameActionChips({ showBack, showSettings, onBack, onSettings, humanPlay
   if (!showBack && !showSettings) return null
 
   const neutral = !desktopWeb && needsSharedNeutralZone(seatSplit.orientationMode, humanPlayerCount)
-
-  if (neutral) {
-    const rotation = getFixedZoneRotation(orientationMode, p1OnRight, upsideDown)
-    const chipRotation = rotation % 360 !== 0 ? { transform: [{ rotate: `${rotation}deg` }] } : undefined
-    const backSlot = [styles.edgeSlotVertical, { left: insets.left }]
-    const settingsSlot = [styles.edgeSlotVertical, { right: insets.right }]
-    return (
-      <>
-        {showBack && (
-          <View style={backSlot}>
-            <IconButton icon='arrow-left' iconColor={fg} containerColor={chipBg} style={[styles.chipButton, chipRotation]} size={24} onPress={onBack} accessibilityLabel='Back' />
-          </View>
-        )}
-        {showSettings && (
-          <View style={settingsSlot}>
-            <IconButton icon='cog' iconColor={fg} containerColor={chipBg} style={[styles.chipButton, chipRotation]} size={24} onPress={onSettings} accessibilityLabel='Settings' />
-          </View>
-        )}
-      </>
-    )
-  }
-
-  const cornerRotation = getViewRotation(orientationMode, p1OnRight, upsideDown)
-  const cornerInsets = rotateInsets(insets, cornerRotation)
-
-  // passThrough: this full-bleed frame only exists to give the two corner slots something to rotate,
-  // so it must never swallow the board's touches or the result card's buttons beneath it. A
-  // `pointerEvents: 'box-none'` style can't do that: FakeLandscapeView hands the style to its inner
-  // View, and react-native-web drops it there, which left the whole frame clickable on web.
+  const backSlot = neutral ? [styles.edgeSlotVertical, { left: insets.left }] : [styles.cornerSlot, { top: 8 + insets.top, left: 8 + insets.left }]
+  const settingsSlot = neutral ? [styles.edgeSlotVertical, { right: insets.right }] : [styles.cornerSlot, { top: 8 + insets.top, right: 8 + insets.right }]
   return (
-    <FakeLandscapeView passThrough style={StyleSheet.absoluteFill}>
+    <>
       {showBack && (
-        <View style={[styles.cornerSlot, { top: 8 + cornerInsets.top, left: 8 + cornerInsets.left }]}>
+        <View style={backSlot}>
           <IconButton icon='arrow-left' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onBack} accessibilityLabel='Back' />
         </View>
       )}
       {showSettings && (
-        <View style={[styles.cornerSlot, { top: 8 + cornerInsets.top, right: 8 + cornerInsets.right }]}>
+        <View style={settingsSlot}>
           <IconButton icon='cog' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onSettings} accessibilityLabel='Settings' />
         </View>
       )}
-    </FakeLandscapeView>
+    </>
   )
 }
 

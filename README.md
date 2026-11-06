@@ -29,7 +29,7 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 - **Controls:** swipe to steer on touch devices. On desktop web each player picks the mouse, WASD, the arrow keys, IJKL or the numpad, each with its own powerup key.
 - **Player profiles:** saved names, colors and tags. On iOS the roster is shared with my other games through an App Group, and on games.infinitetoken.com through the browser's storage. A profile's color pick for a seat is kept for this pack only.
 - **Stats and achievements:** each game keeps its own stats and its own achievements (123 in all: LightCycles, Turf and Tag 30 each, Snake 33). One stats screen filters by player and by game, with per-profile and device-wide records, player rankings and day streaks. Unlocks show as toasts; in 2 Player each player's toasts face them in their own half.
-- **Settings:** sound, haptics, appearance, blur, Lock Orientation, Keep Awake, Edge Guard (an iOS option that makes system edge gestures need a second swipe during play), and Check for Updates. A match pauses when the app goes to the background and stays Paused until a player taps Resume.
+- **Settings:** sound, haptics, appearance, blur, Keep Awake, Edge Guard (an iOS option that makes system edge gestures need a second swipe during play), and Check for Updates. A match pauses when the app goes to the background and stays Paused until a player taps Resume.
 
 ## Under the hood
 
@@ -46,7 +46,7 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 
 | Package | Used for |
 | --- | --- |
-| [`@tastic/core`](https://github.com/jayrdeaton/React-Native-Game-Core) | Orientation and rotation handling, background pause, rotation-aware status bar, content bounds, themed root background, config plugin for the native portrait lock |
+| [`@tastic/core`](https://github.com/jayrdeaton/React-Native-Game-Core) | Seat mode from the window's shape, background pause, content bounds, themed root background |
 | [`@tastic/grid`](https://www.npmjs.com/package/@tastic/grid) | Grid coordinate math, stepping, edge wrap |
 | [`@tastic/input`](https://www.npmjs.com/package/@tastic/input) | Swipe/key direction resolution, key schemes, control inversion, conflict-free seat scheme assignment |
 | [`@tastic/split-screen`](https://www.npmjs.com/package/@tastic/split-screen) | Two-player zone layout and seat placement |

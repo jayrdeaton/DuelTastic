@@ -24,10 +24,10 @@ export const snake: GameDefinition = {
   icon: GameIcon,
   // Nobody is Solo: one snake, scored, the run ending on the first crash.
   seatTwo: ['cpu', 'person', 'nobody'],
-  // On a phone 2 Player always splits face to face, snake 1 at the bottom, however it's held; a
-  // desktop window splits by its shape, side by side when wider than tall (see useSeatSplit), and the
-  // loadout follows it there too.
-  twoPlayerSeats: { faceToFaceOnWeb: false, followUpsideDown: false },
+  // 2 Player splits by the window's shape (see useSeatSplit): face to face in a tall one, snake 1 at
+  // the bottom (a phone, always portrait), side by side in a wide one (a landscape iPad, a desktop
+  // window), and the loadout follows it.
+  sideBySideWhenWide: true,
   reducers: { ...playerSettings.reducers, ...snakeStats.reducers, snakeGuide: guideReducer },
   Provider: snakeStats.Provider,
   useLoadout,

@@ -1,10 +1,10 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { Button } from '@rific/feedback-press'
-import { getFixedZoneRotation, getOpposingZoneRotation, useOrientationState } from '@tastic/core'
 import { overlayActionStyles, OverlayBackdrop, OverlayCard, useOverlayCardColors } from '@tastic/hud'
 import { StyleSheet, View } from 'react-native'
 import { Icon, Text } from 'react-native-paper'
 
+import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
 import { SnakeId } from '@/games/snake/types'
 import type { SeatToastSpot } from '@/shared/SeatToasters'
 
@@ -40,13 +40,8 @@ export interface GameOverDialogProps {
   seatResults?: Record<SnakeId, GameOverSeatResult>
   // 2 Player: each seat's half and reading angle, the same spots its unlock toasts use
   // (PlayScreen.tsx's seatSpots, from seatToastSpots), so a player's card sits where their toasts do,
-  // facing the same way. Without it the cards follow the raw hold, as OnboardingOverlay does.
+  // facing the same way. Without it the cards follow useSeatSplit, as OnboardingOverlay does.
   seatSpots?: Record<SnakeId, SeatToastSpot>
-  // Live physical-hold rotation (see @tastic/core's getViewRotation) for the single centered card,
-  // which has no per-seat zone to match, so it just rotates its own content in place; defaults to 0
-  // for call sites with no live orientation signal handy. The per-seat cards ignore it and rotate
-  // like OnboardingOverlay's two zones instead.
-  rotation?: number
 }
 
 // Styled after LightCycles' RoundOverDialog.tsx. Solo and Vs CPU have one human, so they get its
@@ -55,11 +50,11 @@ export interface GameOverDialogProps {
 // seat in that seat's own zone, each telling its own player whether they won, with their own
 // score and best, and its own Quit/Play Again (either seat's press acts at once, as the single
 // card's does; there is no LightCycles-style Rematch handshake).
-export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHome, outcome, opponentScore, seatResults, seatSpots, rotation = 0 }: GameOverDialogProps) {
+export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHome, outcome, opponentScore, seatResults, seatSpots }: GameOverDialogProps) {
   const { colors } = useAutoPaperTheme()
   // Read unconditionally (hooks can't sit behind the seatResults branch below); only the split
   // branch uses it.
-  const { orientationMode, p1OnRight, upsideDown } = useOrientationState()
+  const { orientationMode, p1OnRight } = useSeatSplit()
   const { fg, fgMuted } = useOverlayCardColors()
   // Quit is outlined, the fleet's secondary action (ConfirmDialog's Cancel), so Play Again is the one
   // filled button and the easier reach (see button ordering below, same as LightCycles'
@@ -76,8 +71,8 @@ export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHo
     const isFaceToFace = orientationMode === 'faceToFace'
     const snake1Zone = seatSpots ? zoneStyles[seatSpots[1].zone] : isFaceToFace ? styles.zoneBottom : p1OnRight ? styles.zoneRight : styles.zoneLeft
     const snake2Zone = seatSpots ? zoneStyles[seatSpots[2].zone] : isFaceToFace ? styles.zoneTop : p1OnRight ? styles.zoneLeft : styles.zoneRight
-    const snake1Rotation = seatSpots ? seatSpots[1].rotation : getFixedZoneRotation(orientationMode, p1OnRight, upsideDown)
-    const snake2Rotation = seatSpots ? seatSpots[2].rotation : getOpposingZoneRotation(snake1Rotation)
+    const snake1Rotation = seatSpots ? seatSpots[1].rotation : 0
+    const snake2Rotation = seatSpots ? seatSpots[2].rotation : isFaceToFace ? 180 : 0
     const onColors: Record<SnakeId, string> = { 1: colors.onPrimary, 2: colors.onSecondary }
 
     const renderCard = (seat: SnakeId, cardRotation: number) => {
@@ -152,7 +147,7 @@ export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHo
 
   return (
     <OverlayBackdrop style={styles.backdrop}>
-      <OverlayCard style={[styles.card, rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}>
+      <OverlayCard style={styles.card}>
         <Icon source={icon} size={64} color={color} />
         <Text variant='headlineLarge' style={[styles.title, { color }]}>
           {text}

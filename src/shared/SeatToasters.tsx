@@ -1,15 +1,14 @@
 import { Toaster } from '@rific/toaster'
-import { rotateDimensions, rotateInsets, type ViewRotation } from '@tastic/core'
 import { type ReactNode, useCallback } from 'react'
 import { StyleSheet, useWindowDimensions, View } from 'react-native'
 import { type EdgeInsets, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SEAT_TOAST_STACKS } from '@/shared/useUnlockToasts'
 
-/** Where one 2 Player seat's toasts go: the half of the screen that's theirs (the screen as the app lays it out, portrait-locked, so 'top'
- * is the device's own top half however it's held), and the angle they read the screen at. */
+/** Where one 2 Player seat's toasts go: the half of the window that's theirs, and the angle they read it at (180 for the far seat face to
+ * face, 0 otherwise). */
 export interface SeatToastSpot {
-  rotation: ViewRotation
+  rotation: 0 | 180
   zone: 'bottom' | 'left' | 'right' | 'top'
 }
 
@@ -57,17 +56,21 @@ function zoneRect(zone: SeatToastSpot['zone'], width: number, height: number) {
   }
 }
 
-// One half of the screen, turned to `rotation` about its own center (at a quarter turn, sized to the half's footprint turned too), with the
-// safe-area insets of the screen edges it touches moved onto its own edges, so the stack sits at its seat's edge clear of the notch or home
-// indicator there. Lets touches through, so only the toasts take them.
+// A frame turned 180 has its own top at the window's bottom and its own left at the window's right, so the window's insets swap edges.
+function frameInsetsFor(insets: EdgeInsets, rotation: SeatToastSpot['rotation']): EdgeInsets {
+  return rotation === 180 ? { bottom: insets.top, left: insets.right, right: insets.left, top: insets.bottom } : insets
+}
+
+// One half of the window, turned to `rotation` about its own center, with the safe-area insets of the window edges it touches moved onto its
+// own edges, so the stack sits at its seat's edge clear of the notch or home indicator there. Lets touches through, so only the toasts take
+// them.
 function SeatFrame({ children, rotation, stack, zone }: SeatToastSpot & { children: ReactNode; stack: string }) {
   const window = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const rect = zoneRect(zone, window.width, window.height)
-  const turned = rotateDimensions(rect.width, rect.height, rotation)
-  const frameInsets = rotateInsets({ ...insets, [INNER_EDGE[zone]]: 0 }, rotation)
+  const frameInsets = frameInsetsFor({ ...insets, [INNER_EDGE[zone]]: 0 }, rotation)
   return (
-    <View pointerEvents='box-none' style={[styles.frame, { height: turned.height, left: rect.left + (rect.width - turned.width) / 2, top: rect.top + (rect.height - turned.height) / 2, transform: [{ rotate: `${rotation}deg` }], width: turned.width }]} testID={`${stack}-frame`}>
+    <View pointerEvents='box-none' style={[styles.frame, { ...rect, transform: [{ rotate: `${rotation}deg` }] }]} testID={`${stack}-frame`}>
       <SafeAreaInsetsContext.Provider value={frameInsets}>{children}</SafeAreaInsetsContext.Provider>
     </View>
   )

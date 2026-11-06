@@ -67,22 +67,6 @@ describe('SeatToasters', () => {
     expect(insetsIn('seat-2')).toEqual({ bottom: 34, left: 0, right: 0, top: 47 })
   })
 
-  it("turns a half a quarter in a landscape hold, sized to the half's turned footprint", async () => {
-    await render(
-      <SeatToasters
-        spots={{
-          1: { rotation: 90, zone: 'bottom' },
-          2: { rotation: 90, zone: 'top' }
-        }}
-      />
-    )
-    // The half is W wide and H/2 tall; turned, the frame is H/2 wide and W tall, centered on the half.
-    expect(frame('seat-1')).toEqual({ height: W, left: (W - H / 2) / 2, rotate: '90deg', top: H / 2 + (H / 2 - W) / 2, width: H / 2 })
-    expect(frame('seat-2')).toEqual({ height: W, left: (W - H / 2) / 2, rotate: '90deg', top: (H / 2 - W) / 2, width: H / 2 })
-    // Turned a quarter clockwise, a frame's bottom is the screen's left edge.
-    expect(insetsIn('seat-1').bottom).toBe(INSETS.left)
-  })
-
   it('lets touches through the frame', async () => {
     await render(
       <SeatToasters

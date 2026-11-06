@@ -58,7 +58,6 @@ describe("the pack store's storage key", () => {
     const state = store.getState()
 
     expect(selectLightCyclesGuide(state)).toBe(0)
-    expect(state.appSettings.lockOrientation).toBe(false)
     expect(playerSettings.select(state)).toEqual(DEFAULT_SETTINGS)
     expect(await storage.getItem('lightcycles:root')).toBe(oldSave)
   })

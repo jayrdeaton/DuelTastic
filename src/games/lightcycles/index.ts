@@ -24,9 +24,8 @@ export const lightCycles: GameDefinition = {
   blurb: 'The classic light-trail duel. Box the other rider in.',
   icon: GameIcon,
   seatTwo: ['cpu', 'person'],
-  // Always face to face, on the web too: the board is one tall, fixed split (see MatchScreen), and
-  // an upside-down hold never swaps who is at the bottom.
-  twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
+  // No sideBySideWhenWide: 2 Player is face to face in any window, since the board is one tall,
+  // fixed split (see MatchScreen).
   reducers: { ...playerSettings.reducers, ...lightCyclesStats.reducers, lightcyclesGuide: guide },
   Provider: lightCyclesStats.Provider,
   useLoadout,

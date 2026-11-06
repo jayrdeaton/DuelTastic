@@ -26,8 +26,7 @@ export const tag: GameDefinition = {
   blurb: 'The playground classic. Catch the other rider, then run.',
   icon: GameIcon,
   seatTwo: ['cpu', 'person'],
-  // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
-  twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
+  // The same board as LightCycles' (see MatchScreen): face to face in any window.
   reducers: { ...playerSettings.reducers, ...tagStats.reducers, tagGuide: guideReducer },
   Provider: tagStats.Provider,
   useLoadout,

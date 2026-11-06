@@ -1,4 +1,3 @@
-import { getOpposingZoneRotation, ViewRotation } from '@tastic/core'
 import { MONO_FONT } from '@tastic/hud'
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
@@ -16,17 +15,10 @@ export interface OnboardingOverlayProps {
   orientationMode: OrientationMode
   // Only meaningful when orientationMode === 'sideBySide' - see GameBoard.tsx's identical prop.
   p1OnRight: boolean
-  // Live physical-hold rotation (see @tastic/core's getViewRotation) - applied to the
-  // countdown text itself, NOT the zone it sits in. Deliberately not a FakeLandscapeView wrapper
-  // around this whole component: that swaps width/height to fake a landscape-shaped screen, which
-  // is right for the loadout's genuinely-wide layout but wrong here - these zones must stay exactly
-  // the same shape as the board's own fixed split (see orientationMode's own comment), or the
-  // swap distorts a full-width/half-height zone into a narrow, tall one that no longer matches
-  // where TouchInputLayer's own (unrotated) hit zones actually are. Only the text rotates in place.
-  rotation: ViewRotation
   // 2 Player: each seat's half and reading angle (MatchOverlays' seatSpots), the same spots its
-  // unlock toasts use. On a phone that's this component's own split and turn; at a computer it's
-  // the left and right halves, both upright, since the players sit side by side there.
+  // unlock toasts use. On a device that's this component's own split, player 2 turned 180 face to
+  // face; at a computer it's the left and right halves, both upright, since the players sit side by
+  // side there.
   seatSpots?: Record<Player, SeatToastSpot>
   humanPlayers: Player[]
   p1Color: string
@@ -49,7 +41,7 @@ const COUNTDOWN_STAGES = ['3', '2', '1', 'GO!']
 // right-side-up from that player's actual physical side of the device rather than upside-down.
 // Solo (vs CPU) gets a single full-board zone - TouchInputLayer never splits the board when
 // there's only one human to swipe on it. The whole thing fades out and calls onComplete.
-export default function OnboardingOverlay({ orientationMode, p1OnRight, rotation, seatSpots, humanPlayers, p1Color, p2Color, roundHistory, onComplete }: OnboardingOverlayProps) {
+export default function OnboardingOverlay({ orientationMode, p1OnRight, seatSpots, humanPlayers, p1Color, p2Color, roundHistory, onComplete }: OnboardingOverlayProps) {
   const opacity = useSharedValue(1)
   const [stageIndex, setStageIndex] = useState(0)
 
@@ -93,18 +85,15 @@ export default function OnboardingOverlay({ orientationMode, p1OnRight, rotation
   const zoneStyles = { top: styles.zoneTop, bottom: styles.zoneBottom, left: styles.zoneLeft, right: styles.zoneRight }
   const p1Zone = zoneStyles[seatSpots ? seatSpots[1].zone : zoneSideFor(1, orientationMode, p1OnRight)]
   const p2Zone = zoneStyles[seatSpots ? seatSpots[2].zone : zoneSideFor(2, orientationMode, p1OnRight)]
-  const p1Rotation = seatSpots ? seatSpots[1].rotation : rotation
-  // getOpposingZoneRotation, not the board's own always-'faceToFace' orientationMode above (that's
-  // structural - isFaceToFace is always true here, so it can never stand in for an actual live
-  // landscape hold) - see that function's own doc for why P2's digit only gets the +180 baseline
-  // flip in portrait, not landscape.
-  const p2Rotation = seatSpots ? seatSpots[2].rotation : getOpposingZoneRotation(rotation)
+  const p1Rotation = seatSpots ? seatSpots[1].rotation : 0
+  // Without seatSpots, the far seat face to face reads its digit from across the table.
+  const p2Rotation = seatSpots ? seatSpots[2].rotation : orientationMode === 'faceToFace' ? 180 : 0
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]} pointerEvents='none'>
       {humanPlayers.length === 1 ? (
         <View style={[styles.zone, styles.zoneFull, { borderColor: humanPlayers[0] === 1 ? p1Color : p2Color, backgroundColor: `${humanPlayers[0] === 1 ? p1Color : p2Color}22` }]}>
-          <Text style={[styles.countdown, rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}>{countdown}</Text>
+          <Text style={styles.countdown}>{countdown}</Text>
           {/* Stacked in normal flow below the digit (rather than the absolutely-centered overlay
           used for the two-zone case below) since a solo zone's countdown is already dead-center -
           overlaying pips there would sit right on top of the digit instead of under it. */}

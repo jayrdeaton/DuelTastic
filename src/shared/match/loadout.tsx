@@ -95,10 +95,10 @@ export function useKeySchemeControl(controlScheme: Record<Player, KeyScheme>, se
   const isTouchPrimary = useIsTouchPrimaryDevice()
   const show = Platform.OS === 'web' && !isTouchPrimary
   return useCallback(
-    (seat: Player, host: PopoverHost, { seatColor, mutedColor, dark, rotation }: SeatControlLook) => {
+    (seat: Player, host: PopoverHost, { seatColor, mutedColor, dark }: SeatControlLook) => {
       if (!show) return undefined
       const other: Player = seat === 1 ? 2 : 1
-      return <SectionedDropdown id={`p${seat}-control`} host={host} icon='keyboard-outline' accessibilityLabel='Control scheme' sections={[{ kind: 'single', id: 'controls', options: KEY_SCHEME_OPTIONS, value: controlScheme[seat], onChange: (scheme: KeyScheme) => setControlScheme(assignSeatScheme(controlScheme, seat, scheme)), takenValue: p2IsHuman ? controlScheme[other] : undefined }]} accentColor={seatColor} mutedColor={mutedColor} dark={dark} rotation={rotation} />
+      return <SectionedDropdown id={`p${seat}-control`} host={host} icon='keyboard-outline' accessibilityLabel='Control scheme' sections={[{ kind: 'single', id: 'controls', options: KEY_SCHEME_OPTIONS, value: controlScheme[seat], onChange: (scheme: KeyScheme) => setControlScheme(assignSeatScheme(controlScheme, seat, scheme)), takenValue: p2IsHuman ? controlScheme[other] : undefined }]} accentColor={seatColor} mutedColor={mutedColor} dark={dark} />
     },
     [show, controlScheme, setControlScheme, p2IsHuman]
   )

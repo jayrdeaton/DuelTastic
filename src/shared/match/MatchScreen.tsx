@@ -83,16 +83,12 @@ export function MatchScreen<S extends MatchSettings>({ gameId, defaults, Round, 
   const activeRound = useActiveRound(gameId, defaults)
   const [{ settings, gameMode }] = useState(() => ({ settings: activeRound.settings, gameMode: (activeRound.mode === 'twoPlayer' ? 'twoPlayer' : 'vsCpu') as GameMode }))
 
-  // The board itself always uses the SAME split, regardless of how the phone is physically being
-  // held - 'faceToFace' (P1 near/bottom, P2 far/top, moving toward each other along the tall axis),
-  // never 'sideBySide'. This isn't a frozen live reading, it's a fixed constant: the render surface
-  // is permanently portrait-shaped (the app is portrait-locked at the OS level, and unlike the
-  // loadout, the board/touch layer is deliberately never wrapped in FakeLandscapeView - see
-  // MatchOverlays' own comment on why that'd risk breaking swipe-to-turn), so it can never actually
-  // become wide enough for a genuine left/right split to make sense. p1OnRight is meaningless
-  // alongside a permanently-'faceToFace' mode, so it's just a fixed placeholder. The floating
-  // dialogs and countdown still turn to match whichever way the phone is actually held (or stay put
-  // while Lock Orientation is on): see MatchOverlays.
+  // The board itself always uses the SAME split, whatever the window's shape - 'faceToFace' (P1
+  // near/bottom, P2 far/top, moving toward each other along the tall axis), never 'sideBySide'. This
+  // isn't a frozen live reading, it's a fixed constant: these games don't set the shell's
+  // sideBySideWhenWide, so a wide window (a landscape iPad, a desktop browser) centers the same tall
+  // board. p1OnRight is meaningless alongside a permanently-'faceToFace' mode, so it's just a fixed
+  // placeholder. Where the dialogs and countdown sit for each seat: see MatchOverlays.
   const [orientationMode] = useState<OrientationMode>('faceToFace')
   const [p1OnRight] = useState(true)
 

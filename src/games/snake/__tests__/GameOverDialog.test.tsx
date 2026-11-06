@@ -78,15 +78,15 @@ describe('GameOverDialog 2 Player cards', () => {
   })
 
   it("puts each card in its seat's toast spot, turned the same way", async () => {
-    // A phone held sideways: still bottom and top halves (useSeatSplit), both turned the same quarter,
-    // where the raw hold (faceToFace in this file's mock) would turn seat 2 across the table.
-    const spots = { 1: { rotation: -90, zone: 'bottom' }, 2: { rotation: -90, zone: 'top' } } as const
+    // Side by side, both upright, where the split without spots (faceToFace in this file's mock) would
+    // put seat 1 at the bottom and turn seat 2 across the table.
+    const spots = { 1: { rotation: 0, zone: 'left' }, 2: { rotation: 0, zone: 'right' } } as const
     await render(<GameOverDialog score={0} highScore={0} isNewHighScore={false} onRetry={jest.fn()} onHome={jest.fn()} seatResults={SEATS} seatSpots={spots} />)
     const flat = (style: unknown) => Object.assign({}, ...[style].flat(Infinity).filter(Boolean))
     const zones = [screen.getByTestId('seat-result-1'), screen.getByTestId('seat-result-2')]
-    expect(zones.map((zone) => flat(zone.props.style).top)).toEqual(['50%', 0])
+    expect(zones.map((zone) => flat(zone.props.style).left)).toEqual([0, '50%'])
     const cardRotations = zones.map((zone) => flat((zone.children[0] as unknown as { props: { style: unknown } }).props.style).transform?.[0]?.rotate)
-    expect(cardRotations).toEqual(['-90deg', '-90deg'])
+    expect(cardRotations).toEqual([undefined, undefined])
   })
 
   it('shows DRAW on both cards for a draw', async () => {

@@ -19,9 +19,6 @@ export interface MatchOverDialogProps {
   profileNames?: Partial<Record<Player, string>>
   gameMode: GameMode
   onExit: () => void
-  // Live physical-hold rotation (see @tastic/split-screen's getViewRotation) - applied to the card
-  // itself, not the outer overlay. No per-player offset: there's only ever one shared card here.
-  rotation?: number
 }
 
 // Shown once either player quits from the round-over dialog (see RoundOverDialog) - "it's over"
@@ -30,7 +27,7 @@ export interface MatchOverDialogProps {
 // dialog (matching MatchOverlays' quit-confirmation dialog) rather than RoundOverDialog's
 // per-player split - there's no decision left for either player to make here, just a result to
 // read before backing out to the menu.
-export default function MatchOverDialog({ roundHistory, colors, profileNames = {}, gameMode, onExit, rotation = 0 }: MatchOverDialogProps) {
+export default function MatchOverDialog({ roundHistory, colors, profileNames = {}, gameMode, onExit }: MatchOverDialogProps) {
   const { colors: themeColors } = useAutoPaperTheme()
   const { fg } = useOverlayCardColors()
 
@@ -54,7 +51,7 @@ export default function MatchOverDialog({ roundHistory, colors, profileNames = {
 
   return (
     <OverlayBackdrop>
-      <OverlayCard style={rotation % 360 !== 0 && { transform: [{ rotate: `${rotation}deg` }] }}>
+      <OverlayCard>
         <Icon source={icon} size={64} color={titleColor} />
         <Text variant='headlineLarge' style={[styles.overlayTitle, { color: titleColor }]}>
           {title}

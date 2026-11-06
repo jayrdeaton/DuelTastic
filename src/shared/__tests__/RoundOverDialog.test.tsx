@@ -31,7 +31,7 @@ const SIDE_BY_SIDE = { 1: { rotation: 0, zone: 'left' }, 2: { rotation: 0, zone:
 const renderCards = async (props: Partial<Parameters<typeof RoundOverDialog>[0]> = {}) => {
   const onRequestRematch = jest.fn()
   const onQuit = jest.fn()
-  await render(<RoundOverDialog orientationMode='faceToFace' p1OnRight={false} rotation={0} humanPlayers={[1, 2]} gameMode='twoPlayer' outcome={{ type: 'win', winner: 1 }} colors={COLORS} rematchReady={{ 1: false, 2: false }} onRequestRematch={onRequestRematch} onQuit={onQuit} {...props} />)
+  await render(<RoundOverDialog orientationMode='faceToFace' p1OnRight={false} humanPlayers={[1, 2]} gameMode='twoPlayer' outcome={{ type: 'win', winner: 1 }} colors={COLORS} rematchReady={{ 1: false, 2: false }} onRequestRematch={onRequestRematch} onQuit={onQuit} {...props} />)
   return { onQuit, onRequestRematch }
 }
 

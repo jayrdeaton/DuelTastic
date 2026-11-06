@@ -29,9 +29,6 @@
       "bundleIdentifier": "com.infinitetoken.DuelTastic",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UISupportedInterfaceOrientations~ipad": [
-          "UIInterfaceOrientationPortrait"
-        ],
         "UIViewControllerBasedStatusBarAppearance": true
       },
       "icon": {
@@ -43,8 +40,7 @@
           "group.com.infinitetoken.tastic",
           "group.com.infinitetoken.tastic"
         ]
-      },
-      "requireFullScreen": true
+      }
     },
     "android": {
       "package": "com.infinitetoken.dueltastic",

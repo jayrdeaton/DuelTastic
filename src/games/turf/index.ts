@@ -26,8 +26,7 @@ export const turf: GameDefinition = {
   blurb: 'Loop out from your ground to claim more. Cut their trail.',
   icon: GameIcon,
   seatTwo: ['cpu', 'person'],
-  // The same board as LightCycles' (see MatchScreen): always face to face, never flipped.
-  twoPlayerSeats: { faceToFaceOnWeb: true, followUpsideDown: false },
+  // The same board as LightCycles' (see MatchScreen): face to face in any window.
   reducers: { ...playerSettings.reducers, ...turfStats.reducers, turfGuide: guideReducer },
   Provider: turfStats.Provider,
   useLoadout,

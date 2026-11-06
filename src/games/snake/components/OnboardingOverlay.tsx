@@ -1,5 +1,4 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
-import { getFixedZoneRotation, getOpposingZoneRotation, getViewRotation, useOrientationState } from '@tastic/core'
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
@@ -39,19 +38,12 @@ const COUNTDOWN_STAGES = ['3', '2', '1', 'GO!']
 // A temporary UI layer over the board - not part of the Skia canvas (see SnakeBoard.tsx's own
 // header comment). Ported from LightCycles' OnboardingOverlay.tsx: a "3, 2, 1, GO!" countdown that
 // fades out and calls onComplete. Dropped relative to that version, per the build brief: round-
-// history pips (no match-series/rematch concept in Snake) are gone entirely. Rotation is computed
-// internally from this component's own useOrientationState() read rather than threaded in as a
-// `rotation` prop the way SettingsDialog/GameOverDialog take it: the two-zone branch's
-// getFixedZoneRotation/getOpposingZoneRotation pair (fixed physical zones, glyph-only rotate) and
-// the solo/vsCpu branch's getViewRotation (no zone to protect, so a portrait upside-down hold flips
-// its countdown too) are different enough that folding them into one shared prop wouldn't simplify
-// anything here. Lock Orientation needs no handling of its own: the shell's OrientationBridge
-// freezes the shared reading both branches come from.
+// history pips (no match-series/rematch concept in Snake) are gone entirely. The solo/vsCpu
+// countdown is upright; in 2 Player only snake 2's digit turns, 180 face to face (seatSpots).
 export default function OnboardingOverlay({ onComplete, humanPlayers, colors, seatSpots }: OnboardingOverlayProps) {
   const { fonts } = useAutoPaperTheme()
   const opacity = useSharedValue(1)
   const [stageIndex, setStageIndex] = useState(0)
-  const { orientationMode, p1OnRight, upsideDown } = useOrientationState()
   const split = useSeatSplit()
 
   const { playCountdownTick, playCountdownGo } = useSnakeSounds()
@@ -95,13 +87,10 @@ export default function OnboardingOverlay({ onComplete, humanPlayers, colors, se
   // "snake 1 is always the human" convention) rather than left plain, so this zone reads
   // consistently with the two-zone case below instead of looking like a different, simpler mode.
   if (humanPlayers.length === 1) {
-    // Unlike the two-zone branch's getFixedZoneRotation below, there's no second seat's zone to
-    // protect, so a portrait upside-down hold flips this countdown too instead of being ignored.
-    const soloRotation = getViewRotation(orientationMode, p1OnRight, upsideDown)
     return (
       <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]} pointerEvents='none'>
         <View style={[styles.zone, styles.zoneFull, { borderColor: colors.snake1, backgroundColor: `${colors.snake1}22` }]}>
-          <Text style={[styles.countdown, { fontFamily: fonts.displayLarge.fontFamily }, soloRotation % 360 !== 0 && { transform: [{ rotate: `${soloRotation}deg` }] }]}>{countdown}</Text>
+          <Text style={[styles.countdown, { fontFamily: fonts.displayLarge.fontFamily }]}>{countdown}</Text>
         </View>
       </Animated.View>
     )
@@ -115,14 +104,14 @@ export default function OnboardingOverlay({ onComplete, humanPlayers, colors, se
   if (!colors.snake2) return null
 
   // Mirrors TouchInputLayer.tsx's own zone split exactly (face-to-face: near/bottom = snake 1,
-  // far/top = snake 2; side-by-side: whichever seat useOrientationState says is on the right gets
-  // the right zone), so the countdown zones never disagree with where a swipe actually registers.
+  // far/top = snake 2; side-by-side: whichever seat useSeatSplit says is on the right gets the right
+  // zone), so the countdown zones never disagree with where a swipe actually registers.
   const isFaceToFace = split.orientationMode === 'faceToFace'
   const zoneStyles = { bottom: styles.zoneBottom, left: styles.zoneLeft, right: styles.zoneRight, top: styles.zoneTop }
   const snake1Zone = seatSpots ? zoneStyles[seatSpots[1].zone] : isFaceToFace ? styles.zoneBottom : split.p1OnRight ? styles.zoneRight : styles.zoneLeft
   const snake2Zone = seatSpots ? zoneStyles[seatSpots[2].zone] : isFaceToFace ? styles.zoneTop : split.p1OnRight ? styles.zoneLeft : styles.zoneRight
-  const snake1Rotation = seatSpots ? seatSpots[1].rotation : getFixedZoneRotation(orientationMode, p1OnRight, upsideDown)
-  const snake2Rotation = seatSpots ? seatSpots[2].rotation : getOpposingZoneRotation(snake1Rotation)
+  const snake1Rotation = seatSpots ? seatSpots[1].rotation : 0
+  const snake2Rotation = seatSpots ? seatSpots[2].rotation : isFaceToFace ? 180 : 0
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]} pointerEvents='none'>
