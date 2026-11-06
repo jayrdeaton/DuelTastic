@@ -149,11 +149,15 @@ export default function PlayScreen() {
   const phase: GamePhase = state.phase === 'roundOver' ? 'gameOver' : localPhase
   // The block stops every navigation off this screen while it's on, Quit's own included, so
   // handleQuit marks the way out first and the block lets that one through with `repeat`
-  // (expo-router's way to carry on with a navigation it stopped), as the pack's useMatchControls does.
+  // (expo-router's way to carry on with a navigation it stopped), as the pack's useMatchControls does,
+  // turning the block off in the same handler, as expo-router asks of a `repeat`.
   const leavingRef = useRef(false)
-  usePreventRemove(phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), ({ repeat }) => {
-    if (leavingRef.current) repeat()
-    else requestBack()
+  const [leaving, setLeaving] = useState(false)
+  usePreventRemove(!leaving && phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), ({ repeat }) => {
+    if (leavingRef.current) {
+      setLeaving(true)
+      repeat()
+    } else requestBack()
   })
   const handleQuit = useCallback(() => {
     leavingRef.current = true

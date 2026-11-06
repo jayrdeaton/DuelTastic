@@ -303,3 +303,21 @@ describe('the CPU on an arena with walls', () => {
     }
   }
 })
+
+describe('leaving its ground', () => {
+  // The CPU on the top edge of its 7 x 7 ground, heading up, its loop planned straight out that way.
+  const atTheEdge = (opponent: GridCell, direction: Direction) => board(20, 20, { 1: rect(4, 10, 10, 16), 2: [{ x: 18, y: 0 }] }, { 1: { head: { x: 7, y: 10 }, direction: 'up' }, 2: { head: opponent, direction } })
+  const steady = () => 0.5
+
+  // Found in the 2026-11-04 playthrough: Bot stepped off its ground in front of a rider coming
+  // straight at it, who rode through the cell it had just left (the CPU's trail) the tick after.
+  it.each(['normal', 'hard'] as const)('waits on its ground while a rider coming straight at it could cut its first cell (%s)', (difficulty) => {
+    const { direction } = chooseTurfCpuMove(atTheEdge({ x: 7, y: 7 }, 'down'), 1, difficulty, null, HOME, steady)
+    expect(direction).not.toBe('up')
+  })
+
+  it.each(['normal', 'hard'] as const)('rides out once the way is clear (%s)', (difficulty) => {
+    const { direction } = chooseTurfCpuMove(atTheEdge({ x: 18, y: 0 }, 'left'), 1, difficulty, null, HOME, steady)
+    expect(direction).toBe('up')
+  })
+})

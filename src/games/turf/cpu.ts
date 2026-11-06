@@ -112,6 +112,8 @@ interface Reading {
   outside: boolean
   myBlocked: Uint8Array
   theirTrail: Uint8Array
+  // Steps from the other rider's head to every cell, around its own walls.
+  theirReach: Int32Array
   // Steps to its own ground from every cell.
   home: Int32Array
   ticksHome: number
@@ -149,7 +151,8 @@ function read(state: TurfState, seat: TurfSeat, rules: TurfRules): Reading {
     const theirHome = ticksForRider(stepsFrom(distanceField(grid, groundCells(owner, other(seat)), theirBlocked), grid, them.head, them.direction), them, tick)
     if (ticksToCut > ticksLeft(them.effects.shield, tick) && (theirHome < 0 || ticksToCut < theirHome) && (threat < 0 || ticksToCut < threat)) cut = toTheirTrail
   }
-  return { me, them, outside, myBlocked, theirTrail, home, ticksHome, threat, cut, ticksToCut }
+  const theirReach = distanceField(grid, [at(them.head)], theirBlocked)
+  return { me, them, outside, myBlocked, theirTrail, theirReach, home, ticksHome, threat, cut, ticksToCut }
 }
 
 // A new loop from where the CPU is: out the way with the most room past its ground (never straight
@@ -234,6 +237,23 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
     }
     return owner[at(cell)] === seat || r.home[at(cell)] >= 0
   }
+  // Whether heading `d` leaves trail the other rider could reach before the CPU gets it home, within
+  // its margin: the cell it lands on, or the trail it already has. Without this it stepped off its
+  // ground right in front of an oncoming rider, who rode through that cell the tick after.
+  const cuttable = (d: Direction) => {
+    let cell = me.head
+    for (let i = 0; i < mySteps; i++) {
+      cell = stepCell(cell, d)
+      if (owner[at(cell)] === seat) return false
+    }
+    const homeSteps = stepsFrom(r.home, grid, cell, d)
+    if (homeSteps < 0) return true
+    const ticksHome = 1 + ticksForRider(homeSteps, me, nextTick)
+    const reach = ticksForRider(r.theirReach[at(cell)], them, state.tick)
+    const reachCell = reach < 0 ? -1 : Math.max(reach, ticksLeft(me.effects.shield, state.tick))
+    const threat = r.threat < 0 ? reachCell : reachCell < 0 ? r.threat : Math.min(r.threat, reachCell)
+    return threat >= 0 && threat - ticksHome <= params.margin
+  }
 
   const danger = r.threat >= 0 && r.threat - r.ticksHome <= params.margin
 
@@ -257,7 +277,10 @@ export function chooseTurfCpuMove(state: TurfState, seat: TurfSeat, difficulty: 
   } else if (plan) wanted = plan.out
 
   const candidates = [me.direction, LEFT_OF[me.direction], RIGHT_OF[me.direction]]
-  const options = candidates.filter(safe)
+  const safeOptions = candidates.filter(safe)
+  // Of those, the ones that keep its trail out of the other rider's reach, when there are any.
+  const calm = safeOptions.filter((d) => !cuttable(d))
+  const options = calm.length > 0 ? calm : safeOptions
   let direction: Direction
   if (options.length === 0) {
     // Nothing safe: anything that stays on the board and off its own trail, else straight on.

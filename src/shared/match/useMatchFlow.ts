@@ -56,11 +56,17 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
   // The block stops every navigation off this screen while it's on, Quit's own included, so quit()
   // marks the way out first and the block lets that one through with `repeat` (expo-router's way to
-  // carry on with a navigation it stopped). A system back or swipe opens Quit Match? instead.
+  // carry on with a navigation it stopped). A system back or swipe opens Quit Match? instead. The
+  // block goes off in the same handler as `repeat`, the order expo-router documents (it warns
+  // otherwise): turned off any sooner, it can stand aside after it has stopped the navigation and no
+  // longer hand it to this callback, so Quit would do nothing again.
   const leavingRef = useRef(false)
-  usePreventRemove(shouldConfirmBack, ({ repeat }) => {
-    if (leavingRef.current) repeat()
-    else requestBack()
+  const [leaving, setLeaving] = useState(false)
+  usePreventRemove(shouldConfirmBack && !leaving, ({ repeat }) => {
+    if (leavingRef.current) {
+      setLeaving(true)
+      repeat()
+    } else requestBack()
   })
   const quit = useCallback(() => {
     leavingRef.current = true

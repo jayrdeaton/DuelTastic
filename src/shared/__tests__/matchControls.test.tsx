@@ -69,10 +69,13 @@ describe('Quit past the back block', () => {
 
     await act(async () => rendered.result.current.quit())
     expect(safeBack).toHaveBeenCalledTimes(1)
-    // The block stops that navigation, as expo-router's does while it's on, and carries it on.
+    // Still on, so the navigation it stops reaches its callback, which carries it on and turns the
+    // block off in the same handler, as expo-router asks.
+    expect(backHeld()).toBe(true)
     const repeat = jest.fn()
     await act(async () => onBlocked()({ data: { action: { type: 'GO_BACK' } }, repeat } as never))
     expect(repeat).toHaveBeenCalledTimes(1)
+    expect(backHeld()).toBe(false)
     expect(rendered.result.current.confirmVisible).toBe(false)
   })
 
