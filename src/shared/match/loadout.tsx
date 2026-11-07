@@ -19,6 +19,10 @@ export const GRID_SIZE_OPTIONS: MenuOption<GridSizeTier>[] = [
   { value: 'large', label: 'Large', icon: 'train' }
 ]
 
+// Full Screen, in each game's Arena menu: the board plays under the device's safe areas (the setting
+// extendIntoSafeArea, its own in each game, off by default). Trap's, Turf's and Tag's.
+export const FULL_SCREEN_OPTION: MenuOption<'extendIntoSafeArea'> = { value: 'extendIntoSafeArea', label: 'Full Screen', icon: 'arrow-expand-all' }
+
 export const SPEED_OPTIONS: MenuOption<SpeedTier>[] = [
   { value: 'slow', label: 'Slow', icon: 'snail' },
   { value: 'normal', label: 'Normal', icon: 'tortoise' },

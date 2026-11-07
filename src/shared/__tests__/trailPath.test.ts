@@ -14,7 +14,7 @@ describe('trailRuns', () => {
     expect(trailRuns(cells([119, 96], [119, 95], [5, 5], [5, 4]))).toEqual([cells([119, 96], [119, 95]), cells([5, 5], [5, 4])])
   })
 
-  it('starts a new piece where LightCycles wraps round the edge', () => {
+  it('starts a new piece where Trap wraps round the edge', () => {
     expect(trailRuns(cells([1, 3], [0, 3], [79, 3]))).toEqual([cells([1, 3], [0, 3]), cells([79, 3])])
   })
 
@@ -34,7 +34,7 @@ describe('endsInJump', () => {
   })
 })
 
-// LightCycles' trail front, drawn up to its gliding head: a line from where the head last stopped
+// Trap's trail front, drawn up to its gliding head: a line from where the head last stopped
 // straight to the head cut across a boosted tick's corner and ran ahead of the head (2026-11-04).
 describe('leadingRuns', () => {
   // 10px cells: a cell's center is at 10 * cell + 5.

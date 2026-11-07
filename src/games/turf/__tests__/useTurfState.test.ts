@@ -4,7 +4,7 @@ import { DEFAULT_TURF_OPTIONS } from '../constants'
 import type { TurfOptions } from '../types'
 import { useTurfState, type UseTurfStateParams } from '../useTurfState'
 
-// A requestAnimationFrame that advances with Jest's fake timers, as in LightCycles' useGameState tests.
+// A requestAnimationFrame that advances with Jest's fake timers, as in Trap's useGameState tests.
 function installFakeRaf() {
   let nextId = 1
   const rafGlobal = globalThis as unknown as { requestAnimationFrame: (cb: (t: number) => void) => number; cancelAnimationFrame: (id: number) => void }

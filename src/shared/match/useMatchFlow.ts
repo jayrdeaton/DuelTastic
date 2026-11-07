@@ -3,7 +3,7 @@ import { useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { useBackgroundPause } from '@tastic/core'
 import { useQuitConfirmation } from '@tastic/hud'
-import { liveplayActions, safeBack } from '@tastic/shell'
+import { liveplayActions, safeBack, useAtComputer } from '@tastic/shell'
 import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDispatch } from 'react-redux'
@@ -11,7 +11,6 @@ import type { Action, Dispatch } from 'redux'
 
 import { ROUND_OVER_DIALOG_HOLD_MS } from '@/shared/match/constants'
 import type { GamePhase, Player, RoundOutcome } from '@/shared/match/types'
-import { useDesktopWeb } from '@/shared/match/useDesktopWeb'
 import { useGameSound } from '@/shared/useGameSound'
 
 // A match's flow around whichever game is being played: everything a round screen does besides
@@ -91,7 +90,7 @@ export interface UseMatchFlowParams {
   rematch: () => void
   onRoundOutcome: (outcome: RoundOutcome) => void
   // How long the round's end plays out on the board before its result card shows, read once when
-  // the round ends (LightCycles waits for the slower crashed trail's death sequence).
+  // the round ends (Trap waits for the slower crashed trail's death sequence).
   resultDelayMs: () => number
 }
 
@@ -160,11 +159,11 @@ export function useMatchFlow({ controls, phase, outcome, humanPlayers, rematch, 
   const handleQuit = useCallback(() => setMatchOver(true), [setMatchOver])
   const handleRequestRematch = useCallback((player: Player) => setRematchReady((ready) => ({ ...ready, [player]: true })), [setRematchReady])
 
-  // On a desktop-web page the back and settings chips stay up in the page's top corners for the
-  // whole match, so there's always a way out or into Settings; anywhere narrower they only show
-  // between rounds.
-  const isDesktopWeb = useDesktopWeb()
-  const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'roundOver' && showResultDialog) || matchOver
+  // At a computer (the shell's useAtComputer) the back and settings chips stay up in the page's top
+  // corners for the whole match, so there's always a way out or into Settings; on a phone or tablet
+  // they only show between rounds.
+  const atComputer = useAtComputer()
+  const controlsVisible = atComputer || phase === 'onboarding' || (phase === 'roundOver' && showResultDialog) || matchOver
 
   // Live, unpaused play, for @tastic/shell's Providers.tsx EdgeGuardBridge (the one useEdgeGestureGuard call).
   // Reset on unmount too, so leaving mid-round by any path can't leave Edge Guard stuck on.
@@ -189,5 +188,5 @@ export function useMatchFlow({ controls, phase, outcome, humanPlayers, rematch, 
     if (humanPlayers.every((p) => rematchReady[p])) rematch()
   }, [phase, matchOver, humanPlayers, rematchReady, rematch])
 
-  return { showResultDialog, rematchReady, handleQuit, handleRequestRematch, controlsVisible, isDesktopWeb }
+  return { showResultDialog, rematchReady, handleQuit, handleRequestRematch, controlsVisible, atComputer }
 }

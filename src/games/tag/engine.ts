@@ -2,7 +2,7 @@ import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } fr
 
 import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
-// Shared with LightCycles and Turf: each rider starts at the middle of its own half, facing the
+// Shared with Trap and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/shared/match/grid'
 import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
@@ -117,9 +117,11 @@ export interface CreateTagStateParams {
   // medium grid size at the normal speed.
   cellPx?: number
   intervalMs?: number
+  // The cells under the device's cutouts (safeAreaMask), when the round plays under the safe areas.
+  unsafe?: Uint8Array
 }
 
-export function createTagState({ grid, layout, p1OnRight = false, arena = 'pillars', it = 2, starts = {}, cellPx = GRID_CELL_PX.medium, intervalMs = TAG_SPEED_INTERVAL_MS.normal }: CreateTagStateParams): TagState {
+export function createTagState({ grid, layout, p1OnRight = false, arena = 'pillars', it = 2, starts = {}, cellPx = GRID_CELL_PX.medium, intervalMs = TAG_SPEED_INTERVAL_MS.normal, unsafe = new Uint8Array(grid.cols * grid.rows) }: CreateTagStateParams): TagState {
   const start = (seat: TagSeat) => starts[seat] ?? startingStateFor(seat, grid, layout, p1OnRight)
   const pillarBlocks = arena === 'pillars' ? pillarsFor(grid, [start(1).head, start(2).head], cellPx) : []
   const obstacles =
@@ -140,7 +142,7 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
     const { head, direction } = start(seat)
     return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS(), dazedThrough: 0, stuck: false }
   }
-  return { phase: 'onboarding', grid, pillars, portals, blocked, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS(), measures: measuresFor(cellPx, intervalMs) }
+  return { phase: 'onboarding', grid, pillars, portals, blocked, unsafe, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS(), measures: measuresFor(cellPx, intervalMs) }
 }
 
 export function startTag(state: TagState): TagState {
@@ -240,8 +242,9 @@ function endTick(state: TagState, powerups: readonly TagPowerup[], random: () =>
   const players: Record<TagSeat, TagPlayer> = { 1: state.players[1], 2: state.players[2] }
   let { pickups } = state
   if (powerups.length > 0 && pickups.length === 0) {
-    // Its footprint clear of pillars, so it can be reached from every side.
-    const cell = pickupCell({ grid: state.grid, heads: [players[1].head, players[2].head], blocked: (i) => state.blocked[i] === 1 }, random)
+    // Its footprint clear of pillars, so it can be reached from every side, and of the cells under a
+    // cutout in Full Screen (state.unsafe).
+    const cell = pickupCell({ grid: state.grid, heads: [players[1].head, players[2].head], blocked: (i) => state.blocked[i] === 1 || state.unsafe[i] === 1 }, random)
     if (cell) pickups = [newPickup(tick, cell, powerups, random)]
   }
   for (const seat of SEATS) players[seat] = { ...players[seat], effects: expireEffects(players[seat].effects, tick) }

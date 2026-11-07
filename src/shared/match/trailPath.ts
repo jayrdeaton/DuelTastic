@@ -1,11 +1,11 @@
 import { Skia, type SkPath } from '@shopify/react-native-skia'
 import { cellToPixel, type GridCell, isAdjacent } from '@tastic/grid'
 
-// A rider's trail (LightCycles, Turf) or tail (Tag), drawn the same in every game. Import it only from
+// A rider's trail (Trap, Turf) or tail (Tag), drawn the same in every game. Import it only from
 // a board file: it pulls in Skia, which on web has to wait for CanvasKit (see the boards' host pairs).
 
 // The pieces of a rider's path it rode cell to cell, oldest first: a new piece starts wherever it
-// jumped (a gate, or wrapping round the edge in LightCycles), so the drawing never runs a line across
+// jumped (a gate, or wrapping round the edge in Trap), so the drawing never runs a line across
 // the board from where it went in to where it came out.
 export function trailRuns(cells: readonly GridCell[]): GridCell[][] {
   const runs: GridCell[][] = []
@@ -35,7 +35,7 @@ export function trailPath(cells: readonly GridCell[], cellPx: number): SkPath {
   return path.detach()
 }
 
-// The front of a trail as its head glides along it (LightCycles): from where the head last stopped
+// The front of a trail as its head glides along it (Trap): from where the head last stopped
 // through the cells it's riding to (`cells`, oldest first), as far as the head at (x, y) has got, then
 // on to the head itself, as runs of points in px. The head is on one of the straight runs between
 // those cells, or still on its way to the first one (useRiderGlide draws it a little behind its

@@ -1,13 +1,12 @@
-import { useOrientationState } from '@tastic/core'
 import { ConfirmDialog } from '@tastic/hud'
-import { MatchChips, SettingsDialog } from '@tastic/shell'
+import { MatchChips, SettingsDialog, useAtComputer } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 
 import MatchOverDialog from '@/shared/match/MatchOverDialog'
 import OnboardingOverlay from '@/shared/match/OnboardingOverlay'
 import RoundHistoryPips from '@/shared/match/RoundHistoryPips'
 import RoundOverDialog from '@/shared/match/RoundOverDialog'
-import { seatsSideBySide, seatToastSpots } from '@/shared/match/seatToastSpots'
+import { seatToastSpots } from '@/shared/match/seatToastSpots'
 import { GameMode, GamePhase, OrientationMode, Player, RoundOutcome } from '@/shared/match/types'
 import { SeatToasters } from '@/shared/SeatToasters'
 
@@ -34,9 +33,6 @@ export interface MatchOverlaysProps {
   // useMatchFlow's controlsVisible - passed down instead of recomputing the same
   // phase/showResultDialog/matchOver expression a second time here, so the two can never drift.
   controlsVisible: boolean
-  // Desktop web always takes the corner layout: both players share one screen, keyboard and mouse
-  // there, so there's no far seat for the shared-midline chips to stay readable from.
-  desktopWeb: boolean
   outcome: RoundOutcome | null
   gameMode: GameMode
   rematchReady: Record<Player, boolean>
@@ -53,19 +49,18 @@ export interface MatchOverlaysProps {
   onConfirmQuit: () => void
 }
 
-// Every floating in-match dialog, shared by LightCycles', Turf's and Tag's round screens and rendered
-// as the board's sibling rather than inside it, so the one live read here (the window's shape, which
-// changes when an iPad turns or a browser window is resized) never re-renders the board/touch subtree
-// next to it. A parent re-rendering always re-renders its own children too, board included, while
+// Every floating in-match dialog, shared by Trap's, Turf's and Tag's round screens and rendered
+// as the board's sibling rather than inside it, so the one live read here (whether this is a computer,
+// which core re-reads when a browser window is resized) never re-renders the board/touch subtree next
+// to it. A parent re-rendering always re-renders its own children too, board included, while
 // sibling components don't share that fate.
 //
 // Nothing here is turned for the device's hold any more: the OS turns the interface (a phone stays
 // portrait), so the only turn left is the far seat's 180 in 2 Player face to face (seatToastSpots).
-export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, desktopWeb, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume, onConfirmQuit }: MatchOverlaysProps) {
-  // The window's shape, the one live read here: only a browser window wider than tall seats 2 Player
-  // side by side (seatsSideBySide), the board's own split decides everywhere else.
-  const { orientationMode: windowMode } = useOrientationState()
-  const sideBySide = seatsSideBySide(windowMode, desktopWeb)
+export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume, onConfirmQuit }: MatchOverlaysProps) {
+  // The one live read here: only a computer seats 2 Player side by side (the shell's useAtComputer);
+  // on a phone or tablet, natively or in its browser, the board's own face-to-face split decides.
+  const sideBySide = useAtComputer()
   // 2 Player: each seat's half and reading angle, for its countdown, its round card and its unlock
   // toasts alike (see seatToastSpots): on a device the board's own split, player 2 turned to face
   // their end; at a computer, side by side, left and right, both upright.

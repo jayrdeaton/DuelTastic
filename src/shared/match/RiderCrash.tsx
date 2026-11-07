@@ -5,7 +5,7 @@ import { Easing, type SharedValue, useDerivedValue, useSharedValue, withDelay, w
 
 import { deathAnimationDurationMs } from './constants'
 
-// A rider's crash, the same in every game that has one (LightCycles, and Turf under either crash
+// A rider's crash, the same in every game that has one (Trap, and Turf under either crash
 // rule): its head bursts apart where it crashed, then the trail it was riding wipes itself out from
 // the head back to the tail. Import it only from a board file: it pulls in Skia, which on web has to
 // wait for CanvasKit (see the boards' host pairs).
@@ -13,8 +13,8 @@ import { deathAnimationDurationMs } from './constants'
 // Walks `progress` (0 = nothing eaten, 1 = all of it) along a chain of grid cells and returns a path
 // through only the part not yet eaten. The boundary cell is interpolated between its two neighbors, so
 // the eaten edge creeps smoothly rather than a whole cell at a time. A step that isn't to a neighbor (a
-// gate, or LightCycles' wrap round the edge) starts a new piece rather than drawing a line across the
-// board. LightCycles' severed-trail eat-away walks it too. A worklet in its own right, since it's
+// gate, or Trap's wrap round the edge) starts a new piece rather than drawing a line across the
+// board. Trap's severed-trail eat-away walks it too. A worklet in its own right, since it's
 // called from inside useDerivedValue callbacks rather than handed to one.
 export function partialTrailPath(cells: { x: number; y: number }[], progress: number, cellPx: number) {
   'worklet'

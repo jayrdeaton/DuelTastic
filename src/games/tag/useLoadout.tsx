@@ -2,7 +2,7 @@ import { SectionedDropdown } from '@tastic/hud'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
-import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
+import { CPU_DIFFICULTY_OPTIONS, FULL_SCREEN_OPTION, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { CpuDifficulty } from '@/shared/match/types'
 
 import { TAG_POWERUPS } from './constants'
@@ -33,6 +33,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
     setSettings({
       rule: DEFAULT_SETTINGS.rule,
       arena: DEFAULT_SETTINGS.arena,
+      extendIntoSafeArea: DEFAULT_SETTINGS.extendIntoSafeArea,
       roundSeconds: DEFAULT_SETTINGS.roundSeconds,
       gridSizeTier: DEFAULT_SETTINGS.gridSizeTier,
       speedTier: DEFAULT_SETTINGS.speedTier,
@@ -46,7 +47,17 @@ export function useLoadout(mode: RoundMode): GameLoadout {
       return (
         <LoadoutOptionsRow ids={OPTION_IDS} host={host} onRandomize={onRandomize} onReset={onReset} dark={dark}>
           <SectionedDropdown id='tagRules' host={host} icon='gavel' accessibilityLabel='Rules' sections={[{ kind: 'single', id: 'tagRule', options: TAG_RULE_OPTIONS, value: settings.rule, onChange: (rule) => setSettings({ rule }) }]} {...look} />
-          <SectionedDropdown id='tagArena' host={host} icon='pillar' accessibilityLabel='Arena' sections={[{ kind: 'single', id: 'tagArena', options: TAG_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) }]} {...look} />
+          <SectionedDropdown
+            id='tagArena'
+            host={host}
+            icon='pillar'
+            accessibilityLabel='Arena'
+            sections={[
+              { kind: 'single', id: 'tagArena', options: TAG_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) },
+              { kind: 'multi', id: 'tagBoardToggles', options: [FULL_SCREEN_OPTION], value: settings.extendIntoSafeArea ? [FULL_SCREEN_OPTION.value] : [], onChange: (value) => setSettings({ extendIntoSafeArea: value.includes(FULL_SCREEN_OPTION.value) }) }
+            ]}
+            {...look}
+          />
           <SectionedDropdown id='tagRound' host={host} icon='timer-outline' accessibilityLabel='Round length' sections={[{ kind: 'single', id: 'tagRound', options: TAG_ROUND_OPTIONS, value: settings.roundSeconds, onChange: (roundSeconds) => setSettings({ roundSeconds }) }]} {...look} />
           <SectionedDropdown id='gridSize' host={host} icon='grid' accessibilityLabel='Grid size' sections={[{ kind: 'single', id: 'gridSize', options: GRID_SIZE_OPTIONS, value: settings.gridSizeTier, onChange: (gridSizeTier) => setSettings({ gridSizeTier }) }]} {...look} />
           <SectionedDropdown id='speed' host={host} icon='speedometer' accessibilityLabel='Speed' sections={[{ kind: 'single', id: 'speed', options: SPEED_OPTIONS, value: settings.speedTier, onChange: (speedTier) => setSettings({ speedTier }) }]} {...look} />

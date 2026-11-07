@@ -1,6 +1,6 @@
 import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, isOppositeDirection, stepCell } from '@tastic/grid'
 
-// Shared with LightCycles: each rider starts at the middle of their own half, facing the other. Moves
+// Shared with Trap: each rider starts at the middle of their own half, facing the other. Moves
 // to shared/ when this repo takes the pack layout.
 import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
@@ -46,9 +46,11 @@ export interface CreateTurfStateParams {
   // Where each rider starts and which way it's heading, instead of the layout's default. Its starting
   // square is centered on that cell either way.
   starts?: Partial<Record<TurfSeat, { head: GridCell; direction: Direction }>>
+  // The cells under the device's cutouts (safeAreaMask), when the round plays under the safe areas.
+  unsafe?: Uint8Array
 }
 
-export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open', homeRadius = TURF_HOME_RADIUS, starts = {} }: CreateTurfStateParams): TurfState {
+export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open', homeRadius = TURF_HOME_RADIUS, starts = {}, unsafe = new Uint8Array(grid.cols * grid.rows) }: CreateTurfStateParams): TurfState {
   const obstacles = buildArenaObstacles(arena, grid, layout, p1OnRight)
   const portals = buildArenaPortals(arena, grid, layout, p1OnRight)
   const blocked = new Uint8Array(grid.cols * grid.rows)
@@ -65,7 +67,7 @@ export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open
     return { head, direction, pendingDirection: null, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS(), flight: null }
   }
   const players = { 1: player(1), 2: player(2) }
-  return { phase: 'onboarding', grid, obstacles, portals, blocked, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
+  return { phase: 'onboarding', grid, obstacles, portals, blocked, unsafe, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
 }
 
 export function startTurf(state: TurfState): TurfState {
@@ -73,7 +75,7 @@ export function startTurf(state: TurfState): TurfState {
 }
 
 // Queues a turn for the next tick. A rider can't turn straight back on itself, the same as in
-// LightCycles, and the check is against the way it's actually moving, so two quick turns between ticks
+// Trap, and the check is against the way it's actually moving, so two quick turns between ticks
 // can't add up to a reversal.
 export function applyTurfTurn(state: TurfState, seat: TurfSeat, direction: Direction): TurfState {
   if (state.phase !== 'playing') return state
@@ -414,8 +416,9 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   }
 
   if (rules.powerups.length > 0 && pickups.length === 0) {
-    // Never next to a trail, and on nobody's ground when it can, so going for it means leaving home.
-    const cell = pickupCell({ grid, heads: [players[1].head, players[2].head], blocked: (i) => trails[i] !== 0 || state.blocked[i] === 1, preferred: (i) => owner[i] === 0 && state.blocked[i] === 0 }, random)
+    // Never next to a trail, and on nobody's ground when it can, so going for it means leaving home;
+    // never under a cutout in Full Screen (state.unsafe).
+    const cell = pickupCell({ grid, heads: [players[1].head, players[2].head], blocked: (i) => trails[i] !== 0 || state.blocked[i] === 1 || state.unsafe[i] === 1, preferred: (i) => owner[i] === 0 && state.blocked[i] === 0 }, random)
     if (cell) pickups = [newPickup(tick, cell, rules.powerups, random)]
   }
 

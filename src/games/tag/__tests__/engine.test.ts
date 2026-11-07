@@ -134,7 +134,7 @@ describe('createTagState', () => {
     expect(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena: 'open' }).pillars).toEqual([])
   })
 
-  // The shared arenas, built as LightCycles and Turf build them now that Tag's cells are theirs, on the
+  // The shared arenas, built as Trap and Turf build them now that Tag's cells are theirs, on the
   // boards an iPhone SE and an iPhone 15 give at every grid size, face to face.
   describe.each(['gauntlet', 'portals'] as const)('the %s arena on a phone', (arena) => {
     it.each(PHONE_BOARDS)('is built on a $cols x $rows board ($tier)', ({ cellPx, cols, rows }) => {

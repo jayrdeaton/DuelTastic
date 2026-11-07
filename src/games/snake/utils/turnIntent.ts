@@ -16,9 +16,9 @@ export interface ResolveTurnIntentParams {
 }
 
 // The one shared entry point every input source (touch today, potentially keyboard later) should
-// route through. Snake, unlike LightCycles, has exactly one shared, unrotated board and never puts
+// route through. Snake, unlike Trap, has exactly one shared, unrotated board and never puts
 // a second seat's view of it through any flip: there's only one physical coordinate space, ever,
-// for every mode (solo, vs CPU, 2 player) and every snake. LightCycles' own version of this
+// for every mode (solo, vs CPU, 2 player) and every snake. Trap's own version of this
 // function reaches the same conclusion for its face-to-face far player - a raw swipe direction and
 // the raw direction the game piece should move are the same physical event, because the board
 // itself is never rotated per seat - but keeps player/orientationMode in its signature regardless,

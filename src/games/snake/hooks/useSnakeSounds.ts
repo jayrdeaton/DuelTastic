@@ -11,9 +11,9 @@ const RETRO_POWERUP_SOUND = require('../sounds/retroPowerup.wav')
 
 // Game SFX, gated on the app's own sound-enabled setting via @rific/feedback-press/audio's
 // useGatedAudioPool (useAudioPool + a useSoundSettings `enabled` check, generalized into one hook)
-// - the same hook AirHockey/BoxHockey/Pong/LightCycles's own useGameSound.ts all thinly re-export
+// - the same hook AirHockey/BoxHockey/Pong/Trap's own useGameSound.ts all thinly re-export
 // and call directly per clip. This file used to hand-roll that same gate itself, once per exposed
-// function, before useGatedAudioPool existed to generalize it away (LightCycles' own
+// function, before useGatedAudioPool existed to generalize it away (Trap's own
 // useGameSound.ts did too, until it migrated to this same hook - no longer a useful comparison to
 // call out here since its gating no longer differs from this file's). No new audio assets: each
 // function just points at whichever existing retro-pack clip reads best for that moment -

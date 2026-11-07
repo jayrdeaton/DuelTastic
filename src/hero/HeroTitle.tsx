@@ -27,7 +27,7 @@ const TRAIL_FADE_DURATION_MS = 280
 // 0 kiss) produces.
 const SECOND_WORD_OFFSET = 44 + TRAIL_TEXT_MARGIN_TOP + TRAIL_TEXT_MARGIN_BOTTOM + 1
 
-// DuelTastic's hero (PackDefinition.HeroTitle, LightCycles' light-trail wordmark): the wordmark's two
+// DuelTastic's hero (PackDefinition.HeroTitle, Trap's light-trail wordmark): the wordmark's two
 // words side by side in the display face, each looped by a light trail in its player's live color
 // (the first word's in player 1's, the second's in player 2's) once the letters have landed. The
 // trails stop while Home is covered or the app is in the background (`active`).

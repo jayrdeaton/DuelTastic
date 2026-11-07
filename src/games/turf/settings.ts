@@ -11,6 +11,7 @@ import type { TurfSettings } from './types'
 // (see below), so a field added later starts at its default for everyone.
 export const DEFAULT_SETTINGS: TurfSettings = {
   ...DEFAULT_TURF_OPTIONS,
+  extendIntoSafeArea: false,
   speedTier: 'normal',
   gridSizeTier: DEFAULT_GRID_SIZE_TIER,
   cpuDifficulty: 'normal',

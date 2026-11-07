@@ -1,12 +1,12 @@
 import { Direction, GridCell, GridSize, SnakeId } from '@/games/snake/types'
 
 // Starting head + heading for the two-snake face-to-face layout - snake 1 is the near/bottom seat
-// (the human's own device orientation in every 2-snake mode, matching LightCycles' player-1-is-
+// (the human's own device orientation in every 2-snake mode, matching Trap's player-1-is-
 // device-owner convention), snake 2 is the far/top seat. Both start at the vertical center of
 // their own half of the board and face the shared middle, so the two begin as close together as
 // possible while still leaving a full quarter-board of room behind each of them to maneuver into.
-// Direct port of the math in LightCycles' startingStateFor's faceToFace branch, fixed to that one
-// orientation - Snake's board, unlike LightCycles', is never rotated into a side-by-side layout.
+// Direct port of the math in Trap's startingStateFor's faceToFace branch, fixed to that one
+// orientation - Snake's board, unlike Trap's, is never rotated into a side-by-side layout.
 export function faceToFaceSpawnPoint(snakeId: SnakeId, grid: GridSize): { head: GridCell; direction: Direction } {
   const firstHalfLength = Math.floor(grid.rows / 2)
   // Center of the [0, firstHalfLength) zone (snake 2's, far/top) and center of the

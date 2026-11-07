@@ -2,18 +2,18 @@
 // "Rendering (SnakeBoard.tsx)" section. ONE Canvas, drawn once, containing every alive snake in the
 // same coordinate space (never duplicated/rotated per player - that idea was superseded; only small
 // HUD/dialog decoration rotates per seat, via @tastic/core elsewhere, never the board itself,
-// matching how LightCycles' own face-to-face arena already works).
+// matching how Trap's own face-to-face arena already works).
 //
 // Each snake's body renders as a smooth, undulating centerline (steps 1-5 below) rather than rigid
 // grid blocks, with a thin theme-tertiary centerline accent traced down its back (step 6), a
 // triangular head unaffected by the undulation - with eyes, a nested accent badge in that same raw
 // tertiary color, and an occasional tongue flick (step 7) - a pulsing food dot (step 8), and a brief
-// whole-board flash on game over (step 9) - deliberately NOT LightCycles' trail-glide/sever/death-
+// whole-board flash on game over (step 9) - deliberately NOT Trap's trail-glide/sever/death-
 // explosion system, which
 // is tuned for a permanent multi-player trail Snake doesn't have (see the plan's own note on this).
 // On death, a snake's own eyes swap to an X and its body/head fade out tail-to-head over
 // snakeDeathFadeMs (see fadeFactorForDist, and constants/snake.ts) - a lighter-weight, Snake-specific
-// take on "crash then animate out" than LightCycles' own explosion+wipe, gating PlayScreen.tsx's
+// take on "crash then animate out" than Trap's own explosion+wipe, gating PlayScreen.tsx's
 // GameOverDialog until the slowest dying snake's fade finishes.
 import { getColorRoles, useAutoPaperTheme } from '@rific/auto-paper'
 import { Canvas, Circle, Group, Path, Rect, Skia, type SkPath } from '@shopify/react-native-skia'
@@ -54,12 +54,12 @@ export interface SnakeBoardProps {
   // PlayScreen.tsx's own OUTER phase ('onboarding' | 'playing' | 'gameOver'), not the `phase` prop above
   // (SnakeGameState['phase'], the engine's narrower 'playing' | 'roundOver' - see useSnakeState.ts's
   // own header comment on why Snake's engine has no 'onboarding' concept of its own at all, unlike
-  // LightCycles': there, the analogous board reads 'onboarding' straight off state.phase, no second
+  // Trap's: there, the analogous board reads 'onboarding' straight off state.phase, no second
   // signal needed). Only ever used to hide Walls during it - see that component's own comment.
   onboarding: boolean
 }
 
-// Same role LightCycles' GameBoard.tsx gives its identically-named constant - no reason for this
+// Same role Trap's GameBoard.tsx gives its identically-named constant - no reason for this
 // board's own boundary stroke to read any thicker or thinner than that one does.
 const WALL_STROKE_WIDTH = 1.5
 
@@ -145,7 +145,7 @@ function buildCenterlineSamples(centers: Point[], cellPx: number): Sample[] {
 
   // Step 1: densify every segment with linearly-interpolated extra points roughly every
   // SAMPLE_SPACING_PX apart. Body cells are always exactly one grid-step apart UNLESS a wrapEdges
-  // seam sits between them (Snake has no portal-style non-adjacent jumps the way LightCycles does
+  // seam sits between them (Snake has no portal-style non-adjacent jumps the way Trap does
   // otherwise), so a plain lerp per segment is geometrically correct everywhere except there - a
   // seam has nothing sensible to interpolate (the two ends are on opposite sides of the board), so
   // `b` is pushed straight through as its own disconnected point instead of lerping across the gap.
@@ -203,7 +203,7 @@ function buildCenterlineSamples(centers: Point[], cellPx: number): Sample[] {
 // Interpolating each same-index cell independently (prevBody[i] -> currBody[i]) was the first cut
 // at this and reads fine on a straight stretch, but at a turn it draws a straight chord between two
 // unrelated points on either side of the bend - visibly cutting the corner instead of following the
-// actual right-angle path. The fix, generalized from LightCycles' GameBoard.tsx's own head/tail
+// actual right-angle path. The fix, generalized from Trap's GameBoard.tsx's own head/tail
 // glide (see its partialTrailPath): treat the body as a fixed-length rope sliding along its own
 // unchanged path - the head extends from its old cell toward the new one, the tail retracts from
 // its old cell toward the next one *by the exact same fraction*, and every interior point (any
@@ -302,7 +302,7 @@ function headingAngle(prevBody: GridCell[], currBody: GridCell[], progress: numb
 // Step 3 - offset each sample perpendicular to its tangent by amplitude * sin(phase + dist *
 // frequency), ramping amplitude from 0 at the head up to full over the first few cells behind it.
 // A standalone 'worklet' function (rather than an inline arrow) since it's called from inside
-// useDerivedValue callbacks below - see LightCycles' GameBoard.tsx's partialTrailPath for the same
+// useDerivedValue callbacks below - see Trap's GameBoard.tsx's partialTrailPath for the same
 // precedent/reasoning in this codebase family. `total` is the reference the head-relative ramp
 // measures from - the body's own true arc length normally, but see `paths`' own `referenceTotal`
 // for why a growing snake passes something else instead (a sample past it just reads as "beyond
@@ -769,7 +769,7 @@ function SnakeBody({ snake, cellPx, phase, tertiaryColor, surfaceColor, tick, ti
   // snakeDeathFadeMs(bodyLength) the instant `alive` flips false - see fadeFactorForDist's own
   // comment for how this drives every segment's tail-to-head opacity. deathAnimStartedRef guards
   // against retriggering the animation on an unrelated re-render once it's already begun (mirrors
-  // GameOverFlash's own prevPhaseRef pattern, and LightCycles' identical per-entity death effect).
+  // GameOverFlash's own prevPhaseRef pattern, and Trap's identical per-entity death effect).
   const deathProgress = useSharedValue(0)
   const deathAnimStartedRef = useRef(false)
   // The wave's own raw phase input, snapshotted the instant this snake dies - see wavePhase below
@@ -1107,7 +1107,7 @@ function SnakeBody({ snake, cellPx, phase, tertiaryColor, surfaceColor, tick, ti
   )
 }
 
-// Step 8 - food: a single pulsing dot, styled after LightCycles' GameBoard.tsx's PowerupGlyph
+// Step 8 - food: a single pulsing dot, styled after Trap's GameBoard.tsx's PowerupGlyph
 // (spawn-fade + pulse) as a visual-language reference only - a filled core plus a stroked outline,
 // both driven off one shared animation value - not its trail-glide/sever/death-explosion machinery,
 // which has no equivalent here. Reuses the same continuous `phase` driver as the snakes' own
@@ -1136,18 +1136,18 @@ function FoodDot({ food, cellPx, phase, color }: FoodDotProps) {
 
 // Marks the grid's own actual pixel bounds - without this, there's no way to see where a fatal edge
 // actually is until you've already crashed into it. Two-snake modes split the outline by physical
-// zone via shared splitWallPath, each half in that snake's own snake.color - mirroring LightCycles'
+// zone via shared splitWallPath, each half in that snake's own snake.color - mirroring Trap's
 // identical Walls (down to "whose wall is whose" being visible at a glance), just sourced from each
-// snake's own identity color instead of the theme's primary/secondary roles: unlike LightCycles
+// snake's own identity color instead of the theme's primary/secondary roles: unlike Trap
 // (whose two "player colors" ARE literally themeColors.primary/secondary, see PlayScreen.tsx there -
 // there's no separate identity system to prefer instead), Snake already colors everything else
 // about a snake - body and head - by its own snake.color, so the wall matches that
 // existing convention rather than introducing a theme-role-based exception just for itself. Solo has
 // no second snake to split against, so it's just the one snake's own color around the whole
 // perimeter - same "this is your wall" reading, there's just only one snake for it to belong to.
-// Hidden entirely under wrapEdges, same reasoning as LightCycles - an edge that wraps instead of
+// Hidden entirely under wrapEdges, same reasoning as Trap - an edge that wraps instead of
 // killing isn't a wall, so there's nothing true left for an outline to mark. Also hidden during
-// onboarding, same reasoning and same outcome as LightCycles' identical check, just sourced
+// onboarding, same reasoning and same outcome as Trap's identical check, just sourced
 // differently - see SnakeBoardProps' own comment on why `onboarding` has to be a separate prop here
 // instead of reading straight off `phase`: the boundary marker is only meaningful once a round is
 // actually live, and it visually clutters the countdown's own player-zone overlay
@@ -1155,7 +1155,7 @@ function FoodDot({ food, cellPx, phase, color }: FoodDotProps) {
 function Walls({ snakes, grid, cellPx, wrapEdges, onboarding }: { snakes: SnakeEntity[]; grid: GridSize; cellPx: number; wrapEdges: boolean; onboarding: boolean }) {
   // Follows the shared orientation reading rather than a fixed layout (frozen only while Lock
   // Orientation is on, app-wide, by the shell's OrientationBridge, same as TouchInputLayer's
-  // zones, so the two can't disagree): unlike LightCycles' board (always fixed 'faceToFace', see
+  // zones, so the two can't disagree): unlike Trap's board (always fixed 'faceToFace', see
   // that app's own PlayScreen comment on why), Snake's genuinely supports side-by-side too and
   // already re-renders this subtree live on every tilt sample via TouchInputLayer's own identical
   // subscription (see that file's own header comment), so reading it here again doesn't introduce
@@ -1181,7 +1181,7 @@ function Walls({ snakes, grid, cellPx, wrapEdges, onboarding }: { snakes: SnakeE
 
 // Step 9 - game-over flash: a brief whole-board opacity pulse the instant `phase` transitions to
 // 'roundOver', explicitly simple (a single Rect covering the grid, opacity driven by one shared
-// value) rather than LightCycles' multi-shard per-player death-explosion system, which is tuned for
+// value) rather than Trap's multi-shard per-player death-explosion system, which is tuned for
 // a permanent trail Snake doesn't have.
 interface GameOverFlashProps {
   phase: SnakeGameState['phase']
@@ -1209,7 +1209,7 @@ function GameOverFlash({ phase, grid, cellPx }: GameOverFlashProps) {
 // 'pillars'/'gauntlet' arena variants' only visual. Purely static, unlike every other board feature
 // here - these never move or change for the life of a round, so there's nothing to animate. Renders
 // via @tastic/sprites' shared ObstacleRect (reconciled from BoxHockey/AirHockey's plain-fill Rect and
-// LightCycles' own fill-plus-stroke GameBoard.tsx ObstacleCell) - Snake passes no strokeColor, so this
+// Trap's own fill-plus-stroke GameBoard.tsx ObstacleCell) - Snake passes no strokeColor, so this
 // renders exactly the same single opaque Rect at 0.85 opacity Snake always has, no outline added.
 function Obstacles({ obstacles, cellPx, color }: { obstacles: GridCell[]; cellPx: number; color: string }) {
   return (
@@ -1223,10 +1223,10 @@ function Obstacles({ obstacles, cellPx, color }: { obstacles: GridCell[]; cellPx
 }
 
 // Tunnels - Snake's own adapted 'underpass' arena (see types/index.ts's SnakeTunnel comment for how
-// its collision semantics differ from LightCycles'): a translucent corridor highlight along the
+// its collision semantics differ from Trap's): a translucent corridor highlight along the
 // whole run, plus a ring at each mouth so a player can see where to enter. Always a single straight
 // run along Snake's one split axis in practice (see utils/arenas.ts's buildTunnel), so unlike
-// LightCycles' own tunnel rendering, no horizontal/vertical branch is needed here.
+// Trap's own tunnel rendering, no horizontal/vertical branch is needed here.
 const TUNNEL_RUNWAY_WIDTH_RATIO = 0.5
 const TUNNEL_MOUTH_RADIUS_RATIO = 0.35
 
@@ -1255,7 +1255,7 @@ function Tunnels({ tunnels, cellPx, color }: { tunnels: SnakeTunnel[]; cellPx: n
   )
 }
 
-// Pickups - the pack's box (@tastic/sprites' MysteryPickup, the shape LightCycles', Turf's and Tag's
+// Pickups - the pack's box (@tastic/sprites' MysteryPickup, the shape Trap's, Turf's and Tag's
 // boxes are: a see-through fill under a solid ring, growing in when it turns up and then pulsing), so
 // it reads as a box and not as a second kind of food (it was a solid dot like FoodDot's, in player
 // 2's color). Kept at Snake's own size rather than the other games' (pickupRadiusPx, nearly two cells

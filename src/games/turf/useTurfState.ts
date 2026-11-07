@@ -1,10 +1,14 @@
 import { computeGridSize, type Direction } from '@tastic/grid'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { safeAreaMask } from '@/shared/match/safeArea'
+
 import { TURF_MAX_CLOCK_STEP_MS } from './constants'
 import { applyTurfCpu, type TurfCpuDifficulty, type TurfCpuPlan } from './cpu'
 import { applyTurfActivation, applyTurfTurn, createTurfState, finishTurfOnTime, startTurf, tickTurf } from './engine'
 import type { TurfEvents, TurfLayout, TurfOptions, TurfSeat, TurfState } from './types'
+
+const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export interface UseTurfStateParams {
   // The board's size in px, measured once when the round screen mounts.
@@ -20,6 +24,9 @@ export interface UseTurfStateParams {
   cpu: TurfCpuDifficulty | null
   // A dialog is up or the app is in the background: the steps and the clock both stop.
   paused: boolean
+  // MatchScreen's safe-area insets in px: all zero unless the round plays under them (Full Screen),
+  // when no powerup box goes under a cutout (safeAreaMask).
+  safeAreaInsetsPx?: { top: number; right: number; bottom: number; left: number }
 }
 
 interface RoundState {
@@ -34,8 +41,11 @@ interface RoundState {
 // One Turf round on screen: the engine stepped on an animation-frame loop, the CPU's turn (and its
 // powerup) decided right before each step it plays in, and the clock run alongside, ending the round
 // when it's up.
-export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, cpu, paused }: UseTurfStateParams) {
-  const fresh = useCallback((): RoundState => ({ round: createTurfState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena }), plan: null, elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena])
+export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, cpu, paused, safeAreaInsetsPx = NO_INSETS }: UseTurfStateParams) {
+  const fresh = useCallback((): RoundState => {
+    const grid = computeGridSize(width, height, cellPx)
+    return { round: createTurfState({ grid, layout, p1OnRight, arena: options.arena, unsafe: safeAreaMask(grid, cellPx, safeAreaInsetsPx) }), plan: null, elapsedMs: 0 }
+  }, [width, height, cellPx, layout, p1OnRight, options.arena, safeAreaInsetsPx])
   const [state, setState] = useState(fresh)
 
   const turn = useCallback((seat: TurfSeat, direction: Direction) => {

@@ -23,7 +23,7 @@ function rgb(hex: string): [number, number, number] {
 }
 
 describe('the arena color', () => {
-  it.each(['lightcycles', 'turf', 'tag'])("is boardStructureColor in %s's play screen, never the background", (game) => {
+  it.each(['trap', 'turf', 'tag'])("is boardStructureColor in %s's play screen, never the background", (game) => {
     const source = readFileSync(join(GAMES, game, 'PlayScreen.tsx'), 'utf8')
     expect(source).toMatch(/boardStructureColor\(themeColors\)/)
     expect(source).not.toMatch(/'#000000'|'#FFFFFF'|colors\.background/i)

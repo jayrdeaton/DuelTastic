@@ -21,7 +21,13 @@ export interface TagHudProps {
   // the CPU's edge.
   held: Record<TagSeat, TagPowerup | null>
   powerupsOn: boolean
+  // MatchScreen's safe-area insets: all zero unless the round plays under them (Full Screen), when each
+  // badge moves in by them, clear of the Dynamic Island, notch and home indicator.
+  insets: { top: number; bottom: number }
 }
+
+// How far each badge sits in from its edge of the board (plus the safe-area insets in Full Screen).
+const EDGE_GAP = 8
 
 const SEATS: readonly TagSeat[] = [1, 2]
 
@@ -32,7 +38,7 @@ function clock(ms: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors, held, powerupsOn }: Omit<TagHudProps, 'humanPlayers'> & { seat: TagSeat }) {
+function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors, held, powerupsOn }: Omit<TagHudProps, 'humanPlayers' | 'insets'> & { seat: TagSeat }) {
   const them: TagSeat = seat === 1 ? 2 : 1
   const seconds = (s: TagSeat) => `${Math.round((itTicks[s] * intervalMs) / 1000)}s`
   const isIt = seat === it
@@ -57,14 +63,14 @@ function Badge({ seat, it, itTicks, intervalMs, rule, timeLeftMs, colors, held, 
 
 // Whether each player is It or running, the clock, on Least Time It each one's time as It, and what
 // they're holding, at the player's own edge. Drawn over the board but never in the way of a swipe.
-export function TagHud({ humanPlayers, ...rest }: TagHudProps) {
+export function TagHud({ humanPlayers, insets, ...rest }: TagHudProps) {
   return (
     <>
       {SEATS.map((seat) => {
         const human = humanPlayers.includes(seat)
         if (!human && !rest.powerupsOn) return null
         return (
-          <View key={seat} pointerEvents='none' style={seat === 1 ? styles.bottom : styles.top}>
+          <View key={seat} pointerEvents='none' style={seat === 1 ? [styles.bottom, { bottom: EDGE_GAP + insets.bottom }] : [styles.top, { top: EDGE_GAP + insets.top }]}>
             {human ? (
               <Badge seat={seat} {...rest} />
             ) : (
@@ -81,7 +87,7 @@ export function TagHud({ humanPlayers, ...rest }: TagHudProps) {
 }
 
 const styles = StyleSheet.create({
-  // The same translucent chip as Turf's and LightCycles' badges.
+  // The same translucent chip as Turf's and Trap's badges.
   badge: {
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.28)',
@@ -93,7 +99,7 @@ const styles = StyleSheet.create({
     height: 28,
     paddingHorizontal: 4
   },
-  bottom: { alignItems: 'center', bottom: 8, left: 0, position: 'absolute', right: 0 },
+  bottom: { alignItems: 'center', left: 0, position: 'absolute', right: 0 },
   clock: { marginHorizontal: 4, opacity: 0.8 },
   dot: { borderRadius: 4, height: 8, width: 8 },
   own: { fontWeight: '700' },
@@ -101,5 +107,5 @@ const styles = StyleSheet.create({
   status: { alignItems: 'center', borderColor: 'rgba(255,255,255,0.3)', borderRadius: 10, borderWidth: 1, height: 20, justifyContent: 'center', minWidth: 40, paddingHorizontal: 6 },
   statusText: { fontWeight: '700' },
   text: { color: 'rgba(255,255,255,0.9)', fontFamily: MONO_FONT, fontSize: 13 },
-  top: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 8, transform: [{ rotate: '180deg' }] }
+  top: { alignItems: 'center', left: 0, position: 'absolute', right: 0, transform: [{ rotate: '180deg' }] }
 })

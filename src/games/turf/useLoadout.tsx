@@ -2,7 +2,7 @@ import { SectionedDropdown } from '@tastic/hud'
 import type { GameLoadout, LoadoutOptionsProps, RoundMode } from '@tastic/shell'
 import { useCallback, useMemo } from 'react'
 
-import { CPU_DIFFICULTY_OPTIONS, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
+import { CPU_DIFFICULTY_OPTIONS, FULL_SCREEN_OPTION, GRID_SIZE_OPTIONS, LoadoutOptionsRow, pickRandom, SPEED_OPTIONS, useKeySchemeControl } from '@/shared/match/loadout'
 import type { CpuDifficulty } from '@/shared/match/types'
 
 import { TURF_POWERUPS } from './constants'
@@ -33,6 +33,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
   const reset = useCallback(() => {
     setSettings({
       arena: DEFAULT_SETTINGS.arena,
+      extendIntoSafeArea: DEFAULT_SETTINGS.extendIntoSafeArea,
       crash: DEFAULT_SETTINGS.crash,
       ownTrailDeadly: DEFAULT_SETTINGS.ownTrailDeadly,
       roundSeconds: DEFAULT_SETTINGS.roundSeconds,
@@ -47,7 +48,17 @@ export function useLoadout(mode: RoundMode): GameLoadout {
       const look = { accentColor, mutedColor, onAccentColor, dark }
       return (
         <LoadoutOptionsRow ids={OPTION_IDS} host={host} onRandomize={onRandomize} onReset={onReset} dark={dark}>
-          <SectionedDropdown id='turfArena' host={host} icon='crop-square' accessibilityLabel='Arena' sections={[{ kind: 'single', id: 'turfArena', options: TURF_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) }]} {...look} />
+          <SectionedDropdown
+            id='turfArena'
+            host={host}
+            icon='crop-square'
+            accessibilityLabel='Arena'
+            sections={[
+              { kind: 'single', id: 'turfArena', options: TURF_ARENA_OPTIONS, value: settings.arena, onChange: (arena) => setSettings({ arena }) },
+              { kind: 'multi', id: 'turfBoardToggles', options: [FULL_SCREEN_OPTION], value: settings.extendIntoSafeArea ? [FULL_SCREEN_OPTION.value] : [], onChange: (value) => setSettings({ extendIntoSafeArea: value.includes(FULL_SCREEN_OPTION.value) }) }
+            ]}
+            {...look}
+          />
           <SectionedDropdown
             id='turfRules'
             host={host}

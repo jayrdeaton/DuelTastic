@@ -25,20 +25,20 @@ export interface TouchInputLayerProps {
   onActivate: (snakeId: SnakeId) => void
   // Whether each seat's own controls are currently Mesmerized (see types/index.ts's
   // SnakeControlEffect) - a mesmerized seat's resolved swipe direction is inverted before onTurn
-  // ever sees it, mirroring LightCycles' identical TouchInputLayer prop. Read through latestRef
+  // ever sees it, mirroring Trap's identical TouchInputLayer prop. Read through latestRef
   // (see below), never a gesture dependency, so a mid-touch mesmerize landing or expiring can
   // never force RNGH to tear down and re-attach an in-progress gesture's native recognizer.
   controlInverted: Record<SnakeId, boolean>
   // Each snake's current (committed) heading, straight from game state - used to gate the turn
   // sound/haptic on isEffectiveTurn, so continuing straight or reversing 180° (both of which
   // applySnakeTurnIntent silently no-ops in snakeEngine.ts) doesn't fire feedback for a turn that
-  // never actually happens. Mirrors LightCycles' identical TouchInputLayer prop exactly.
+  // never actually happens. Mirrors Trap's identical TouchInputLayer prop exactly.
   currentDirections: Record<SnakeId, Direction>
 }
 
 // Two independent single-finger Pan gestures in dual mode, each on its OWN View (sized/positioned
 // to its own half - see snake1ZoneStyle/snake2ZoneStyle below) rather than one shared View split via
-// `hitSlop`. Direct port of LightCycles' TouchInputLayer.tsx's own reasoning: two touches landing in
+// `hitSlop`. Direct port of Trap's TouchInputLayer.tsx's own reasoning: two touches landing in
 // the same native touch-event batch (a genuine simultaneous two-player swipe) can race on which
 // single shared recognizer claims which pointer and lose one or both turns; two separate native
 // views/recognizers have nothing left to race, since each only ever sees the pointer that landed on
@@ -52,7 +52,7 @@ export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, con
 
   // Everything handleTurn/handleActivate need, kept in a ref rather than closed over directly, so
   // those two callbacks - and therefore makeSnakeGesture and the Gesture objects it builds below -
-  // can stay referentially stable across renders, exactly mirroring LightCycles' identical
+  // can stay referentially stable across renders, exactly mirroring Trap's identical
   // TouchInputLayer.tsx latestRef: RNGH tears down and re-attaches its native recognizer on every
   // new gesture object handed to GestureDetector, and a touch that starts mid-rebuild loses its
   // recognizer state entirely. currentDirections in particular is a fresh object every single game
@@ -67,7 +67,7 @@ export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, con
   // swipe-to-navigate) for as long as the board is up. Without this, two players touching a
   // touchscreen laptop at once (a Surface, in 2 Player) read as a pinch: the page zoomed in, the
   // board's bottom edge and its wall slid off screen, and a snake crashed into a wall nobody could
-  // see. The same body styles as LightCycles' TouchInputLayer.web.tsx, but held for the whole
+  // see. The same body styles as Trap's TouchInputLayer.web.tsx, but held for the whole
   // screen, not only while turns are live, so a pinch during the countdown or on the result cards
   // can't zoom either.
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, con
 
   // Resolves a turn continuously during the drag (onUpdate) instead of once at release, so a
   // player can chain several turns within one continuous touch without lifting their finger - see
-  // LightCycles' TouchInputLayer.tsx's makePlayerGesture for the full rationale. Composed with a
+  // Trap's TouchInputLayer.tsx's makePlayerGesture for the full rationale. Composed with a
   // Gesture.Tap for powerup activation (a stationary tap, not a drag) via Gesture.Simultaneous, so
   // both recognizers share the exact same zone rather than needing a separate hit-target.
   const makeSnakeGesture = useCallback(
@@ -188,7 +188,7 @@ export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, con
   // window, only: a phone is always face-to-face, see useSeatSplit): whichever seat is on the right
   // gets the right zone. Only 2 Player lands here:
   // PlayScreen.tsx picks the mode from the number of humans, so Solo and Vs CPU (one human each) both use
-  // the single full-board zone above, matching LightCycles' TouchInputLayer. While Lock Orientation
+  // the single full-board zone above, matching Trap's TouchInputLayer. While Lock Orientation
   // is on, the split holds still (tilting mid-match no longer moves it) along with the walls and
   // countdown zones: the shell's OrientationBridge freezes the shared reading app-wide.
   const isFaceToFace = orientationMode === 'faceToFace'

@@ -14,7 +14,7 @@ const DEFAULT_MODE_STATS: SnakeModeStats = { played: 0, bestScore: 0, totalScore
 // references to the same one. Every consumer today only ever spreads/reads these, but a shared
 // reference is a standing invitation for a future in-place mutation (or, previously here, a bare
 // `versus: DEFAULT_OUTCOME_RECORD` with no clone at all) to corrupt both at once - mirrors
-// LightCycles' own statsValidation.ts createDefaultVsCpu/createDefaultTwoPlayer pattern.
+// Trap's own statsValidation.ts createDefaultVsCpu/createDefaultTwoPlayer pattern.
 function createDefaultByMode(): Record<SnakeMode, SnakeModeStats> {
   return Object.fromEntries(SNAKE_MODES.map((m) => [m, { ...DEFAULT_MODE_STATS }])) as Record<SnakeMode, SnakeModeStats>
 }
@@ -82,6 +82,6 @@ function isValidProfileStats(value: unknown): value is ProfileStats {
 export function isValidStats(value: unknown): value is StatsState {
   if (!isValidProfileStats(value)) return false
   const v = value as Partial<StatsState>
-  const profilesOk = v.profiles === undefined || (isRecord(v.profiles) && Object.values(v.profiles).every(isValidProfileStats))
-  return profilesOk && (v.firstGameResult === undefined || v.firstGameResult === null || v.firstGameResult === 'win' || v.firstGameResult === 'loss' || v.firstGameResult === 'draw')
+  const profilesOk = isRecord(v.profiles) && Object.values(v.profiles).every(isValidProfileStats)
+  return profilesOk && (v.firstGameResult === null || v.firstGameResult === 'win' || v.firstGameResult === 'loss' || v.firstGameResult === 'draw')
 }

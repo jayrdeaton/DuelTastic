@@ -6,11 +6,11 @@ import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
 import { computeContentBounds, useBackgroundPause, useSettledWindowDimensions } from '@tastic/core'
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
-import { liveplayActions, MatchChips, safeBack, SettingsDialog, useActiveRound, useProfiles } from '@tastic/shell'
+import { liveplayActions, MatchChips, safeBack, SettingsDialog, useActiveRound, useAtComputer, useProfiles } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useDispatch } from 'react-redux'
@@ -24,7 +24,7 @@ import OnboardingOverlay from './components/OnboardingOverlay'
 import { SnakeBoard } from './components/SnakeBoard'
 import { SnakePowerupHud } from './components/SnakePowerupHud'
 import TouchInputLayer, { TouchInputMode } from './components/TouchInputLayer'
-import { DESKTOP_WEB_MIN_WIDTH, MAX_BOARD_CONTENT_WIDTH, SNAKE_CELL_PX, SNAKE_GAME_OVER_DIALOG_HOLD_MS, snakeDeathFadeMs } from './constants/snake'
+import { MAX_BOARD_CONTENT_WIDTH, SNAKE_CELL_PX, SNAKE_GAME_OVER_DIALOG_HOLD_MS, snakeDeathFadeMs } from './constants/snake'
 import { useSeatSplit } from './hooks/useSeatSplit'
 import { useSnakeSounds } from './hooks/useSnakeSounds'
 import { SnakeMode, useSnakeState } from './hooks/useSnakeState'
@@ -67,10 +67,10 @@ export default function PlayScreen() {
   // The AVAILABLE width/height computeGridSize sizes the grid from - not just a visual crop applied
   // after the fact, so a wide desktop-web window genuinely gets a narrower board (fewer columns) and
   // a device's notch/status bar/home indicator genuinely gets a shorter one (fewer rows), instead of
-  // a merely letterboxed view of a bigger one. Mirrors LightCycles' own Full Screen/extendIntoSafeArea
+  // a merely letterboxed view of a bigger one. Mirrors Trap's own Full Screen/extendIntoSafeArea
   // setting, which also governs the actual grid a round plays on, not just its on-screen presentation:
   // width loses both the desktop-web gutter and the left/right safe-area insets, height loses the
-  // top/bottom safe-area insets. Both ignored entirely once fullScreen is on, same as LightCycles'
+  // top/bottom safe-area insets. Both ignored entirely once fullScreen is on, same as Trap's
   // extendIntoSafeArea bypassing its own gutter+insets. Live (not frozen) - see boardScale's own
   // comment below for how a live availableWidth/availableHeight and a frozen state.grid stay
   // reconciled across a resize instead of fighting each other.
@@ -117,7 +117,7 @@ export default function PlayScreen() {
   // and handleRetry).
   const [localPhase, setLocalPhase] = useState<'onboarding' | 'playing'>('onboarding')
 
-  // Mirrors BoxHockey's/AirHockey's/Pong's/LightCycles' identical onBackPress + ConfirmDialog
+  // Mirrors BoxHockey's/AirHockey's/Pong's/Trap's identical onBackPress + ConfirmDialog
   // pair (rendered near SettingsDialog below): only interrupts with a "Quit Match?" confirmation
   // when there's an actual score to lose, so backing out of a still-scoreless round (onboarding,
   // or a round that ended 0-0) exits immediately instead of confirming nothing. Previously this
@@ -176,7 +176,7 @@ export default function PlayScreen() {
 
   // Each seat's current (committed) heading, straight from game state - passed down to both
   // TouchInputLayer and KeyboardInputLayer so each can gate its own turn sound/haptic on
-  // isEffectiveTurn, mirroring LightCycles' identical currentDirections memo (and identical prop on
+  // isEffectiveTurn, mirroring Trap's identical currentDirections memo (and identical prop on
   // its own TouchInputLayer/TouchInputLayer.web) in its own play screen exactly - the feedback itself
   // lives in the input layers there too, not here. 'up' is an arbitrary placeholder for a seat that
   // doesn't exist yet (solo's snake 2); neither input layer ever actually looks it up for a seat no
@@ -259,7 +259,7 @@ export default function PlayScreen() {
   const humanPlayers: SnakeId[] = useMemo(() => (mode === 'twoPlayer' ? [1, 2] : [1]), [mode])
 
   // Keyed off the number of HUMANS, not snakes: a lone human (Solo or Vs CPU) gets the whole board
-  // as one swipe/drag zone, and only 2 Player splits it into per-seat halves. Mirrors LightCycles'
+  // as one swipe/drag zone, and only 2 Player splits it into per-seat halves. Mirrors Trap's
   // TouchInputLayer (`solo = humanPlayers.length === 1`) and OnboardingOverlay's identical
   // humanPlayers-gated branch, whose full-board Vs CPU countdown tint now matches where a swipe
   // actually registers. This used to be `mode === 'solo'`, which gave Vs CPU the two-seat split
@@ -336,7 +336,7 @@ export default function PlayScreen() {
 
     // Each human seat's own unlocks plus the device-wide ones that are really that seat's (all of
     // them for a guest, only scope: 'device' ones for a profile; see @tastic/achievements'
-    // broadcastDeviceUnlocks), same as LightCycles. In 2 Player the device-wide ones go to the
+    // broadcastDeviceUnlocks), same as Trap. In 2 Player the device-wide ones go to the
     // round's winner only, both seats on a draw (audit F037). A round where nothing unlocked comes
     // back as {}.
     const seatUnlocks = broadcastDeviceUnlocks(humanPlayers, unlocked.profiles, unlocked.device, profileIds, { winners: mode === 'twoPlayer' && winner !== null ? [winner] : undefined })
@@ -353,7 +353,7 @@ export default function PlayScreen() {
   }, [phase, mode, stats, humanPlayers, winner, cpuDifficulty, lastSelected, profiles, recordRoundOutcome, showUnlockToasts])
 
   // Crash sound + haptic - fires once, the instant the engine's own state.phase (not the derived,
-  // onboarding-aware `phase` above) flips into 'roundOver', mirroring LightCycles' own immediate
+  // onboarding-aware `phase` above) flips into 'roundOver', mirroring Trap's own immediate
   // crash sound+haptic (its play screen fires on the identical transition, independent of any dialog
   // delay). useSnakeSounds/useVibration each already gate themselves on the user's own sound/haptics
   // settings, so no extra enabled-check is needed here. playGameOver and notification come from the
@@ -373,19 +373,19 @@ export default function PlayScreen() {
 
   // Gates GameOverDialog's own visibility behind the death-fade ceremony (see SnakeBoardCanvas.tsx's
   // own per-snake deathProgress animation) rather than showing it the instant phase flips -
-  // mirrors LightCycles' identical showResultDialog effect. Reads state.snakes once per
+  // mirrors Trap's identical showResultDialog effect. Reads state.snakes once per
   // 'roundOver' entry rather than as a dependency: a dead snake's body/alive never changes again
   // for the rest of the round, so there's nothing to go stale. Math.max across every dead snake
   // (not just the first) is what makes a simultaneous double-death in 2P/Vs CPU wait for whichever
   // fade takes longer, rather than revealing the dialog over a still-fading loser.
   const [showGameOverDialog, setShowGameOverDialog] = useState(false)
 
-  // On a desktop-web page (web, at least DESKTOP_WEB_MIN_WIDTH wide) the chips stay up in the page's
-  // top corners for the whole match, so there's always a way out or into Settings; either dialog
-  // pauses play (see `paused` above). Anywhere narrower they only show before and after a round.
-  const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
+  // At a computer (the shell's useAtComputer) the chips stay up in the page's top corners for the
+  // whole match, so there's always a way out or into Settings; either dialog pauses play (see `paused`
+  // above). On a phone or tablet they only show before and after a round.
+  const atComputer = useAtComputer()
   // When the back and settings chips (the shell's MatchChips) show: play is off.
-  const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'gameOver' && showGameOverDialog)
+  const controlsVisible = atComputer || phase === 'onboarding' || (phase === 'gameOver' && showGameOverDialog)
 
   // Mirrors phase === 'playing' into Redux (the shell's liveplaySlice - see its own doc) rather than calling
   // @tastic/edge-guard's useEdgeGestureGuard directly here: that hook stays mounted once at the app
@@ -441,14 +441,14 @@ export default function PlayScreen() {
   // state.grid is already the round's own frozen design resolution - createInitialSnakeState only
   // ever runs again on retry (see useSnakeState.ts), so every snake body/food coordinate laid down
   // this round is already committed to state.grid's own cols/rows and can't safely be rederived from
-  // a live resize without invalidating them, exactly like LightCycles' analogous grid. Unlike
-  // LightCycles, though, nothing here used to freeze the PRESENTATION to match: SnakeBoardCanvas's
+  // a live resize without invalidating them, exactly like Trap's analogous grid. Unlike
+  // Trap, though, nothing here used to freeze the PRESENTATION to match: SnakeBoardCanvas's
   // <Canvas> is a bare StyleSheet.absoluteFill, so it (and TouchInputLayer, also absoluteFill)
   // stretched to whatever styles.root's live size happened to be on every render, while the actual
   // drawn cells stayed pinned to state.grid's own frozen pixel footprint - on a resize after a round
   // already started, the board would silently stop filling (or overflow) its own canvas instead of
   // visibly growing/shrinking with the window. designWidth/designHeight below are that frozen
-  // footprint made explicit; boardScale - the same live-size-over-design-size transform LightCycles'
+  // footprint made explicit; boardScale - the same live-size-over-design-size transform Trap's
   // GameRound uses, and safe for the identical reason: TouchInputLayer's own zones are
   // percentage-of-parent/pan-translation based, not absolute-pixel - scales the board+touch subtree
   // below as one rigid unit to fit the live window, so it now visibly tracks a resize without state
@@ -487,7 +487,7 @@ export default function PlayScreen() {
       full-bleed parent) so an asymmetric inset - a landscape notch/Dynamic Island sitting on just
       one side, for instance - still produces a genuinely safe rectangle instead of one that's
       merely the right SIZE but mis-centered relative to it. fullScreen swaps in boardAreaFullBleed,
-      bleeding the board all the way to the physical screen edge instead. Mirrors LightCycles'
+      bleeding the board all the way to the physical screen edge instead. Mirrors Trap's
       identical boardArea/boardAreaFullBleed split. */}
       <View style={[styles.boardArea, fullScreen ? styles.boardAreaFullBleed : { top: insets.top, bottom: insets.bottom, left: insets.left + gutterWidth, right: insets.right + gutterWidth }]}>
         <View style={{ width: designWidth, height: designHeight, transform: [{ scale: boardScale }] }}>
@@ -507,7 +507,7 @@ export default function PlayScreen() {
 
       {phase === 'gameOver' && showGameOverDialog && <GameOverDialog score={humanScore} highScore={Math.max(seatStats(1).byMode[mode].bestScore, humanScore)} isNewHighScore={newHighScoreSeats[1] ?? false} onRetry={handleRetry} onHome={safeBack} outcome={gameOverOutcome} opponentScore={mode !== 'solo' ? opponentScore : undefined} seatResults={mode === 'twoPlayer' && state.outcome ? { 1: gameOverSeatResult(1), 2: gameOverSeatResult(2) } : undefined} seatSpots={seatSpots} />}
 
-      {/* Kept as its own sibling of the board/gesture tree above, mirroring LightCycles'/BoxHockey's
+      {/* Kept as its own sibling of the board/gesture tree above, mirroring Trap's/BoxHockey's
       identically-motivated MatchOverlays split - its live window read's re-renders should never
       cascade into the board/touch-input subtree. showBack now matches showSettings' own
       gameOver gating (previously back-only during onboarding) - matches BoxHockey's/AirHockey's/
@@ -520,7 +520,7 @@ export default function PlayScreen() {
       above); every other toast stays on the app's main Toaster (@tastic/shell's Providers.tsx). */}
       {mode === 'twoPlayer' && <SeatToasters spots={seatSpots} />}
 
-      {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/LightCycles'/
+      {/* Fleet-shared @tastic/hud ConfirmDialog, matching BoxHockey's/AirHockey's/Trap's/
       Pong's identical "Quit Match?" prompt - see onBackPress's own comment above for why it's
       gated on there being an actual score to lose. Its message is progressMessage above. */}
       <ConfirmDialog visible={confirmVisible} title='Quit Match?' message={progressMessage} confirmLabel='Quit' cancelLabel='Cancel' icon='alert-circle-outline' destructive={false} onConfirm={handleQuit} onCancel={cancelBack} />

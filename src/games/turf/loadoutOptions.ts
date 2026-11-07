@@ -15,7 +15,7 @@ export const TURF_CRASH_OPTIONS: MenuOption<TurfCrashRule>[] = [
 
 export const TURF_ARENA_OPTIONS: MenuOption<TurfArena>[] = sharedArenaOptions<TurfArena>('turf')
 
-// A one-row toggle, in the same menu as the crash rule (the multi-select row LightCycles' arena menu
+// A one-row toggle, in the same menu as the crash rule (the multi-select row Trap's arena menu
 // uses for its board toggles).
 export const TURF_OWN_TRAIL_SAFE_OPTION: MenuOption<'ownTrailSafe'> = { value: 'ownTrailSafe', label: 'Cross Your Own Trail', description: 'Your trail never crashes you', icon: 'vector-polyline' }
 

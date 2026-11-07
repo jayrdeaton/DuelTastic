@@ -144,10 +144,10 @@ describe('evaluateUnlockedIdsForProfile', () => {
 
 describe('createDuelAchievementCatalog', () => {
   it('names only the first achievement after the game', () => {
-    const lightCycles = createDuelAchievementCatalog('First Cycle')
+    const trap = createDuelAchievementCatalog('First Trap')
     const turf = createDuelAchievementCatalog('First Claim')
-    expect(lightCycles.map((a) => a.id)).toEqual(turf.map((a) => a.id))
+    expect(trap.map((a) => a.id)).toEqual(turf.map((a) => a.id))
     expect(turf[0]).toMatchObject({ id: 'first_game_played', title: 'First Claim' })
-    expect(lightCycles.slice(1).map((a) => a.title)).toEqual(turf.slice(1).map((a) => a.title))
+    expect(trap.slice(1).map((a) => a.title)).toEqual(turf.slice(1).map((a) => a.title))
   })
 })

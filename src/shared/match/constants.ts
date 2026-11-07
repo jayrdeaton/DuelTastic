@@ -30,11 +30,6 @@ export const DEFAULT_GRID_SIZE_TIER: GridSizeTier = 'medium'
 // from stretching into an unplayably wide, short rectangle.
 export const MAX_BOARD_CONTENT_WIDTH = 1000
 
-// Threshold (in CSS px) at or above which web counts as "desktop" rather than phone-shaped - the
-// same 768 AirHockey, BoxHockey and Pong use. There, MatchScreen keeps the back/settings chips in the
-// page's top corners for the whole match instead of hiding them while a round is live.
-export const DESKTOP_WEB_MIN_WIDTH = 768
-
 // How much of each side of the board MatchScreen keeps clear on desktop web, for the back and settings
 // chips: they sit 8px in from the page's top corners (MatchOverlays) and are 38px across. Taken out of
 // the gutter when the window has one (MAX_BOARD_CONTENT_WIDTH), so a wide window's board doesn't
@@ -64,13 +59,13 @@ export const ONBOARDING_GO_HOLD_MS = 500
 export const ROUND_OVER_DIALOG_HOLD_MS = 300
 
 // ─── Death sequence (see RiderCrash.tsx) ─────────────────────────────────────
-// Every game's crash, LightCycles' and Turf's: how long the crashed rider's head takes to burst into
+// Every game's crash, Trap's and Turf's: how long the crashed rider's head takes to burst into
 // the flash, ring and shards. Fixed, unlike the wipe below: an explosion at a single point has
 // nothing to scale with trail length the way a wipe crossing every trail cell does.
 export const DEATH_EXPLOSION_MS = 420
 
 // How long the crashed rider's trail takes to wipe itself out from head to tail, per cell, clamped to
-// DEATH_WIPE_MIN_MS/MAX_MS (trail length is unbounded). Lower per cell than LightCycles'
+// DEATH_WIPE_MIN_MS/MAX_MS (trail length is unbounded). Lower per cell than Trap's
 // TRAIL_SEVER_EAT_MS_PER_CELL (18): a Prune or Shield break only severs a small chunk mid-round,
 // while a death wipe can walk a round-long trail hundreds of cells long.
 export const DEATH_WIPE_MS_PER_CELL = 6

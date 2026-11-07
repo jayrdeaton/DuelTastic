@@ -31,7 +31,8 @@ jest.mock('@/games/snake/hooks/useSnakeSounds', () => ({ useSnakeSounds: () => (
 
 jest.mock('@rific/feedback-press', () => ({ useVibration: () => ({ selection: jest.fn() }) }))
 
-jest.mock('@tastic/core', () => ({ useOrientationState: () => ({ orientationMode: 'faceToFace', p1OnRight: false, upsideDown: false }) }))
+// A touch screen, so the split is the window's face to face, not a computer's side by side (the shell's useAtComputer).
+jest.mock('@tastic/core', () => ({ useOrientationState: () => ({ orientationMode: 'faceToFace', p1OnRight: false, upsideDown: false }), useIsTouchPrimaryDevice: () => true }))
 
 function latestTap(): MockGesture {
   const taps = mockGestures.filter((g) => g.kind === 'tap')

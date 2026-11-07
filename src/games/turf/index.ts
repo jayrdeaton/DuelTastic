@@ -26,7 +26,10 @@ export const turf: GameDefinition = {
   blurb: 'Loop out from your ground to claim more. Cut their trail.',
   icon: GameIcon,
   seatTwo: ['cpu', 'person'],
-  // The same board as LightCycles' (see MatchScreen): face to face in any window.
+  // The board is one tall, fixed split (see MatchScreen), so on a phone or tablet 2 Player is face to
+  // face in any window; at a computer the players sit side by side, here and in the match's cards
+  // (useAtComputer).
+  sideBySideAtComputer: true,
   reducers: { ...playerSettings.reducers, ...turfStats.reducers, turfGuide: guideReducer },
   Provider: turfStats.Provider,
   useLoadout,

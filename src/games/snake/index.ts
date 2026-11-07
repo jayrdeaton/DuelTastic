@@ -22,11 +22,12 @@ export const snake: GameDefinition = {
   title: 'Snake',
   blurb: 'The arcade classic. Eat, grow, and keep off the walls.',
   icon: GameIcon,
-  // Nobody is Solo: one snake, scored, the run ending on the first crash.
+  // 'nobody' is Solo: one snake, scored, the run ending on the first crash.
   seatTwo: ['cpu', 'person', 'nobody'],
-  // 2 Player splits by the window's shape (see useSeatSplit): face to face in a tall one, snake 1 at
-  // the bottom (a phone, always portrait), side by side in a wide one (a landscape iPad, a desktop
-  // window), and the loadout follows it.
+  // 2 Player splits side by side at a computer, and on a phone or tablet by the window's shape (see
+  // useSeatSplit): face to face in a tall one, snake 1 at the bottom (a phone, always portrait), side by
+  // side in a wide one (a landscape iPad). The loadout follows it.
+  sideBySideAtComputer: true,
   sideBySideWhenWide: true,
   reducers: { ...playerSettings.reducers, ...snakeStats.reducers, snakeGuide: guideReducer },
   Provider: snakeStats.Provider,

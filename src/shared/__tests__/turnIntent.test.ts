@@ -1,7 +1,7 @@
 import { resolveTurnIntent } from '@/shared/match/turnIntent'
 
 // resolveSwipeDirection/flipDirection/isEffectiveTurn now live in @tastic/input (tested in that
-// package's own repo) - resolveTurnIntent is the one function LightCycles still owns here, as the
+// package's own repo) - resolveTurnIntent is the one function Trap still owns here, as the
 // thin adapter (translationX/Y -> Vec2, plus this app's own MIN_SWIPE_DISTANCE) every input source
 // routes through.
 describe('resolveTurnIntent', () => {

@@ -18,7 +18,13 @@ export interface TurfHudProps {
   // the CPU's edge.
   held: Record<TurfSeat, TurfPowerup | null>
   powerupsOn: boolean
+  // MatchScreen's safe-area insets: all zero unless the round plays under them (Full Screen), when each
+  // badge moves in by them, clear of the Dynamic Island, notch and home indicator.
+  insets: { top: number; bottom: number }
 }
+
+// How far each badge sits in from its edge of the board (plus the safe-area insets in Full Screen).
+const EDGE_GAP = 8
 
 const SEATS: readonly TurfSeat[] = [1, 2]
 
@@ -35,7 +41,7 @@ function clock(ms: number) {
 
 const Held = ({ powerup }: { powerup: TurfPowerup | null }) => <HeldPowerup icon={powerup && TURF_POWERUP_ICONS[powerup]} />
 
-function Badge({ seat, ground, totalCells, timeLeftMs, colors, held, powerupsOn }: Omit<TurfHudProps, 'humanPlayers'> & { seat: TurfSeat }) {
+function Badge({ seat, ground, totalCells, timeLeftMs, colors, held, powerupsOn }: Omit<TurfHudProps, 'humanPlayers' | 'insets'> & { seat: TurfSeat }) {
   const them: TurfSeat = seat === 1 ? 2 : 1
   return (
     <View style={styles.badge}>
@@ -51,14 +57,14 @@ function Badge({ seat, ground, totalCells, timeLeftMs, colors, held, powerupsOn 
 
 // Each player's share of the board, the other's, the clock and what they're holding, at the
 // player's own edge. Drawn over the board but never in the way of a swipe.
-export function TurfHud({ humanPlayers, ...rest }: TurfHudProps) {
+export function TurfHud({ humanPlayers, insets, ...rest }: TurfHudProps) {
   return (
     <>
       {SEATS.map((seat) => {
         const human = humanPlayers.includes(seat)
         if (!human && !rest.powerupsOn) return null
         return (
-          <View key={seat} pointerEvents='none' style={seat === 1 ? styles.bottom : styles.top}>
+          <View key={seat} pointerEvents='none' style={seat === 1 ? [styles.bottom, { bottom: EDGE_GAP + insets.bottom }] : [styles.top, { top: EDGE_GAP + insets.top }]}>
             {human ? (
               <Badge seat={seat} {...rest} />
             ) : (
@@ -75,7 +81,7 @@ export function TurfHud({ humanPlayers, ...rest }: TurfHudProps) {
 }
 
 const styles = StyleSheet.create({
-  // The same translucent chip as LightCycles' PowerupHud badges.
+  // The same translucent chip as Trap's PowerupHud badges.
   badge: {
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.28)',
@@ -87,10 +93,10 @@ const styles = StyleSheet.create({
     height: 28,
     paddingHorizontal: 10
   },
-  bottom: { alignItems: 'center', bottom: 8, left: 0, position: 'absolute', right: 0 },
+  bottom: { alignItems: 'center', left: 0, position: 'absolute', right: 0 },
   clock: { marginLeft: 6, opacity: 0.8 },
   dot: { borderRadius: 4, height: 8, width: 8 },
   own: { fontWeight: '700' },
   text: { color: 'rgba(255,255,255,0.9)', fontFamily: MONO_FONT, fontSize: 13 },
-  top: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 8, transform: [{ rotate: '180deg' }] }
+  top: { alignItems: 'center', left: 0, position: 'absolute', right: 0, transform: [{ rotate: '180deg' }] }
 })

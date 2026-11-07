@@ -2,9 +2,9 @@ import { EFFECT_ICONS, type EffectKind } from '@/shared/powerups'
 
 import type { TurfOptions, TurfPowerup } from './types'
 
-// Milliseconds per cell at LightCycles' medium cell size (8px), scaled to the round's real cell size
-// the same way LightCycles' speeds are (see constants/game.ts's scaleMsForCellPx), so a rider covers
-// the same distance on screen per second at any grid size. Slower than LightCycles' own speeds: a
+// Milliseconds per cell at Trap's medium cell size (8px), scaled to the round's real cell size
+// the same way Trap's speeds are (see constants/game.ts's scaleMsForCellPx), so a rider covers
+// the same distance on screen per second at any grid size. Slower than Trap's own speeds: a
 // loop has to be planned and brought home, not just survived.
 export const TURF_SPEED_INTERVAL_MS = { slow: 120, normal: 90, fast: 66 } as const
 
@@ -34,7 +34,7 @@ export const TURF_FLIGHT_TICKS = 10
 export const TURF_POWERUPS: TurfPowerup[] = ['dash', 'frost', 'mud', 'fence', 'sod', 'tangle', 'gust']
 
 // Ticks a timed powerup lasts, at about 11 ticks a second on the normal speed (the same seconds as
-// LightCycles' for the effects both have, except Fence, which gets longer than Shield: it has to
+// Trap's for the effects both have, except Fence, which gets longer than Shield: it has to
 // cover a loop home).
 export const TURF_EFFECT_TICKS: Record<Exclude<TurfPowerup, 'sod'>, number> = {
   dash: 28, // about 2.5s

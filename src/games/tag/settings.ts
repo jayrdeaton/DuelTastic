@@ -11,6 +11,7 @@ import type { TagSettings } from './types'
 // (see below), so a field added later starts at its default for everyone.
 export const DEFAULT_SETTINGS: TagSettings = {
   ...DEFAULT_TAG_OPTIONS,
+  extendIntoSafeArea: false,
   speedTier: 'normal',
   gridSizeTier: DEFAULT_GRID_SIZE_TIER,
   cpuDifficulty: 'normal',

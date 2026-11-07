@@ -1,15 +1,15 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-// LightCycles, Turf and Tag draw the same things the same way, from one piece each in
+// Trap, Turf and Tag draw the same things the same way, from one piece each in
 // src/shared/match/ and src/shared/BoardPowerups.tsx: a box or a gate is the same size and look in
 // every game, an arena's walls are solid bars, effect rings sit the same distance off the head, and a
 // crash is the same burst and wipe. Each board drew its own until 2026-11-04 (Tag's gates were a
-// third the size of the others', its walls a string of beads, LightCycles' walls a ladder of cell
+// third the size of the others', its walls a string of beads, Trap's walls a ladder of cell
 // outlines, Turf's crash a still ring), and this keeps them from drifting apart again.
 
 const BOARDS = {
-  lightcycles: join(__dirname, '..', 'games', 'lightcycles', 'components', 'GameBoard.tsx'),
+  trap: join(__dirname, '..', 'games', 'trap', 'components', 'GameBoard.tsx'),
   turf: join(__dirname, '..', 'games', 'turf', 'TurfBoard.tsx'),
   tag: join(__dirname, '..', 'games', 'tag', 'TagBoard.tsx')
 }
@@ -38,14 +38,14 @@ describe("every board's shared pieces", () => {
     expect(board).not.toMatch(/<Line\b/)
   })
 
-  // LightCycles' head glided over the time since the last tick until 2026-11-04, unevenly at its
+  // Trap's head glided over the time since the last tick until 2026-11-04, unevenly at its
   // small grid size, as Turf's and Tag's had before them.
   it.each(Object.keys(BOARDS) as (keyof typeof BOARDS)[])('%s glides its head with the shared useRiderGlide', (game) => {
     expect(source(game)).toMatch(/\buseRiderGlide\(/)
     expect(source(game)).not.toMatch(/lastTickAtRef/)
   })
 
-  it.each(['lightcycles', 'turf'] as const)('%s crashes with the shared burst and wipe', (game) => {
+  it.each(['trap', 'turf'] as const)('%s crashes with the shared burst and wipe', (game) => {
     expect(source(game)).toMatch(/<RiderCrash\b/)
   })
 
@@ -56,7 +56,7 @@ describe("every board's shared pieces", () => {
   })
 
   // The two games on the same fine cells draw the same size head (Turf's was half as big again).
-  it.each(['lightcycles', 'turf'] as const)('%s sizes its head with the shared HEAD_RADIUS_CELLS', (game) => {
+  it.each(['trap', 'turf'] as const)('%s sizes its head with the shared HEAD_RADIUS_CELLS', (game) => {
     expect(source(game)).toMatch(/cellPx \* HEAD_RADIUS_CELLS/)
   })
 })

@@ -7,7 +7,7 @@ function cellCenter(cell: GridCell, cellPx: number) {
 }
 
 // A tunnel (arenas.ts's buildArenaTunnels) in every game, drawn as a straight road rather than a
-// glyph: per explicit user feedback, LightCycles' earlier single faint centerline with corner-marker
+// glyph: per explicit user feedback, Trap's earlier single faint centerline with corner-marker
 // mouths didn't read clearly, and Turf's and Tag's single thick line read as a wall. The corridor is
 // always axis-aligned and dead straight, so its two long edges are the mouth-to-mouth centerline
 // offset by half a cell either side, in the board's own wall stroke, with a drop shadow so the

@@ -59,13 +59,9 @@ export interface StatsState extends DayStreakState {
   // choice is the one thing tracked uniformly across both modes (see statsEngine.ts).
   colors: Record<string, ColorStats>
   // Keyed by Profile.id - only populated for a seat that had a saved profile selected when its
-  // round outcome was recorded (see MatchScreen's profileIds). A
-  // stored blob from before this field existed is still valid (see statsValidation.ts's
-  // isValidStats, which treats an absent `profiles` key as valid) and gets backfilled to {} once,
-  // on load, via useAchievements' own migrateStats option - no schema-versioning machinery needed
-  // for a purely-additive field. Full-parity per-profile achievement tracking (see
-  // achievementEngine.ts's evaluateUnlockedIdsForProfile and the stats screen's player filter)
-  // reads this map.
+  // round outcome was recorded (see MatchScreen's profileIds). Full-parity per-profile achievement
+  // tracking (see achievementEngine.ts's evaluateUnlockedIdsForProfile and the stats screen's
+  // player filter) reads this map.
   profiles: Record<string, ProfileStats>
   // Set once, only when the very first round ever is recorded, then never touched again - powers
   // the one-off "your first-ever game was a win" achievement, which isn't derivable from

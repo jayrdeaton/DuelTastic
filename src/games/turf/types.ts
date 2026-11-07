@@ -22,20 +22,20 @@ export type TurfLayout = 'faceToFace' | 'sideBySide'
 // biggest patch of ground to start again, so a round only ends on the clock or a suffocation.
 export type TurfCrashRule = 'out' | 'home'
 // Every shared arena but Tunnels, which only means something where a rider can cross its own trail
-// in it (LightCycles, Snake): Turf has its Cross Your Own Trail rule for that.
+// in it (Trap, Snake): Turf has its Cross Your Own Trail rule for that.
 export type TurfArena = Exclude<SharedArenaVariant, 'underpass'>
 
 // Turf's powerups, Turf's names for the effects every game shares (src/games/shared/powerups.ts:
 // same colors and icons everywhere; TURF_POWERUP_EFFECTS in constants.ts says which is which):
-// - Dash (yours): double speed. LightCycles' Overdrive.
-// - Frost (theirs): frozen in place. LightCycles' Stasis.
+// - Dash (yours): double speed. Trap's Overdrive.
+// - Frost (theirs): frozen in place. Trap's Stasis.
 // - Mud (theirs): half speed for a while, a longer, softer Frost.
 // - Fence (yours): for a while nothing but the board's edge crashes you: nobody can cut your trail,
-//   you can cross your own, and a head-on never takes you out. LightCycles' Shield.
+//   you can cross your own, and a head-on never takes you out. Trap's Shield.
 // - Sod (yours): the ground around your head becomes yours at once, which brings you home if you're
 //   out, claiming your trail.
-// - Tangle (theirs): their steering is reversed. LightCycles' Hack.
-// - Gust (theirs): forced double speed. LightCycles' Overclock.
+// - Tangle (theirs): their steering is reversed. Trap's Hack.
+// - Gust (theirs): forced double speed. Trap's Overclock.
 export type TurfPowerup = 'dash' | 'frost' | 'mud' | 'fence' | 'sod' | 'tangle' | 'gust'
 
 export interface TurfRules {
@@ -107,6 +107,10 @@ export interface TurfState {
   portals: { a: GridCell; b: GridCell }[]
   // The static blocked cells from obstacle arenas.
   blocked: Uint8Array
+  // The cells a notch, Dynamic Island, home indicator or speaker cutout hides when the round plays
+  // under the safe areas (Full Screen; safeAreaMask), row by row: 1 where no powerup box may go. All
+  // zero otherwise.
+  unsafe: Uint8Array
   // Who owns each cell, row by row (index y * cols + x): 0 for nobody, else the seat.
   owner: Uint8Array
   // How many cells each seat owns, kept in step with `owner`.
@@ -122,6 +126,9 @@ export interface TurfState {
 // Turf's loadout, saved per player (see settings.ts): its own rules, plus the speed, grid size, CPU
 // level and controls every game in the pack has.
 export interface TurfSettings extends TurfOptions {
+  // Full Screen: the board plays under the device's safe areas (MatchScreen's fullBleed), with nothing a
+  // player needs to see or reach put under a cutout (safeAreaMask, and the HUD pushed in by the insets).
+  extendIntoSafeArea: boolean
   speedTier: SpeedTier
   gridSizeTier: GridSizeTier
   cpuDifficulty: CpuDifficulty

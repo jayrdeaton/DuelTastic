@@ -53,7 +53,7 @@ export function createDuelAchievementCatalog(firstGameTitle: string): Achievemen
       // Deliberately distinct from Beginner's Luck's copy below - this one's earnable any game,
       // any time, not just the very first, so it shouldn't read as the same achievement.
       description: 'Win any game, any time.',
-      // Bronze, not silver: this clears almost as fast as First Cycle for most players (a near-50%
+      // Bronze, not silver: this clears almost as fast as the first achievement (Trap's First Trap) for most players (a near-50%
       // shot every game), so it shouldn't share a tier with achievements that take real effort.
       tier: 'bronze',
       icon: 'star',

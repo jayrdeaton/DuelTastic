@@ -27,11 +27,11 @@ import { GridCell, GridSize } from '@/games/snake/types'
 // it's moot in practice: a portal is never placed on an edge cell (see arenas.ts), so a raw
 // off-grid `next` can never also be a portal entrance.
 //
-// Ported verbatim from LightCycles' floodFill.ts - confirmed 100% generic (no LightCycles-specific
+// Ported verbatim from Trap's floodFill.ts - confirmed 100% generic (no Trap-specific
 // logic), with only the import paths adapted to this project's grid.ts/types. Snake's own AI
 // (snakeAi.ts) has no portals/tunnels/wrap-awareness of its own yet and simply never passes those
 // params, relying on their defaults - kept here rather than stripped so this stays a byte-identical
-// port that can absorb a future LightCycles fix with a straight diff.
+// port that can absorb a future Trap fix with a straight diff.
 export function countReachableCells(start: GridCell, grid: GridSize, occupied: ReadonlySet<string>, maxCount: number = Infinity, portals: ReadonlyMap<string, GridCell> = new Map(), tunnelCellSet: ReadonlySet<string> = new Set(), tunnelOccupied: ReadonlySet<string> = new Set(), wrapEdges: boolean = false): number {
   const isBlocked = (key: string): boolean => (tunnelCellSet.has(key) ? tunnelOccupied : occupied).has(key)
   if (!isInBounds(start, grid) || isBlocked(cellKey(start))) return 0
@@ -67,7 +67,7 @@ export function countReachableCells(start: GridCell, grid: GridSize, occupied: R
 // `tunnelCellSet`/`tunnelOccupied` follow its identical isBlocked-routing shape, and `wrapEdges`
 // follows its identical wrap-before-portal-check shape too.
 //
-// Started as a port of LightCycles' floodFill.ts, but walks the grid by cell index (typed arrays for
+// Started as a port of Trap's floodFill.ts, but walks the grid by cell index (typed arrays for
 // visited/blocked/targets/portals) instead of string keys in Sets: snakeAi.ts runs this uncapped,
 // up to three times a tick, and on a full-screen desktop board (about 180 x 100 cells) the string
 // version took around 30ms a tick when the food was walled off. Same results as the string version

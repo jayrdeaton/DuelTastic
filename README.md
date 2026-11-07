@@ -1,14 +1,14 @@
 # DuelTastic
 
-Four arcade duel games in one app: LightCycles, Turf, Tag and Snake. Play a friend face to face on one device, or the CPU.
+Four arcade duel games in one app: Trap, Turf, Tag and Snake. Play a friend face to face on one device, or the CPU.
 
 DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of LightCycles. Built with Expo, React Native, and React Native Skia, it's part of a family of games built on my open-source `@tastic` game-engine and `@rific` Expo utility packages. App Store and Google Play release in progress.
 
-<p align="center"><img src="docs/gameplay.gif" alt="LightCycles gameplay: a round against the CPU on the Slow speed" width="300"></p>
+<p align="center"><img src="docs/gameplay.gif" alt="Trap gameplay: a round against the CPU on the Slow speed" width="300"></p>
 
 ## The games
 
-- **LightCycles:** the classic light-trail duel. Every rider leaves a solid trail, walls and every trail are deadly (your own included), and the last rider still riding wins the round.
+- **Trap** (LightCycles until 2026-11-07): the classic light-trail duel. Every rider leaves a solid trail, walls and every trail are deadly (your own included), and the last rider still riding wins the round.
   - Five arenas: Open, Pillars, Gauntlet, Portals (paired teleporters) and Underpass (a tunnel riders can cross over and under).
   - Six optional powerups: Overdrive, Stasis, Shield, Prune, Hack and Overclock.
   - Match options: three grid sizes, three speeds, a trail speed setting, Wrap Edges, and Full Screen (the board extends into the safe area).
@@ -28,14 +28,14 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 - **Seat 2, kept across games:** each loadout's seat 2 button picks the CPU (three difficulties per game: Drone, Bot and Mainframe, or Snake's Garter, Rattler and King Cobra), Player 2, a saved profile, or Nobody (Snake only). It's saved for the whole pack, so the same two people stay set up from one game to the next. In 2 Player on a phone, players sit face to face, each steering in their own half of the screen.
 - **Controls:** swipe to steer on touch devices. On desktop web each player picks the mouse, WASD, the arrow keys, IJKL or the numpad, each with its own powerup key.
 - **Player profiles:** saved names, colors and tags. On iOS the roster is shared with my other games through an App Group, and on games.infinitetoken.com through the browser's storage. A profile's color pick for a seat is kept for this pack only.
-- **Stats and achievements:** each game keeps its own stats and its own achievements (123 in all: LightCycles, Turf and Tag 30 each, Snake 33). One stats screen filters by player and by game, with per-profile and device-wide records, player rankings and day streaks. Unlocks show as toasts; in 2 Player each player's toasts face them in their own half.
+- **Stats and achievements:** each game keeps its own stats and its own achievements (123 in all: Trap, Turf and Tag 30 each, Snake 33). One stats screen filters by player and by game, with per-profile and device-wide records, player rankings and day streaks. Unlocks show as toasts; in 2 Player each player's toasts face them in their own half.
 - **Settings:** sound, haptics, appearance, blur, Keep Awake, Edge Guard (an iOS option that makes system edge gestures need a second swipe during play), and Check for Updates. A match pauses when the app goes to the background and stays Paused until a player taps Resume.
 
 ## Under the hood
 
 - **One pack, four games.** `src/pack.ts` lists the games. Each is one `GameDefinition` (`src/games/<id>/index.ts`) that hands the shared shell (`src/shell/`: Home, the loadout, stats, profiles, settings and the store) its settings, loadout menus, play screen, stats and How to Play cards. The shell and shared code never import a game, and no game imports another; ESLint enforces it.
-- **Pure, deterministic engines.** Each game's rules are plain TypeScript (`gameEngine.ts` for LightCycles, `engine.ts` for Turf and Tag, `snakeEngine.ts` for Snake): a tick takes a state and returns the next one, with randomness injected so tests can seed it. Rounds run on `requestAnimationFrame` loops that stop cleanly on pause.
-- **CPU opponents.** LightCycles' CPU flood-fills ahead of each legal turn to measure how much open space it leaves, understanding portals, tunnels and wrap-around edges; Snake's measures the same room and how near each turn brings it to the food. Turf's plans loops out from its ground and heads home when its trail is threatened. Tag's chases by the shortest way around the pillars and, when running, heads for the cell the chaser would take longest to reach. Difficulty changes how well each CPU plays and how it uses powerups, not how fast it reacts.
+- **Pure, deterministic engines.** Each game's rules are plain TypeScript (`gameEngine.ts` for Trap, `engine.ts` for Turf and Tag, `snakeEngine.ts` for Snake): a tick takes a state and returns the next one, with randomness injected so tests can seed it. Rounds run on `requestAnimationFrame` loops that stop cleanly on pause.
+- **CPU opponents.** Trap's CPU flood-fills ahead of each legal turn to measure how much open space it leaves, understanding portals, tunnels and wrap-around edges; Snake's measures the same room and how near each turn brings it to the food. Turf's plans loops out from its ground and heads home when its trail is threatened. Tag's chases by the shortest way around the pillars and, when running, heads for the cell the chaser would take longest to reach. Difficulty changes how well each CPU plays and how it uses powerups, not how fast it reacts.
 - **Skia rendering.** Boards, trails, snakes, death animations and powerup effects are drawn with React Native Skia and Reanimated. On web each board's host lazy-loads it only after CanvasKit (Skia's WASM build) has loaded, because Skia binds to it at module evaluation.
 - **Split-screen input.** In 2 Player each player gets their own gesture zone (`@tastic/split-screen`), and popovers stay in their own player's half. On web, pointer and keyboard input replace the gesture zones.
 - **Redux Toolkit + redux-persist.** One store, saved under `dueltastic:root`. Each game keeps its own keys (its settings per player, controls, achievements and How to Play progress), and the pack keeps seat 2, profiles, seat colors and app settings. Per-match state is never persisted.
@@ -88,7 +88,7 @@ src/
   pack.ts       DuelTastic: its games and its store
   shell/        app-wide screens, providers, settings and store slices (imports no game)
   shared/       code two or more games use: the match flow, duel stats, powerups, player settings
-  games/        lightcycles/, turf/, tag/, snake/: one GameDefinition each
+  games/        trap/, turf/, tag/, snake/: one GameDefinition each
   testUtils/    shared test helpers
   __tests__/    the pack's own Jest suites (each game has its own __tests__ folder too)
   __mocks__/    manual mocks for native and Expo modules

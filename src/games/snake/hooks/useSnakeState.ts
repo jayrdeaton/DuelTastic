@@ -21,12 +21,12 @@ function snakeCountForMode(mode: SnakeMode): 1 | 2 {
   return mode === 'solo' ? 1 : 2
 }
 
-// By convention the CPU always occupies snake id 2 (the far seat) - matches LightCycles'
+// By convention the CPU always occupies snake id 2 (the far seat) - matches Trap's
 // `CPU_PLAYER: Player = 2` and snakeAi.ts's own module comment.
 const CPU_SNAKE_ID: SnakeId = 2
 
-// Wraps snakeEngine.ts's own SnakeGameState with an outer phase LightCycles' analogous
-// useGameState.ts doesn't need (LightCycles' own GameState starts life already 'playing' with no
+// Wraps snakeEngine.ts's own SnakeGameState with an outer phase Trap's analogous
+// useGameState.ts doesn't need (Trap's own GameState starts life already 'playing' with no
 // separate pre-round wrapper at the hook layer - its onboarding countdown is purely a screen-level
 // overlay gating input, not a phase this hook tracks). Snake's engine ALSO starts `phase: 'playing'`
 // the instant createInitialSnakeState runs (see that function), but the tick loop below must not
@@ -102,10 +102,10 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
   }, [grid, snakeCount, settings, colors, cellPx, safeAreaInsetsPx])
 
   // ─── Tick loop ──────────────────────────────────────────────────────────
-  // Same rAF variable-tick-rate loop structure as LightCycles' useGameState.ts: runs only while the
+  // Same rAF variable-tick-rate loop structure as Trap's useGameState.ts: runs only while the
   // (outer) phase is 'playing', torn down the instant it leaves - whether that's forward into
   // 'gameOver' (round ended) or backward into 'onboarding' (retry). lastTickRef is reset fresh every
-  // time the effect (re)starts, exactly like LightCycles' lastTickRef reset on mount, so a fresh
+  // time the effect (re)starts, exactly like Trap's lastTickRef reset on mount, so a fresh
   // round never fires its first tick early against a stale timestamp from a previous round.
   // Also halts while `paused` (a dialog or a background pause, see PlayScreen.tsx); a resume restarts with
   // lastTickRef null, so the first tick after it waits a full interval.
@@ -136,7 +136,7 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
       while (accumulatorRef.current >= tickIntervalMs && catchUpTicks < MAX_CATCH_UP_TICKS) {
         accumulatorRef.current -= tickIntervalMs
         setState((s) => {
-          // Mirrors LightCycles' useGameState.ts inline CPU-turn-injection splice exactly: for
+          // Mirrors Trap's useGameState.ts inline CPU-turn-injection splice exactly: for
           // vsCpu, the CPU's activation decision (if any powerups are even enabled) is made and
           // applied FIRST, immediately before its move for THIS tick is decided and queued - same
           // cadence a human's queued tap-then-swipe would land at, so the bot's activation, its

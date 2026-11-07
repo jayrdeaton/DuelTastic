@@ -1,16 +1,16 @@
 import { SnakeGridSizeTier, SnakePowerupType, SnakeSpeedTier } from '@/games/snake/types'
 import type { CpuDifficulty } from '@/games/snake/utils/snakeAi'
 
-// Per-tier tick interval, mirroring LightCycles' SPEED_TIER_INTERVAL_MS. Unlike LightCycles, there
+// Per-tier tick interval, mirroring Trap's SPEED_TIER_INTERVAL_MS. Unlike Trap, there
 // is deliberately no speed-ramp table and no per-grid-size-tier rescaling here (see
-// scaleMsForCellPx/SPEED_RAMP_* there for what that looks like) - LightCycles itself keeps its own
+// scaleMsForCellPx/SPEED_RAMP_* there for what that looks like) - Trap itself keeps its own
 // ramp toggle hidden in its UI, and a gridSizeTier change here only ever affects SNAKE_CELL_PX
 // below, never tick cadence: a 'small' round ticks at exactly the same rate as 'large', it just
 // moves fewer px per tick. useSnakeState.ts's rAF loop just compares elapsed dt against whichever
 // of these three the round's persisted speedTier picked, every tick, for the life of a round.
 // Tuned to preserve the pre-fixed-step feel at 60Hz (where the old frame-rounded loop effectively
 // ran near 117ms/84ms for normal/fast), so fixing the loop itself doesn't silently speed the game
-// up on common displays; `slow`/`fast` still fan out from normal using roughly LightCycles' own
+// up on common displays; `slow`/`fast` still fan out from normal using roughly Trap's own
 // slow/normal and fast/normal ratios.
 export const SNAKE_SPEED_TIER_INTERVAL_MS: Record<SnakeSpeedTier, number> = {
   slow: 150,
@@ -18,13 +18,13 @@ export const SNAKE_SPEED_TIER_INTERVAL_MS: Record<SnakeSpeedTier, number> = {
   fast: 84
 }
 
-// Per-tier cell pixel size, mirroring LightCycles' GRID_CELL_PX - 'medium' is Classic Snake's
-// original fixed cell size exactly (chunkier than LightCycles' own GRID_CELL_PX.medium of 8px, a
+// Per-tier cell pixel size, mirroring Trap's GRID_CELL_PX - 'medium' is Classic Snake's
+// original fixed cell size exactly (chunkier than Trap's own GRID_CELL_PX.medium of 8px, a
 // snake-body-width block being the genre's visual identity - see constants/game.ts there), so a
 // player who never touches the new gridSizeTier setting sees no default behavior change. 'small'/
 // 'large' fan out from it - more, thinner cells (more room to maneuver) vs. fewer, chunkier cells
-// (less room) - using a narrower spread than LightCycles' own small/large ratio: Snake needs more
-// slack to loop around its own growing body than a trail-avoidance game does, so LightCycles' full
+// (less room) - using a narrower spread than Trap's own small/large ratio: Snake needs more
+// slack to loop around its own growing body than a trail-avoidance game does, so Trap's full
 // ratio applied here would make 'large' too cramped to play comfortably on a phone-sized board.
 // First-pass numbers, verify visually.
 export const SNAKE_CELL_PX: Record<SnakeGridSizeTier, number> = {
@@ -34,20 +34,15 @@ export const SNAKE_CELL_PX: Record<SnakeGridSizeTier, number> = {
 }
 
 // Caps the board's own width via @tastic/core's computeContentBounds (see PlayScreen.tsx) whenever
-// fullScreen is off - mirrors LightCycles' identical MAX_BOARD_CONTENT_WIDTH (same 1000px cap; no
+// fullScreen is off - mirrors Trap's identical MAX_BOARD_CONTENT_WIDTH (same 1000px cap; no
 // game-specific reason for Snake's own saturation point to differ, same reasoning as
-// ONBOARDING_COUNTDOWN_STEP_MS above borrowing LightCycles' generic pacing). Real phones/tablets
+// ONBOARDING_COUNTDOWN_STEP_MS above borrowing Trap's generic pacing). Real phones/tablets
 // stay well under this and see gutterWidth === 0 either way; it only actually kicks in on a
 // maximized desktop-web window, where nothing else stops the grid from growing into an unplayably
 // wide board.
 export const MAX_BOARD_CONTENT_WIDTH = 1000
 
-// Threshold (in CSS px) at or above which web counts as "desktop" rather than phone-shaped - the
-// same 768 AirHockey, BoxHockey and Pong use. There, PlayScreen.tsx keeps the back/settings chips in the
-// page's top corners for the whole match instead of hiding them while a round is live.
-export const DESKTOP_WEB_MIN_WIDTH = 768
-
-// Onboarding countdown timing - identical values to LightCycles' constants/game.ts (generic UX
+// Onboarding countdown timing - identical values to Trap's constants/game.ts (generic UX
 // pacing with no game-specific dependency, so there's no reason for Snake's own countdown to feel
 // differently paced). "3"/"2"/"1" each held for ONBOARDING_COUNTDOWN_STEP_MS, "GO!" held for an
 // extra ONBOARDING_GO_HOLD_MS on top of its own step, then the whole overlay fades out over
@@ -58,8 +53,8 @@ export const ONBOARDING_FADE_MS = 300
 
 // Death-ceremony timing - a dying snake's body fades tail-to-head over a duration scaled to its own
 // length (a long, well-fed snake gets a more drawn-out fade than a freshly-spawned one), clamped to
-// a sane range. Deliberately tighter than LightCycles' own deathAnimationDurationMs (6ms/cell,
-// 250-1400ms) since Snake bodies are far shorter than a round-long LightCycles trail.
+// a sane range. Deliberately tighter than Trap's own deathAnimationDurationMs (6ms/cell,
+// 250-1400ms) since Snake bodies are far shorter than a round-long Trap trail.
 export const SNAKE_DEATH_FADE_MS_PER_CELL = 18
 export const SNAKE_DEATH_FADE_MIN_MS = 320
 export const SNAKE_DEATH_FADE_MAX_MS = 900
@@ -73,16 +68,16 @@ export const SNAKE_GAME_OVER_DIALOG_HOLD_MS = 200
 
 // Single source of truth for the fade's own duration - imported by both SnakeBoardCanvas.tsx (the
 // actual withTiming driving the visual sweep) and PlayScreen.tsx (the dialog-reveal setTimeout), so the
-// two can never drift apart. Mirrors LightCycles' own deathAnimationDurationMs in spirit.
+// two can never drift apart. Mirrors Trap's own deathAnimationDurationMs in spirit.
 export function snakeDeathFadeMs(bodyLength: number): number {
   return Math.min(SNAKE_DEATH_FADE_MAX_MS, Math.max(SNAKE_DEATH_FADE_MIN_MS, bodyLength * SNAKE_DEATH_FADE_MS_PER_CELL))
 }
 
 // ─── Powerups ───────────────────────────────────────────────────────────────
-// Tick-based (not ms) throughout, mirroring LightCycles' identical convention - real-world cadence
+// Tick-based (not ms) throughout, mirroring Trap's identical convention - real-world cadence
 // then varies with speedTier the same way every other tick-denominated constant here does. Values
-// reused verbatim from LightCycles' own tuning as a first pass - Snake's own tick is slower than
-// LightCycles' at every tier, so the same tick-count lasts noticeably longer in wall-clock time;
+// reused verbatim from Trap's own tuning as a first pass - Snake's own tick is slower than
+// Trap's at every tier, so the same tick-count lasts noticeably longer in wall-clock time;
 // worth a playtest pass, not just a read of the numbers.
 export const SNAKE_POWERUP_ALL_TYPES: SnakePowerupType[] = ['sidewind', 'coldblood', 'scales', 'constrict', 'mesmerize', 'frenzy']
 
@@ -110,7 +105,7 @@ export const SNAKE_POWERUP_CONSTRICT_FRACTION = 0.5
 // SnakeBoardCanvas.tsx's own convention of expressing every visual dimension as a cellPx ratio
 // (see e.g. its FoodDot's identical baseRadius = cellPx * 0.32) rather than a bare pixel constant.
 // Deliberately a bit larger than FoodDot's own 0.32 - a pickup should read as rarer/more eye-
-// catching than the ordinary food dot - but nowhere near LightCycles' own cellPx * 1.8 ratio, which
+// catching than the ordinary food dot - but nowhere near Trap's own cellPx * 1.8 ratio, which
 // is tuned for a thin-trail board with nothing else competing for scale; against Snake's own
 // already-chunky body width (BODY_MAX_HALF_WIDTH_RATIO = 0.29, i.e. ~0.58 across) that ratio would
 // render a pickup roughly 3x the width of a snake's own body. First-pass number, verify visually.
@@ -119,7 +114,7 @@ export const SNAKE_POWERUP_PICKUP_RADIUS_RATIO = 0.42
 // On-board glyph animation timing - a quick grow/fade the instant a pickup spawns, then an endless
 // gentle pulse for as long as it sits uncollected (see SnakeBoardCanvas.tsx's Pickups). Purely
 // cosmetic - never affects when it's actually collectible (collection is exact-cell, matching how
-// food collection already works in this app, unlike LightCycles' radius-based collection).
+// food collection already works in this app, unlike Trap's radius-based collection).
 export const SNAKE_POWERUP_SPAWN_FADE_MS = 260
 export const SNAKE_POWERUP_PULSE_DURATION_MS = 900
 export const SNAKE_POWERUP_PULSE_SCALE = 0.16
@@ -127,7 +122,7 @@ export const SNAKE_POWERUP_PULSE_SCALE = 0.16
 // On-board head-effect-tell ring colors, keyed by what's actually driving the effect (not just its
 // axis) so Sidewind/Frenzy read as visually distinct despite sharing the same 2x multiplier - a
 // player should be able to tell "sped up because I chose to" from "sped up because my opponent did
-// this to me" at a glance. Reused verbatim from LightCycles' own POWERUP_EFFECT_COLORS.
+// this to me" at a glance. Reused verbatim from Trap's own POWERUP_EFFECT_COLORS.
 export const SNAKE_POWERUP_EFFECT_COLORS: Record<'sidewind' | 'coldblood' | 'frenzy' | 'mesmerize' | 'scales', string> = {
   sidewind: '#FFC107', // gold - self speed-up
   coldblood: '#29B6F6', // ice blue - frozen
@@ -138,8 +133,8 @@ export const SNAKE_POWERUP_EFFECT_COLORS: Record<'sidewind' | 'coldblood' | 'fre
 
 // Held-item HUD badge icon per type (MDI names, matching react-native-paper's Icon usage elsewhere
 // in this app - see GameOverDialog.tsx) - shown only once a pickup is collected, since the on-board
-// glyph itself never reveals type. Reused verbatim from LightCycles' own POWERUP_ICONS, except
-// Frenzy: LightCycles' Overclock used a 'chip' glyph, too circuit-board-coded to survive the switch
+// glyph itself never reveals type. Reused verbatim from Trap's own POWERUP_ICONS, except
+// Frenzy: Trap's Overclock used a 'chip' glyph, too circuit-board-coded to survive the switch
 // to reptile theming - swapped for 'lightning-bolt', which still reads as "a dangerous jolt of
 // forced energy" without the Tron connotation.
 export const SNAKE_POWERUP_ICONS: Record<SnakePowerupType, string> = {

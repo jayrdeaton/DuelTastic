@@ -1,10 +1,14 @@
 import { computeGridSize, type Direction } from '@tastic/grid'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { safeAreaMask } from '@/shared/match/safeArea'
+
 import { TAG_MAX_CLOCK_STEP_MS } from './constants'
 import { applyTagCpu, type TagCpuDifficulty } from './cpu'
 import { applyTagActivation, applyTagTurn, createTagState, finishTagOnTime, startTag, tickTag } from './engine'
 import type { TagEvents, TagLayout, TagOptions, TagSeat, TagState } from './types'
+
+const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export interface UseTagStateParams {
   // The board's size in px, measured once when the round screen mounts.
@@ -22,6 +26,9 @@ export interface UseTagStateParams {
   cpu: TagCpuDifficulty | null
   // A dialog is up or the app is in the background: the steps and the clock both stop.
   paused: boolean
+  // MatchScreen's safe-area insets in px: all zero unless the round plays under them (Full Screen),
+  // when no powerup box goes under a cutout (safeAreaMask).
+  safeAreaInsetsPx?: { top: number; right: number; bottom: number; left: number }
 }
 
 interface RoundState {
@@ -34,8 +41,11 @@ interface RoundState {
 // doesn't depend on the display's refresh rate, and each rider steps on its own clock), the CPU's
 // turn (and its powerup) decided at the start of each tick, and the clock run alongside, ending the
 // round when it's up.
-export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, startingIt, cpu, paused }: UseTagStateParams) {
-  const fresh = useCallback((): RoundState => ({ round: createTagState({ grid: computeGridSize(width, height, cellPx), layout, p1OnRight, arena: options.arena, it: startingIt, cellPx, intervalMs }), elapsedMs: 0 }), [width, height, cellPx, layout, p1OnRight, options.arena, startingIt, intervalMs])
+export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRight, options, startingIt, cpu, paused, safeAreaInsetsPx = NO_INSETS }: UseTagStateParams) {
+  const fresh = useCallback((): RoundState => {
+    const grid = computeGridSize(width, height, cellPx)
+    return { round: createTagState({ grid, layout, p1OnRight, arena: options.arena, it: startingIt, cellPx, intervalMs, unsafe: safeAreaMask(grid, cellPx, safeAreaInsetsPx) }), elapsedMs: 0 }
+  }, [width, height, cellPx, layout, p1OnRight, options.arena, startingIt, intervalMs, safeAreaInsetsPx])
   const [state, setState] = useState(fresh)
   // The round as played: the frame loop moves the riders' strides on every frame, but React only
   // gets a new state when something on screen changes (a step, a tick, a daze, the clock's second).

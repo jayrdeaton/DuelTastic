@@ -44,12 +44,12 @@ export interface GameOverDialogProps {
   seatSpots?: Record<SnakeId, SeatToastSpot>
 }
 
-// Styled after LightCycles' RoundOverDialog.tsx. Solo and Vs CPU have one human, so they get its
+// Styled after Trap's RoundOverDialog.tsx. Solo and Vs CPU have one human, so they get its
 // single centered card (icon + text + buttons). 2 Player is simultaneous split-screen, both players
 // at the device at once, often face to face, so it gets the per-seat split instead: one card per
 // seat in that seat's own zone, each telling its own player whether they won, with their own
 // score and best, and its own Quit/Play Again (either seat's press acts at once, as the single
-// card's does; there is no LightCycles-style Rematch handshake).
+// card's does; there is no Trap-style Rematch handshake).
 export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHome, outcome, opponentScore, seatResults, seatSpots }: GameOverDialogProps) {
   const { colors } = useAutoPaperTheme()
   // Read unconditionally (hooks can't sit behind the seatResults branch below); only the split
@@ -57,7 +57,7 @@ export function GameOverDialog({ score, highScore, isNewHighScore, onRetry, onHo
   const { orientationMode, p1OnRight } = useSeatSplit()
   const { fg, fgMuted } = useOverlayCardColors()
   // Quit is outlined, the fleet's secondary action (ConfirmDialog's Cancel), so Play Again is the one
-  // filled button and the easier reach (see button ordering below, same as LightCycles'
+  // filled button and the easier reach (see button ordering below, same as Trap's
   // RoundOverDialog Quit/Play Again pair). It used to be a fixed gray fill, which stopped matching once
   // the card took the theme's tinted surface. Its label is the card's own text color, not Paper's
   // default (the theme's primary), so neither seat's card shows a color that isn't its own (Jay,

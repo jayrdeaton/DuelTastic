@@ -12,7 +12,7 @@ export const GLIDE_LAG_MS = 24
 const GLIDE_MAX_BEHIND_MS = 100
 
 // The most whole cells a head can be drawn behind the cell its rider last stood on before its latest
-// step, at `msPerCell`: for a board that draws the trail's front live up to the head (LightCycles'),
+// step, at `msPerCell`: for a board that draws the trail's front live up to the head (Trap's),
 // which has to start at least that far back or the settled trail would run ahead of the head.
 export function glideCellsBehind(msPerCell: number): number {
   return Math.ceil((GLIDE_LAG_MS + GLIDE_MAX_BEHIND_MS) / msPerCell) + 1
@@ -183,7 +183,7 @@ export function advanceGlide(glide: Glide, dt: number): Glide {
 
 export interface RiderGlideParams {
   // The cells the rider rode through lately, oldest first, its head last: Tag's short tail, Turf's
-  // and LightCycles' trail. Only the head is needed for a straight move.
+  // and Trap's trail. Only the head is needed for a straight move.
   path: readonly GridCell[]
   cellPx: number
   // How long the rider takes to ride one cell at its speed now.
@@ -195,7 +195,7 @@ export interface RiderGlideParams {
   flightMs?: number | null
 }
 
-// Where to draw a rider's head (LightCycles, Turf and Tag): gliding from cell to cell at the rider's
+// Where to draw a rider's head (Trap, Turf and Tag): gliding from cell to cell at the rider's
 // own pace, keyed on its own steps rather than the round's ticks, so a rider that steps more often (It
 // in Tag) or less often (under Mud) still moves at one even speed, and round a corner rather than
 // across it. Each step queues its cells; a frame callback moves the head along them (advanceGlide).

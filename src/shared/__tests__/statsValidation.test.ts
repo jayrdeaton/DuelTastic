@@ -77,9 +77,9 @@ describe('isValidStats', () => {
     expect(isValidStats({ ...DEFAULT_STATS, bestDayStreak: '2' })).toBe(false)
   })
 
-  it('accepts a stats object with no profiles field at all - a pre-profiles stored blob', () => {
+  it('rejects a stats object with no profiles field', () => {
     const { profiles: _profiles, ...withoutProfiles } = DEFAULT_STATS
-    expect(isValidStats(withoutProfiles)).toBe(true)
+    expect(isValidStats(withoutProfiles)).toBe(false)
   })
 
   it('accepts a populated profiles map', () => {
@@ -95,15 +95,6 @@ describe('isValidStats', () => {
   it('rejects a profiles entry missing its vsCpu or twoPlayer bucket', () => {
     const { vsCpu: _vsCpu, ...missingVsCpu } = DEFAULT_PROFILE_STATS
     expect(isValidStats({ ...DEFAULT_STATS, profiles: { 'profile-1': missingVsCpu } })).toBe(false)
-  })
-
-  // Documents the accepted pre-ship migration gap (see statsValidation.ts's own comment on
-  // isValidProfileStatsMap): a profiles entry stored under the old flat {played,wins,losses,draws}
-  // shape, from before ProfileStats gained the full vsCpu/twoPlayer/colors/day-streak fields, fails
-  // this check - and per the all-or-nothing philosophy shared with isValidColorsMap, that fails the
-  // whole stats blob, not just the profiles field.
-  it('rejects an old flat-shaped profiles entry', () => {
-    expect(isValidStats({ ...DEFAULT_STATS, profiles: { 'profile-1': { played: 3, wins: 2, losses: 1, draws: 0 } } })).toBe(false)
   })
 
   it('rejects a non-object profiles map', () => {

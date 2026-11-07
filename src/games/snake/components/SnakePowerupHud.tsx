@@ -16,13 +16,13 @@ const BADGE_SIZE = 30
 // a rival's held item being visible in Mario Kart). The item's TYPE is the only thing that's a
 // mystery (see SnakeBoardCanvas.tsx's Pickups layer) - once held, it's revealed here. Kept
 // deliberately understated (small, low-opacity, no per-snake color) - this is a quiet reference, not
-// something that should compete for attention with the board itself. Mirrors LightCycles'
+// something that should compete for attention with the board itself. Mirrors Trap's
 // PowerupHud.tsx's identical HeldItemBadge.
 function HeldItemBadge({ heldPowerup }: { heldPowerup: SnakeEntity['heldPowerup'] }) {
   return <View style={styles.badge}>{heldPowerup && <Icon source={SNAKE_POWERUP_ICONS[heldPowerup]} size={16} color='rgba(255,255,255,0.85)' />}</View>
 }
 
-// Corner-positioned held-item badge per snake, mirroring LightCycles' PowerupHud.tsx. Corner picked
+// Corner-positioned held-item badge per snake, mirroring Trap's PowerupHud.tsx. Corner picked
 // per snake from the shared orientationMode/p1OnRight reading (the same "is this seat on the right"
 // convention SnakeBoardCanvas.tsx's wallPath and TouchInputLayer.tsx's zone split already use), so
 // each badge always sits in that snake's own zone rather than a side fixed regardless of how the

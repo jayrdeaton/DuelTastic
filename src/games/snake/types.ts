@@ -7,7 +7,7 @@ import { CpuDifficulty } from '@/games/snake/utils/snakeAi'
 
 export type { GridCell, GridSize }
 
-// Fresh types for Snake's own engine - deliberately NOT shared with LightCycles. LightCycles'
+// Fresh types for Snake's own engine - deliberately NOT shared with Trap. Trap's
 // types are shaped around exactly-two-players-always (Record<Player, PlayerState>) and a trail
 // that only ever grows, never shrinks; Snake genuinely has 1-or-2 simulated participants and a
 // body that's a fixed-identity chain of cells (grow on eating, otherwise constant length), so it
@@ -15,32 +15,32 @@ export type { GridCell, GridSize }
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 
-// Per-round speed tier - mirrors LightCycles' SpeedTier exactly (see constants/snake.ts's
-// SNAKE_SPEED_TIER_INTERVAL_MS). No speed-ramp equivalent: LightCycles itself keeps that toggle
+// Per-round speed tier - mirrors Trap's SpeedTier exactly (see constants/snake.ts's
+// SNAKE_SPEED_TIER_INTERVAL_MS). No speed-ramp equivalent: Trap itself keeps that toggle
 // hidden in its own UI, so there's nothing live there worth porting.
 export type SnakeSpeedTier = 'slow' | 'normal' | 'fast'
 
-// Per-round cell pixel size - mirrors LightCycles' GridSizeTier. A tier picks a fixed cellPx (see
+// Per-round cell pixel size - mirrors Trap's GridSizeTier. A tier picks a fixed cellPx (see
 // constants/snake.ts's SNAKE_CELL_PX); computeGridSize then derives however many cols/rows actually
-// fit the live screen from it, so this is never a fixed cell COUNT. Unlike LightCycles, tick
+// fit the live screen from it, so this is never a fixed cell COUNT. Unlike Trap, tick
 // interval is NOT rescaled per tier (see SNAKE_CELL_PX's own comment) - a 'small' round ticks at
 // exactly the same cadence as 'large', it just moves fewer px per tick.
 export type SnakeGridSizeTier = 'small' | 'medium' | 'large'
 
-// Selectable static board layout for the round - mirrors LightCycles' ArenaVariant. 'open' is the
+// Selectable static board layout for the round - mirrors Trap's ArenaVariant. 'open' is the
 // original empty rectangle and stays the default everywhere a caller doesn't specify otherwise
 // (see snakeEngine.ts's createInitialSnakeState). 'portals' and 'underpass' don't produce
 // obstacles at all (see utils/arenas.ts's buildArenaObstacles) - their geometry lives on
 // SnakeGameState.portals/.tunnels instead.
 export type SnakeArenaVariant = 'open' | 'pillars' | 'gauntlet' | 'portals' | 'underpass'
 
-// Mirrors LightCycles' PowerupType. Sidewind/Scales are self-targeted; Coldblood/Constrict/Mesmerize/
+// Mirrors Trap's PowerupType. Sidewind/Scales are self-targeted; Coldblood/Constrict/Mesmerize/
 // Frenzy target the opponent, which is why solo mode (no opponent - see snakeEngine.ts's
 // createInitialSnakeState) only ever spawns the first two regardless of the persisted setting.
 export type SnakePowerupType = 'sidewind' | 'coldblood' | 'scales' | 'constrict' | 'mesmerize' | 'frenzy'
 
 // KeyScheme (wasd/arrows/ijkl/numpad) is the shared, cross-app set of physical key layouts -
-// extracted to @tastic/input so LightCycles/Pong/AirHockey/future games all read numpad support
+// extracted to @tastic/input so Trap/Pong/AirHockey/future games all read numpad support
 // (and any future scheme) from one place instead of each hand-rolling its own. 'mouse' stays a
 // Snake-local addition on top rather than joining KeyScheme itself: it covers both mouse-drag and
 // touch-drag - the always-available TouchInputLayer swipe zone (see that file), which needs no
@@ -55,7 +55,7 @@ export type ControlScheme = KeyScheme | 'mouse'
 export type SnakeId = 1 | 2
 
 // One active effect per axis - a same-axis activation replaces whatever was already there rather
-// than stacking (see snakeEngine.ts's applySnakePowerupActivation), mirroring LightCycles'
+// than stacking (see snakeEngine.ts's applySnakePowerupActivation), mirroring Trap's
 // PlayerEffects exactly. Different axes coexist independently. Constrict has no entry here at all -
 // it's instant/one-shot, never an ongoing effect.
 export interface SnakeSpeedEffect {
@@ -103,9 +103,9 @@ export interface SnakePortal {
 }
 
 // A short, straight corridor for the 'underpass' arena (see utils/arenas.ts's buildArenaTunnels),
-// ordered mouth-to-mouth. Unlike LightCycles' identically-named Tunnel, this needs no hidden
+// ordered mouth-to-mouth. Unlike Trap's identically-named Tunnel, this needs no hidden
 // per-player occupancy layer: a snake's body is a vacating deque, not a permanent trail, so a
-// corridor can never get permanently sealed by an earlier crossing the way LightCycles' trail-based
+// corridor can never get permanently sealed by an earlier crossing the way Trap's trail-based
 // one could. Snake's tunnel cells are instead simply exempt from body-collision checks entirely
 // (both a snake's own body and the opponent's) - see snakeEngine.ts's tickSnake - while head-to-head
 // and wall/out-of-bounds rules still apply normally, and the mouths are ordinary, fully-collidable
@@ -123,7 +123,7 @@ export interface SnakeEntity {
   direction: Direction
   // A turn queued by input but not yet applied - consumed (and cleared) on the next tick, so a
   // swipe/CPU decision landing between ticks isn't dropped and can't apply more than one turn per
-  // tick. Same role as LightCycles' PlayerState.pendingDirection.
+  // tick. Same role as Trap's PlayerState.pendingDirection.
   pendingDirection: Direction | null
   alive: boolean
   score: number
@@ -131,7 +131,7 @@ export interface SnakeEntity {
   // The cell this snake actually attempted to move into on the tick it died - set once, in
   // tickSnake's death branch, and never touched again after. Populated for every death cause (wall,
   // self, other-snake body, head-to-head), including an out-of-bounds wall death whose true
-  // destination has no `body` slot to land in - same role as LightCycles' PlayerState.crashCell.
+  // destination has no `body` slot to land in - same role as Trap's PlayerState.crashCell.
   // Null while alive.
   crashCell: GridCell | null
   // Single-slot inventory - null when empty. Set on pickup collection, cleared on activation.
@@ -203,7 +203,7 @@ export interface Settings {
   // Caps the board's own width via @tastic/core's computeContentBounds (see PlayScreen.tsx and
   // constants/snake.ts's MAX_BOARD_CONTENT_WIDTH) on a wide desktop-web window, AND keeps the board
   // within the device's safe area (useSafeAreaInsets: notch/status bar, home indicator), mirroring
-  // LightCycles' "Full Screen"/extendIntoSafeArea toggle in both spirit and scope. false (the
+  // Trap's "Full Screen"/extendIntoSafeArea toggle in both spirit and scope. false (the
   // default) caps at MAX_BOARD_CONTENT_WIDTH with centered gutters on either side AND insets the
   // board within the safe area; true uses the full raw window, ignoring both. Left out of the
   // loadout's Randomize: it's how the board fits the screen, not a match rule.
@@ -215,17 +215,17 @@ export interface Settings {
   // distinctControls, and @tastic/input's assignSeatScheme in the picker), since seat 1 and seat 2
   // share one desktop's keyboard and mouse.
   controlScheme: Record<SnakeId, ControlScheme>
-  // Per-round tick speed, mirroring LightCycles' SpeedTier (see constants/snake.ts's
+  // Per-round tick speed, mirroring Trap's SpeedTier (see constants/snake.ts's
   // SNAKE_SPEED_TIER_INTERVAL_MS).
   speedTier: SnakeSpeedTier
-  // Per-round static obstacle layout, mirroring LightCycles' ArenaVariant (see utils/arenas.ts).
+  // Per-round static obstacle layout, mirroring Trap's ArenaVariant (see utils/arenas.ts).
   arenaVariant: SnakeArenaVariant
   // Which powerup types can spawn this round. Not a separate on/off flag: "powerups off" is just
   // an empty array (see snakeEngine.ts's createInitialSnakeState, which only ever spawns from this
   // list), so a single multi-select control covers both at once. Empty by default: powerups are an
   // opt-in variant, not a default-on behavior change for existing players.
   enabledPowerups: SnakePowerupType[]
-  // Per-round cell pixel size, mirroring LightCycles' GridSizeTier (see constants/snake.ts's
+  // Per-round cell pixel size, mirroring Trap's GridSizeTier (see constants/snake.ts's
   // SNAKE_CELL_PX).
   gridSizeTier: SnakeGridSizeTier
 }

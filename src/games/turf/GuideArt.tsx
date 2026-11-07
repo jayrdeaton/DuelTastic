@@ -7,7 +7,7 @@ import { TURF_TRAIL_OPACITY } from './constants'
 // Turf's picture for its How to Play cards: player 1's ground (a filled square), the trail looping
 // out from it and back, and the rider's head on its way home. Drawn as the board draws them: solid
 // ground and a lighter trail (TURF_TRAIL_OPACITY), its pieces meeting edge to edge so no corner is
-// drawn twice. Plain Views, like LightCycles' own GuideArt, so it costs nothing to mount over Home.
+// drawn twice. Plain Views, like Trap's own GuideArt, so it costs nothing to mount over Home.
 // Colored from the live theme (primary = P1).
 export function GuideTurfClaim() {
   const { colors } = useAutoPaperTheme()

@@ -4,7 +4,7 @@ import { GridCell, SnakeEntity, SnakeGameState, SnakeRoundSettings } from '@/gam
 import { applySnakePowerupActivation, applySnakeTurnIntent, buildSnakeOccupiedSet, createInitialSnakeState, SNAKE_START_LENGTH, tickSnake } from '@/games/snake/utils/snakeEngine'
 
 // Fills in the fields every fixture needs regardless of what it's actually testing, so each call
-// site only has to spell out what's relevant to it - same pattern as LightCycles' gameEngine.test.ts.
+// site only has to spell out what's relevant to it - same pattern as Trap's gameEngine.test.ts.
 function snake(overrides: Partial<SnakeEntity> & Pick<SnakeEntity, 'id' | 'body' | 'direction'>): SnakeEntity {
   return { pendingDirection: null, alive: true, score: 0, color: '#000', crashCell: null, heldPowerup: null, effects: { speed: null, control: null, shield: null }, peakLength: overrides.body.length, ...overrides }
 }
@@ -135,7 +135,7 @@ describe('createInitialSnakeState', () => {
       // A 10x10 grid at cellPx=10: a 25px top inset and 15px left inset round up to 3 and 2 cells
       // respectively (ceil(25/10)=3, ceil(15/10)=2) - anything less than a full cell of overlap
       // still counts as unsafe, since food/a pickup only partially clear of the notch/Dynamic
-      // Island/speaker cutout is still partially hidden by it. Mirrors LightCycles' identical test.
+      // Island/speaker cutout is still partially hidden by it. Mirrors Trap's identical test.
       const state = createInitialSnakeState({ cols: 10, rows: 10 }, 1, roundSettings(), undefined, Math.random, 10, { top: 25, right: 0, bottom: 0, left: 15 })
       const unsafe = new Set(state.unsafeCells.map((c) => `${c.x},${c.y}`))
       expect(unsafe.has('5,0')).toBe(true)
@@ -832,7 +832,7 @@ describe('tickSnake', () => {
   })
 
   // Regression coverage for F062: Scales used to set effects.shield and nothing ever read it, so a
-  // shielded snake died exactly like an unshielded one. The rule is LightCycles' Shield: every hit
+  // shielded snake died exactly like an unshielded one. The rule is Trap's Shield: every hit
   // negated until it runs out (since 2026-11-04; one hit used it up before); walls always kill.
   describe('Scales (shield)', () => {
     const SHIELD = { shield: { expiresAtTick: 10 }, speed: null, control: null }

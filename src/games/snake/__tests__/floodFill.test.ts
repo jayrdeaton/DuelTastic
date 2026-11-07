@@ -3,7 +3,7 @@ import { ALL_DIRECTIONS, cellKey, isInBounds, stepCell, wrapCell } from '@tastic
 import { GridCell, GridSize } from '@/games/snake/types'
 import { distanceToNearestTarget } from '@/games/snake/utils/floodFill'
 
-// The string-keyed BFS distanceToNearestTarget used to be (LightCycles' floodFill.ts), kept as the
+// The string-keyed BFS distanceToNearestTarget used to be (Trap's floodFill.ts), kept as the
 // reference the index-based version has to agree with.
 function referenceDistance(start: GridCell, grid: GridSize, occupied: ReadonlySet<string>, targets: ReadonlySet<string>, maxCount: number, portals: ReadonlyMap<string, GridCell>, tunnelCellSet: ReadonlySet<string>, tunnelOccupied: ReadonlySet<string>, wrapEdges: boolean): number | null {
   const isBlocked = (key: string): boolean => (tunnelCellSet.has(key) ? tunnelOccupied : occupied).has(key)

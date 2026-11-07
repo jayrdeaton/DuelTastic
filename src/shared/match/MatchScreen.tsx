@@ -1,7 +1,7 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { broadcastDeviceUnlocks } from '@tastic/achievements'
 import { computeContentBounds } from '@tastic/core'
-import { useActiveRound, useProfiles } from '@tastic/shell'
+import { useActiveRound, useAtComputer, useProfiles } from '@tastic/shell'
 import { type ComponentType, useCallback, useMemo, useState } from 'react'
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -10,7 +10,6 @@ import type { RoundContext } from '@/shared/duelStats/statsEngine'
 import type { AchievementDefinition } from '@/shared/duelStats/types'
 import { DESKTOP_CHIP_BAND, MAX_BOARD_CONTENT_WIDTH } from '@/shared/match/constants'
 import { type CpuDifficulty, type GameMode, humanPlayersFor, type OrientationMode, type Player, type RoundOutcome } from '@/shared/match/types'
-import { useDesktopWeb } from '@/shared/match/useDesktopWeb'
 import { SEAT_TOAST_STACKS, useUnlockToasts } from '@/shared/useUnlockToasts'
 
 // A stable, referentially-constant all-zero insets object - see safeAreaInsetsPx's own comment
@@ -22,7 +21,7 @@ const SEATS: readonly Player[] = [1, 2]
 // Vs CPU has one human, seat 1.
 const SOLO_SEATS: readonly Player[] = [1]
 
-// What a game's round component is handed (LightCycles' GameRound, TurfRound, TagRound).
+// What a game's round component is handed (Trap's GameRound, TurfRound, TagRound).
 export interface MatchRoundProps<S> {
   // The board's one-time DESIGN measurement - read once, at mount (a round component freezes it
   // with a lazy useState), the size the grid itself is built from. It never changes again for the
@@ -58,7 +57,7 @@ export interface MatchRoundProps<S> {
 }
 
 // What every game's settings carry for the frame: the CPU's difficulty (for the stats) and, where
-// the game has one, LightCycles' Full Screen option.
+// the game has one, Trap's Full Screen option.
 interface MatchSettings {
   cpuDifficulty: CpuDifficulty
   extendIntoSafeArea?: boolean
@@ -85,9 +84,9 @@ export function MatchScreen<S extends MatchSettings>({ gameId, defaults, Round, 
 
   // The board itself always uses the SAME split, whatever the window's shape - 'faceToFace' (P1
   // near/bottom, P2 far/top, moving toward each other along the tall axis), never 'sideBySide'. This
-  // isn't a frozen live reading, it's a fixed constant: these games don't set the shell's
-  // sideBySideWhenWide, so a wide window (a landscape iPad, a desktop browser) centers the same tall
-  // board. p1OnRight is meaningless alongside a permanently-'faceToFace' mode, so it's just a fixed
+  // isn't a frozen live reading, it's a fixed constant: a wide window (a landscape iPad, a desktop
+  // browser) centers the same tall board. Only the loadout sits side by side in a wide browser window
+  // (these games' sideBySideWhenWide is LOADOUT_SIDE_BY_SIDE_WHEN_WIDE), as the match's cards do. p1OnRight is meaningless alongside a permanently-'faceToFace' mode, so it's just a fixed
   // placeholder. Where the dialogs and countdown sit for each seat: see MatchOverlays.
   const [orientationMode] = useState<OrientationMode>('faceToFace')
   const [p1OnRight] = useState(true)
@@ -96,16 +95,16 @@ export function MatchScreen<S extends MatchSettings>({ gameId, defaults, Round, 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions()
   const { gutterWidth } = computeContentBounds(windowWidth, MAX_BOARD_CONTENT_WIDTH)
   const fullBleed = settings.extendIntoSafeArea === true
-  // On desktop web the back and settings chips stay up through play, in boardArea's top corners
+  // At a computer (the shell's useAtComputer) the back and settings chips stay up through play, in boardArea's top corners
   // (MatchOverlays), so there boardArea spans the whole safe area (the chips land in the page's own
   // corners, where the loadout's are) and is padded in to the board, which keeps at least a
   // DESKTOP_CHIP_BAND clear down each side for them, taken out of the gutter when the window has one.
   // boardSideInset is how far the board sits from the safe area's side edges (the window's, full
   // bleed); boardPadding is how much of that is boardArea's padding rather than its position.
-  const desktopWeb = useDesktopWeb()
-  const chipBand = desktopWeb ? DESKTOP_CHIP_BAND : 0
+  const atComputer = useAtComputer()
+  const chipBand = atComputer ? DESKTOP_CHIP_BAND : 0
   const boardSideInset = fullBleed ? chipBand : Math.max(gutterWidth, chipBand)
-  const boardPadding = desktopWeb ? boardSideInset : 0
+  const boardPadding = atComputer ? boardSideInset : 0
   const { colors: themeColors, dark } = useAutoPaperTheme()
   const colors = useMemo<Record<Player, string>>(() => ({ 1: themeColors.primary, 2: themeColors.secondary }), [themeColors.primary, themeColors.secondary])
 

@@ -16,7 +16,7 @@ export interface OnboardingOverlayProps {
   // the board but only one human ever watching/reading this overlay, so it gets the same one,
   // untinted-toward-a-second-seat full-board zone Solo does; only 2 Player (humanPlayers.length===2)
   // actually needs a real second person's own half, complete with that half's own 180°-flipped
-  // digit so it reads right-side-up from THEIR physical side of the device. Mirrors LightCycles'
+  // digit so it reads right-side-up from THEIR physical side of the device. Mirrors Trap's
   // OnboardingOverlay's identical humanPlayers-gated branch exactly (see that file's own comment) -
   // Snake's own earlier port of this file had collapsed the distinction into a 'solo'|'dual' mode
   // derived from snake COUNT instead of human count, which is what let Vs CPU wrongly inherit the
@@ -36,7 +36,7 @@ export interface OnboardingOverlayProps {
 const COUNTDOWN_STAGES = ['3', '2', '1', 'GO!']
 
 // A temporary UI layer over the board - not part of the Skia canvas (see SnakeBoard.tsx's own
-// header comment). Ported from LightCycles' OnboardingOverlay.tsx: a "3, 2, 1, GO!" countdown that
+// header comment). Ported from Trap's OnboardingOverlay.tsx: a "3, 2, 1, GO!" countdown that
 // fades out and calls onComplete. Dropped relative to that version, per the build brief: round-
 // history pips (no match-series/rematch concept in Snake) are gone entirely. The solo/vsCpu
 // countdown is upright; in 2 Player only snake 2's digit turns, 180 face to face (seatSpots).

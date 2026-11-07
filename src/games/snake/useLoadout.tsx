@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, playerSettings } from './settings'
 import type { Settings, SnakeArenaVariant, SnakeGridSizeTier, SnakePowerupType, SnakeSpeedTier } from './types'
 import type { CpuDifficulty } from './utils/snakeAi'
 
-// Snake-flavored escalation, matching LightCycles' Drone/Bot/Mainframe convention in reptile
+// Snake-flavored escalation, matching Trap's Drone/Bot/Mainframe convention in reptile
 // language: "Garter" (a famously harmless beginner snake), "Rattler" (a real pit-viper threat),
 // "King Cobra" (the world's longest venomous snake, the final boss). Display only: the saved value
 // stays easy/normal/hard. Solo is seat 2's Nobody, not a difficulty.
@@ -22,7 +22,7 @@ const CPU_DIFFICULTY_OPTIONS: MenuOption<CpuDifficulty>[] = [
 
 // Two board toggles in one multi-select section of the board menu, under the layouts: presence in
 // the section's value array is each toggle's state. Pac-Man's own glyph for screen wrap, the
-// expand-arrows glyph LightCycles' Full Screen uses.
+// expand-arrows glyph Trap's Full Screen uses.
 const FULL_SCREEN_OPTION: MenuOption<'fullScreen'> = { value: 'fullScreen', label: 'Full Screen', icon: 'arrow-expand-all' }
 const WRAP_EDGES_OPTION: MenuOption<'wrapEdges'> = { value: 'wrapEdges', label: 'Wrap Edges', icon: 'pac-man' }
 

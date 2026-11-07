@@ -4,7 +4,7 @@ import { GridCell, GridSize, SnakeArenaVariant, SnakePortal, SnakeTunnel } from 
 
 import { faceToFaceSpawnPoint, soloSpawnPoint } from './grid'
 
-// Ported from LightCycles' utils/arenas.ts, with its OrientationMode axis-abstraction dropped
+// Ported from Trap's utils/arenas.ts, with its OrientationMode axis-abstraction dropped
 // entirely: Snake's grid model has no side-by-side layout (see grid.ts's own comment on
 // faceToFaceSpawnPoint) - "along" is always grid.rows (the split axis, y) and "cross" is always
 // grid.cols (the shared axis, x), so there's no mode parameter anywhere in this file. Solo mode
@@ -14,13 +14,13 @@ import { faceToFaceSpawnPoint, soloSpawnPoint } from './grid'
 // axisSum/axisCenter mirror-math reduces exactly to mirroring around that single spawn point when
 // both heads are equal.
 //
-// Every tuning constant below is rescaled from LightCycles' own (tuned at its GRID_CELL_PX.medium =
+// Every tuning constant below is rescaled from Trap's own (tuned at its GRID_CELL_PX.medium =
 // 8px) by roughly SNAKE_CELL_PX.medium/8 ≈ 2.25x fewer cells per axis for the same physical screen -
 // except PILLAR_BLOCK_RADIUS_CELLS (scaling to 0 would erase the "pillars read as bigger" effect the
 // constant exists for), PORTAL_MIN_COLS/ROWS (scaling down would let portals spawn on a genuinely
 // tiny grid), and GAUNTLET_GAP_WIDTH_MIN/MAX_CELLS (scaling down would make gaps too tight for a
-// snake's body - which nearly fills its own cell, same as LightCycles' cycle - to thread reliably),
-// which are kept closer to LightCycles' own source values instead. These are first-pass numbers:
+// snake's body - which nearly fills its own cell, same as Trap's cycle - to thread reliably),
+// which are kept closer to Trap's own source values instead. These are first-pass numbers:
 // verify visually against a real phone-sized grid and adjust by feel.
 
 // ─── Pillars ────────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ function buildGauntlet(grid: GridSize, head1: GridCell, head2: GridCell): GridCe
   }
 
   // The axis both wall groups mirror around is the real midpoint between the two actual spawn
-  // heads, not a naive Math.floor(alongLength / 2) - see LightCycles' own arenas.ts for the parity
+  // heads, not a naive Math.floor(alongLength / 2) - see Trap's own arenas.ts for the parity
   // argument this sidesteps. In solo mode head1Along === head2Along, so this is just that point.
   const axisSum = head1Along + head2Along
 
@@ -204,7 +204,7 @@ function buildGauntlet(grid: GridSize, head1: GridCell, head2: GridCell): GridCe
 
 // ─── Underpass ──────────────────────────────────────────────────────────────
 // See types/index.ts's own SnakeTunnel comment for why this needs no hidden per-snake occupancy
-// layer the way LightCycles' identical-in-spirit tunnel does - Snake's body is a vacating deque,
+// layer the way Trap's identical-in-spirit tunnel does - Snake's body is a vacating deque,
 // not a permanent trail, so a corridor here can never get permanently sealed by an earlier crossing.
 export const TUNNEL_MIN_ALONG_LENGTH = 22
 export const TUNNEL_MIN_CROSS_LENGTH = 7

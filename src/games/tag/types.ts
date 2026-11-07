@@ -99,6 +99,10 @@ export interface TagState {
   portals: TagPortal[]
   // The blocked cells, row by row (index y * cols + x): 1 where nobody can ride.
   blocked: Uint8Array
+  // The cells a notch, Dynamic Island, home indicator or speaker cutout hides when the round plays
+  // under the safe areas (Full Screen; safeAreaMask), row by row: 1 where no powerup box may go. All
+  // zero otherwise.
+  unsafe: Uint8Array
   players: Record<TagSeat, TagPlayer>
   // At most one, when powerups are on.
   pickups: Pickup<TagPowerup>[]
@@ -133,6 +137,9 @@ export interface TagMeasures {
 // Tag's loadout, saved per player (see settings.ts): its own rules, plus the speed, grid size, CPU
 // level and controls every game in the pack has.
 export interface TagSettings extends TagOptions {
+  // Full Screen: the board plays under the device's safe areas (MatchScreen's fullBleed), with nothing a
+  // player needs to see or reach put under a cutout (safeAreaMask, and the HUD pushed in by the insets).
+  extendIntoSafeArea: boolean
   speedTier: SpeedTier
   gridSizeTier: GridSizeTier
   cpuDifficulty: CpuDifficulty

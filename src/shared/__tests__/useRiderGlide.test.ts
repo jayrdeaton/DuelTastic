@@ -89,7 +89,7 @@ function rideStraight(msPerCell: number, frameMs: number, frames: number) {
 }
 
 describe('advanceGlide', () => {
-  // LightCycles at 8px cells on a desktop, on a phone, Turf, and Tag's It, at 60Hz and 120Hz.
+  // Trap at 8px cells on a desktop, on a phone, Turf, and Tag's It, at 60Hz and 120Hz.
   describe.each([
     [67, 1000 / 60],
     [42, 1000 / 60],

@@ -69,7 +69,7 @@ function occupiedFromBodies(bodies: GridCell[][], obstacles: GridCell[]): Set<st
   return occupied
 }
 
-// Symmetric a<->b lookup for the round's portal pair(s) - mirrors LightCycles' buildPortalLookup.
+// Symmetric a<->b lookup for the round's portal pair(s) - mirrors Trap's buildPortalLookup.
 // Portal cells are deliberately absent from buildSnakeOccupiedSet's own output - entering one
 // redirects the mover during movement resolution (see tickSnake below), it never crashes them.
 // Exported for snakeAi.ts's own lookahead, which needs the identical portal-aware stepping tickSnake
@@ -93,7 +93,7 @@ export function buildTunnelCellSet(tunnels: SnakeTunnel[]): Set<string> {
 }
 
 // Uniformly-random empty-cell scan for food/pickup placement - no clearance-radius check needed,
-// unlike LightCycles' powerup spawn: Snake's collectibles are a single exact-cell target a snake
+// unlike Trap's powerup spawn: Snake's collectibles are a single exact-cell target a snake
 // either lands on or doesn't. `excludeCells` covers cells that are technically "empty" (no body/
 // obstacle) but still shouldn't host a collectible - portal/tunnel cells (a collectible could never
 // actually be landed on there, see buildArenaPortals' own redirect-before-any-check behavior) and,
@@ -121,7 +121,7 @@ function pickupId(tick: number, cell: GridCell): string {
 // `insetsPx` is expected to already be zeroed out by the caller (see PlayScreen's own fullScreen
 // branch) whenever the board ISN'T bleeding under it, since otherwise the board's pixel container
 // already stops short of the inset and every cell is already clear of it; this function itself
-// stays agnostic of that setting. Mirrors LightCycles' identical buildUnsafeAreaCells. Ceil'd up to
+// stays agnostic of that setting. Mirrors Trap's identical buildUnsafeAreaCells. Ceil'd up to
 // whole cells so food/a pickup can never spawn partially under the notch/Dynamic Island/
 // home-indicator/speaker cutout - better to lose a cell of margin than leave one still hidden.
 function buildUnsafeAreaCells(grid: GridSize, cellPx: number, insetsPx: { top: number; right: number; bottom: number; left: number }): GridCell[] {
@@ -190,7 +190,7 @@ export function applySnakeTurnIntent(state: SnakeGameState, snakeId: SnakeId, di
 
 // Cells advanced in one tickSnake sub-step loop for a boosted/frozen snake - Coldblood's 0 isn't a
 // multiplier lookup, it's "skip movement entirely," checked first and explicitly. Mirrors
-// LightCycles' stepsFor exactly. Exported so snakeAi.ts's own survival scoring can walk the same
+// Trap's stepsFor exactly. Exported so snakeAi.ts's own survival scoring can walk the same
 // number of cells ahead for itself when boosted, rather than a second, potentially-drifting copy.
 export function stepsForSnake(effects: SnakeEntity['effects']): number {
   if (effects.speed?.multiplier === 0) return 0
@@ -200,7 +200,7 @@ export function stepsForSnake(effects: SnakeEntity['effects']): number {
 
 // Effect expiry - cleared once `tick` has fully consumed the effect's own expiresAtTick. Applied
 // unconditionally, every tick, to every snake (harmless for a snake that died this same tick, since
-// the round is already over) - mirrors LightCycles' own `expire`.
+// the round is already over) - mirrors Trap's own `expire`.
 function expireEffects(effects: SnakeEntity['effects'], tick: number): SnakeEntity['effects'] {
   return {
     speed: effects.speed && tick >= effects.speed.expiresAtTick ? null : effects.speed,
@@ -217,7 +217,7 @@ function trimSnakeBodyFront(body: GridCell[], count: number): GridCell[] {
   return body.slice(Math.min(count, maxRemovable))
 }
 
-// Scales' break-through variant, mirroring LightCycles' trimTrailAtCell: destroys everything
+// Scales' break-through variant, mirroring Trap's trimTrailAtCell: destroys everything
 // at-or-behind `cell` (the point a shielded snake just punched through), keeping only the newer
 // part of the body. Clamped through trimSnakeBodyFront, so the body's own head always survives
 // even if `cell` happens to be it.
@@ -298,7 +298,7 @@ export function applySnakePowerupActivation(state: SnakeGameState, snakeId: Snak
 }
 
 // Advances the round exactly one tick, in 1-2 sub-steps per snake depending on any active speed
-// effect (Sidewind/Frenzy cover 2 cells this call; Coldblood covers 0) - mirrors LightCycles'
+// effect (Sidewind/Frenzy cover 2 cells this call; Coldblood covers 0) - mirrors Trap's
 // tickGame's own sub-step loop. Each snake still resolves exactly one queued direction for the
 // whole tick; a boosted snake just covers 2 cells in it, not two independent turns. When no snake
 // has an active effect, maxSteps is always 1 and this reduces to exactly the same single-pass
@@ -311,9 +311,9 @@ export function applySnakePowerupActivation(state: SnakeGameState, snakeId: Snak
 // snakes actually stepping this sub-step → body/obstacle collision against every not-already-dead
 // snake's CURRENT body minus `vacating`, with a tunnel-member destination exempted from this check
 // entirely (see types/index.ts's own SnakeTunnel comment for why no per-snake exclusion layer is
-// needed here, unlike LightCycles' equivalent). Scales (an active shield: tick <= its
+// needed here, unlike Trap's equivalent). Scales (an active shield: tick <= its
 // expiresAtTick) negates every hit until it runs out, never used up by one, the same rule as
-// LightCycles' Shield. Walls and out-of-bounds always kill. A head-on where exactly one of the two is shielded is won by the
+// Trap's Shield. Walls and out-of-bounds always kill. A head-on where exactly one of the two is shielded is won by the
 // shielded snake, which moves into the cell while the other dies; both or neither shielded stays a
 // mutual crash. A shielded body or obstacle hit survives and moves into the cell (breaking
 // through), and the body it hit, if it belongs to a live snake (the breaker's own included), loses

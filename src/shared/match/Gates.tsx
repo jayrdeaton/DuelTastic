@@ -3,7 +3,7 @@ import { cellToPixel, type GridCell } from '@tastic/grid'
 
 import { pickupRadiusPx } from '@/shared/powerups'
 
-// The gates of the linked-gates arena (LightCycles' Portals, Snake's and Tag's Holes, Turf's Gates),
+// The gates of the linked-gates arena (Trap's Portals, Snake's and Tag's Holes, Turf's Gates),
 // drawn the same in every game. Import it only from a board file: it pulls in Skia, which on web has
 // to wait for CanvasKit (see the boards' host pairs).
 

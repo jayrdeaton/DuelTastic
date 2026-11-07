@@ -2,10 +2,10 @@ import type { MenuOption } from '@tastic/hud'
 
 export type SharedArenaVariant = 'open' | 'pillars' | 'gauntlet' | 'portals' | 'underpass'
 
-type ArenaPickerMode = 'lightcycles' | 'snake' | 'tag' | 'turf'
+type ArenaPickerMode = 'trap' | 'snake' | 'tag' | 'turf'
 
 const ARENA_LABELS: Record<ArenaPickerMode, Partial<Record<SharedArenaVariant, string>>> = {
-  lightcycles: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Portals', underpass: 'Underpass' },
+  trap: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Portals', underpass: 'Underpass' },
   snake: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Holes', underpass: 'Tunnels' },
   tag: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Holes' },
   turf: { open: 'Open', pillars: 'Pillars', gauntlet: 'Gauntlet', portals: 'Gates' }
@@ -20,7 +20,7 @@ const ARENA_ICONS: Record<SharedArenaVariant, string> = {
 }
 
 const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Partial<Record<SharedArenaVariant, string>>> = {
-  lightcycles: {
+  trap: {
     open: 'Nothing but the edge',
     pillars: 'Scattered solid blocks',
     gauntlet: 'Wall lanes with gaps',
@@ -51,7 +51,7 @@ const ARENA_DESCRIPTIONS: Record<ArenaPickerMode, Partial<Record<SharedArenaVari
 const ORDER: SharedArenaVariant[] = ['open', 'pillars', 'gauntlet', 'portals', 'underpass']
 
 // Each game's arenas in menu order: those it has a label for. Turf and Tag have no Tunnels, which only
-// mean something where a rider can cross its own trail in them (LightCycles, Snake).
+// mean something where a rider can cross its own trail in them (Trap, Snake).
 export function sharedArenaOptions<T extends SharedArenaVariant>(mode: ArenaPickerMode): MenuOption<T>[] {
   return ORDER.flatMap((value) => {
     const label = ARENA_LABELS[mode][value]

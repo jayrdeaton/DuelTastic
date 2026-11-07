@@ -1,7 +1,6 @@
-import { selectGuideVersionSeen as selectLightCyclesGuide } from '@/games/lightcycles/redux/guideSlice'
-import { DEFAULT_SETTINGS, playerSettings } from '@/games/lightcycles/redux/settingsSlice'
 import { selectGuideVersionSeen as selectSnakeGuide } from '@/games/snake/guide'
 import { selectGuideVersionSeen as selectTagGuide } from '@/games/tag/guide'
+import { selectGuideVersionSeen as selectTrapGuide } from '@/games/trap/redux/guideSlice'
 import { selectGuideVersionSeen as selectTurfGuide } from '@/games/turf/guide'
 
 type StoreModule = typeof import('@/pack')
@@ -51,41 +50,19 @@ describe("the pack store's storage key", () => {
     expect(store.getState().opponent).toEqual({ seatTwo: 'person' })
   })
 
-  // LightCycles' own save, from before the pack, is left where it is and never read.
-  it('leaves a LightCycles save under lightcycles:root unread and in place', async () => {
-    const oldSave = rootBlob({ guide: { versionSeen: 1 }, settings: { gameMode: 'twoPlayer', lockOrientation: true, speedTier: 'fast' } })
-    const { storage, store } = await launch({ 'lightcycles:root': oldSave })
-    const state = store.getState()
-
-    expect(selectLightCyclesGuide(state)).toBe(0)
-    expect(playerSettings.select(state)).toEqual(DEFAULT_SETTINGS)
-    expect(await storage.getItem('lightcycles:root')).toBe(oldSave)
-  })
-
-  // Snake's own app's save (snake:root, the web build at games.infinitetoken.com/snake shares this
-  // origin) is left where it is and never read, like LightCycles'.
-  it('leaves a Snake save under snake:root unread and in place', async () => {
-    const oldSave = rootBlob({ guide: { versionSeen: 1 }, settings: { wrapEdges: true, speedTier: 'fast' } })
-    const { storage, store } = await launch({ 'snake:root': oldSave })
-    const state = store.getState()
-
-    expect(selectSnakeGuide(state)).toBe(0)
-    expect(await storage.getItem('snake:root')).toBe(oldSave)
-  })
-
   it('starts a fresh install with the CPU in seat 2 and every game unseen', async () => {
     const { store } = await launch({})
     const state = store.getState()
 
     expect(state.opponent).toEqual({ seatTwo: 'cpu' })
-    expect([selectLightCyclesGuide(state), selectTurfGuide(state), selectTagGuide(state), selectSnakeGuide(state)]).toEqual([0, 0, 0, 0])
+    expect([selectTrapGuide(state), selectTurfGuide(state), selectTagGuide(state), selectSnakeGuide(state)]).toEqual([0, 0, 0, 0])
   })
 
   it("mounts each game's own keys beside the shell's", async () => {
     const { store } = await launch({})
     const keys = Object.keys(root(store.getState()))
 
-    for (const id of ['lightcycles', 'turf', 'tag', 'snake']) expect(keys).toEqual(expect.arrayContaining([`${id}Settings`, `${id}Controls`, `${id}Achievements`, `${id}Guide`]))
+    for (const id of ['trap', 'turf', 'tag', 'snake']) expect(keys).toEqual(expect.arrayContaining([`${id}Settings`, `${id}Controls`, `${id}Achievements`, `${id}Guide`]))
     expect(keys).toEqual(expect.arrayContaining(['theme', 'haptic', 'sound', 'keepAwake', 'profiles', 'profileSelection', 'seatColors', 'appSettings', 'opponent', 'liveplay']))
   })
 })

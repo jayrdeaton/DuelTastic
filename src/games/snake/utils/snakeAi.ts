@@ -1,7 +1,7 @@
-// CPU opponent for Snake - adapted from LightCycles' cpuAi.ts, keeping its flood-fill-scoring +
+// CPU opponent for Snake - adapted from Trap's cpuAi.ts, keeping its flood-fill-scoring +
 // tie-break-toward-straight + food-seeking-bias core. Originally dropped everything powerup/
 // held-item-related since Snake had no powerups; now that it does, this file grows the same
-// lookahead/powerup-awareness/mesmerize-compensation shape LightCycles' own cpuAi.ts already has.
+// lookahead/powerup-awareness/mesmerize-compensation shape Trap's own cpuAi.ts already has.
 
 import { ALL_DIRECTIONS, cellKey, isInBounds, isOppositeDirection, stepCell, wrapCell } from '@tastic/grid'
 import { applyControlInversion } from '@tastic/input'
@@ -13,11 +13,11 @@ import { applySnakePowerupActivation, applySnakeTurnIntent, buildPortalLookup, b
 
 export type CpuDifficulty = 'easy' | 'normal' | 'hard'
 
-// Caps countReachableCells' flood fill at this many cells, same role as LightCycles'
+// Caps countReachableCells' flood fill at this many cells, same role as Trap's
 // CPU_FLOOD_FILL_CAP (see floodFill.ts's own comment): once a candidate direction has this much
 // open room it reads as "plenty of space" regardless of the board's actual size, so the CPU only
 // needs to compare candidates against each other, not know the exact count. This file keeps its
-// own constant (rather than importing LightCycles') per the plan's decision to give Snake's AI its
+// own constant (rather than importing Trap's) per the plan's decision to give Snake's AI its
 // own tuning home instead of a cross-project shared constants module.
 //
 // Only the space-scoring fill is capped. The food/pickup distance search (distanceToNearestTarget
@@ -30,7 +30,7 @@ export const CPU_FLOOD_FILL_CAP = 900
 
 // Difficulty degrades decision QUALITY only, never reaction speed - the CPU always ticks in step
 // with everyone else; only how faithfully it follows its own best-scoring move varies. Same names
-// and values as LightCycles' own CPU_NORMAL_SUBOPTIMAL_CHANCE/CPU_EASY_RANDOM_CHANCE (see
+// and values as Trap's own CPU_NORMAL_SUBOPTIMAL_CHANCE/CPU_EASY_RANDOM_CHANCE (see
 // constants/game.ts there), reused here rather than shared since this is a new, standalone file.
 //
 // CPU_NORMAL_SUBOPTIMAL_CHANCE is rolled independently every tick, so it compounds fast across a
@@ -41,7 +41,7 @@ export const CPU_NORMAL_SUBOPTIMAL_CHANCE = 0.05
 export const CPU_EASY_RANDOM_CHANCE = 0.5
 
 // How close two directions' open-space scores must be (in cells) to let food-seeking break the tie
-// - mirrors LightCycles' CPU_POWERUP_AWARENESS[difficulty].seekTieToleranceCells, collapsed to one
+// - mirrors Trap's CPU_POWERUP_AWARENESS[difficulty].seekTieToleranceCells, collapsed to one
 // constant since food-seeking itself is unconditional/difficulty-independent (core to the genre,
 // not an optional flourish - see chooseCpuSnakeDirection's own comment). Pickup-seeking below has
 // its own, difficulty-gated tolerance in CPU_POWERUP_AWARENESS instead.
@@ -50,7 +50,7 @@ export const CPU_FOOD_SEEK_TIE_TOLERANCE_CELLS = 20
 // CPU powerup-awareness knobs, one config per difficulty tier - layered onto the existing
 // flood-fill scoring the same way CPU_NORMAL_SUBOPTIMAL_CHANCE/CPU_EASY_RANDOM_CHANCE layer onto
 // its base direction choice: same algorithm, different faithfulness per tier, not a different
-// algorithm per tier. Mirrors LightCycles' CPU_POWERUP_AWARENESS exactly.
+// algorithm per tier. Mirrors Trap's CPU_POWERUP_AWARENESS exactly.
 export interface CpuSnakePowerupAwareness {
   seekPickups: boolean // bias tied survival-safe directions toward a nearby pickup
   seekTieToleranceCells: number // how close two directions' space scores must be to let pickup-seeking break the tie
@@ -72,7 +72,7 @@ export const POWERUP_CPU_OFFENSIVE_FALLBACK_CHANCE = 0.02 // per-tick chance to 
 // inversion), then pre-inverting its own output so the automatic Mesmerize flip cancels out and the
 // correct direction still lands. Without this, a mesmerized CPU blindly applies the flip on top of
 // its own genuinely-best choice, which reliably steers it into a wall whenever the correct escape
-// happens to be lateral - a free kill, not an earned one. Mirrors LightCycles' identical
+// happens to be lateral - a free kill, not an earned one. Mirrors Trap's identical
 // CPU_HACK_COMPENSATION_CHANCE: 'hard' always compensates (decision quality, not reaction speed, is
 // what difficulty already models here), 'normal' sometimes still gets caught out, 'easy' never
 // adapts.
@@ -173,7 +173,7 @@ export function chooseCpuSnakeDirection({ snake, grid, occupied, difficulty, ran
   const head = snake.body[snake.body.length - 1]
   const candidates = ALL_DIRECTIONS.filter((direction) => !isOppositeDirection(direction, snake.direction))
 
-  // Deliberately gated to 'hard' only, matching LightCycles' identical reasoning - easy/normal keep
+  // Deliberately gated to 'hard' only, matching Trap's identical reasoning - easy/normal keep
   // treating the edge as a wall even when it isn't, which reads as in-character weakness for those
   // tiers rather than an unfinished feature.
   const wrapAware = wrapEdges && difficulty === 'hard'

@@ -17,7 +17,7 @@ export function PickupGlyph({ pickup, cellPx, color }: { pickup: Pickup<string>;
 // A ring around a head per kind of effect it's under, each in its own slot: speed (boost, freeze,
 // slow or rush) innermost, then reverse, then shield. Set a fixed distance outside the head and each
 // other rather than scaled with the head, so they look the same in every game whatever its head size
-// and stay clear of the head's own ring and outline (riderSkin.ts). Scaled, LightCycles' small head put
+// and stay clear of the head's own ring and outline (riderSkin.ts). Scaled, Trap's small head put
 // the speed ring on top of its outline and its three rings over each other.
 const RING_OFFSET = 4
 const RING_SPACING = 3

@@ -69,7 +69,7 @@ Upload in the version's Product Page Information > Header and Search Results (He
 
 > No account or sign-in is needed, and there are no in-app purchases or ads.
 >
-> DuelTastic is four games in one app (LightCycles, Turf, Tag and Snake): pick one from the Home screen. Two Player is played face to face on one device: each player swipes in their own half of the screen to steer, so the top half's controls and text are upside down on purpose. Seat 2 can also be the CPU, or Nobody in Snake to play alone.
+> DuelTastic is four games in one app (Trap, Turf, Tag and Snake): pick one from the Home screen. Two Player is played face to face on one device: each player swipes in their own half of the screen to steer, so the top half's controls and text are upside down on purpose. Seat 2 can also be the CPU, or Nobody in Snake to play alone.
 >
 > The app turns its own screen using the motion sensor, so the system orientation stays portrait and the app runs full screen on iPad. Turn the device to see the landscape layout. Lock Orientation is in Settings (the cog on the Home screen).
 >

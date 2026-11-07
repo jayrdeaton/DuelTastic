@@ -16,7 +16,7 @@ const MODES: RoundMode[] = ['vsCpu', 'twoPlayer']
 
 // Each game's guide input with the given controls, plus every value of its own rule option.
 const RULE_VARIANTS: Record<string, object[]> = {
-  lightcycles: [{}],
+  trap: [{}],
   turf: [{ crash: 'out' }, { crash: 'home' }],
   tag: [{ rule: 'hotPotato' }, { rule: 'leastIt' }],
   snake: [{}]

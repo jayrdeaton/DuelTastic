@@ -42,7 +42,7 @@ export interface TagBoardProps {
 }
 
 const SEATS: readonly TagSeat[] = [1, 2]
-// The heads are every game's size (HEAD_RADIUS_CELLS, LightCycles' and Turf's), It's a little bigger.
+// The heads are every game's size (HEAD_RADIUS_CELLS, Trap's and Turf's), It's a little bigger.
 const IT_HEAD_SCALE = 1.25
 // The tail: as wide as Turf's trail, as see-through, and TAG_TAIL_PX long.
 const TAIL_WIDTH = 0.6

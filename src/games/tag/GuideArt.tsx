@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native'
 import { Icon } from 'react-native-paper'
 
 // Tag's picture for its How to Play cards: It (player 1, a little bigger, in the glow the board draws
-// out to its reach, here a flat disc) closing in on the other rider beside a pillar. Plain Views, like LightCycles'
+// out to its reach, here a flat disc) closing in on the other rider beside a pillar. Plain Views, like Trap's
 // own GuideArt, so it costs nothing to mount over Home. Colored from the live theme (primary = P1).
 export function GuideTagChase() {
   const { colors } = useAutoPaperTheme()

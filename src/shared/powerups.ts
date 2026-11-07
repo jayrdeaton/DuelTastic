@@ -2,13 +2,13 @@ import { type GridCell, type GridSize, isInBounds } from '@tastic/grid'
 
 // What every DuelTastic game's powerups share, whatever each game calls them: what an effect does
 // and how it times out, where a mystery box turns up and how it's picked up, the CPU's sums about
-// them, and the colors and icons that say which effect is which. LightCycles' own older powerup code
+// them, and the colors and icons that say which effect is which. Trap's own older powerup code
 // reads its colors, icons, pickup radius and box sizing from here too (constants/game.ts), so a
-// Frost in Turf and a Stasis in LightCycles look the same. Moves to the pack's shared/ with the games.
+// Frost in Turf and a Stasis in Trap look the same. Moves to the pack's shared/ with the games.
 
 // ─── Effects ────────────────────────────────────────────────────────────────
 
-// What a powerup does. Each game names its own (Turf's Dash and Tag's Dash are boosts, LightCycles'
+// What a powerup does. Each game names its own (Turf's Dash and Tag's Dash are boosts, Trap's
 // Hack is a reverse):
 // - boost: the rider who used it rides at double speed.
 // - freeze: the other rider stands still.
@@ -121,7 +121,7 @@ export interface Pickup<T extends string> {
 export const PICKUP_RADIUS_CELLS = 1
 
 // The box on the board: about as wide as the cells it's picked up from, but never smaller than 9px
-// however small the cells (LightCycles' and Turf's are 5 to 14px), nor bigger than 26px however big
+// however small the cells (Trap's and Turf's are 5 to 14px), nor bigger than 26px however big
 // (Tag's are 16 to 30px, where 1.8 cells would cover the pillars round it). Animated in when it turns
 // up, then pulsing until it's picked up.
 export function pickupRadiusPx(cellPx: number): number {
@@ -218,7 +218,7 @@ export function ticksFor(steps: number, effects: Effects, tick: number): number 
 }
 
 // How often a CPU with its steering reversed notices and steers to make up for it, by level: hard
-// always shrugs it off, normal mostly, easy never (a decision-quality knob, as LightCycles' Hack has
+// always shrugs it off, normal mostly, easy never (a decision-quality knob, as Trap's Hack has
 // always been).
 export const REVERSE_COMPENSATION_CHANCE: Record<'easy' | 'normal' | 'hard', number> = { easy: 0, normal: 0.6, hard: 1 }
 
