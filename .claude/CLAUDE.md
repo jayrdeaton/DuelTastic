@@ -570,3 +570,7 @@ What the review of Copilot's 2026-10-26 commits found kept on main but never wri
 - **Turf's and Tag's powerup copy** (2873bf1) is plainer, in the shared words ("Boosts your speed", "Freezes your opponent"), where Turf and Tag had their own lines; How to Play still says "the other rider". **For Jay:** "opponent" or "the other rider", and whether Turf's and Tag's own lines come back.
 - **Snake's grid-size and speed icons** in its loadout are the shared vehicle and animal icons (167f893), where Snake's own read as cell sizes. **For Jay.**
 
+
+## In-match chips: the shell's MatchChips (2026-11-06)
+
+Jay, from PuckTastic: the back and settings chips are one shared layout across the packs. `MatchOverlays` (LightCycles, Tag, Turf) and Snake's play screen now render `@tastic/shell`'s `MatchChips` (0.6.0) in place of their own: `playing` is `!controlsVisible` (up during the countdown, the round's card and once the match is over, as before), `faceToFace` is MatchOverlays' `!useCornerLayout` and Snake's `needsSharedNeutralZone`. Same places as before (the window's top corners, or the side edges at the line between the players face to face, the page's corners on desktop web), but the chips now fade out over 150ms instead of vanishing, sit 8pt in from the edge, and take PuckTastic's Box Hockey look (a full-contrast icon on a translucent chip). Snake's `GameActionChips` is gone. `npm run verify` passes; not checked on web or a device.

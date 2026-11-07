@@ -1,12 +1,12 @@
 import { useAutoPaperTheme } from '@rific/auto-paper'
 import { useKeepAwake } from '@rific/core'
-import { IconButton, useVibration } from '@rific/feedback-press'
+import { useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
 import { computeContentBounds, useBackgroundPause, useSettledWindowDimensions } from '@tastic/core'
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
-import { liveplayActions, safeBack, SettingsDialog, useActiveRound, useProfiles } from '@tastic/shell'
+import { liveplayActions, MatchChips, safeBack, SettingsDialog, useActiveRound, useProfiles } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
 import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -384,7 +384,7 @@ export default function PlayScreen() {
   // top corners for the whole match, so there's always a way out or into Settings; either dialog
   // pauses play (see `paused` above). Anywhere narrower they only show before and after a round.
   const isDesktopWeb = Platform.OS === 'web' && width >= DESKTOP_WEB_MIN_WIDTH
-  // Same condition GameActionChips' own showBack/showSettings use below.
+  // When the back and settings chips (the shell's MatchChips) show: play is off.
   const controlsVisible = isDesktopWeb || phase === 'onboarding' || (phase === 'gameOver' && showGameOverDialog)
 
   // Mirrors phase === 'playing' into Redux (the shell's liveplaySlice - see its own doc) rather than calling
@@ -513,7 +513,7 @@ export default function PlayScreen() {
       gameOver gating (previously back-only during onboarding) - matches BoxHockey's/AirHockey's/
       Pong's identical always-available back button, so there's a consistent way out of a finished
       round beyond GameOverDialog's own Home button. */}
-      <GameActionChips showBack={controlsVisible} showSettings={controlsVisible} onBack={requestBack} onSettings={() => setSettingsOpen(true)} humanPlayerCount={humanPlayers.length} desktopWeb={isDesktopWeb} />
+      <MatchChips playing={!controlsVisible} faceToFace={needsSharedNeutralZone(seatSplit.orientationMode, humanPlayers.length)} onBack={requestBack} onSettings={() => setSettingsOpen(true)} />
       <SettingsDialog visible={settingsOpen} onDismiss={() => setSettingsOpen(false)} />
 
       {/* 2 Player's unlock toasts, a Toaster per seat turned to face it (see the gameOver effect
@@ -531,76 +531,13 @@ export default function PlayScreen() {
   )
 }
 
-interface GameActionChipsProps {
-  showBack: boolean
-  showSettings: boolean
-  onBack: () => void
-  onSettings: () => void
-  // Solo and vsCpu both report a single human regardless of live orientationMode - see
-  // needsSharedNeutralZone's own doc for why that (not bare orientationMode) is what actually
-  // decides whether the neutral slot is needed.
-  humanPlayerCount: number
-  // Desktop web always takes the corner layout: both players share one screen, keyboard and mouse
-  // there, so there's no far seat for the neutral edge slots to stay readable from.
-  desktopWeb: boolean
-}
-
-// Back/settings chips. Two structurally different layouts, not just two positions:
-//
-// Shared neutral zone (needsSharedNeutralZone - 2 human players, face-to-face): both players read
-// this same pair of chips from opposite sides of the device, so they sit on the dividing line rather
-// than a fixed corner - unlike LightCycles'/BoxHockey's boards (always face-to-face, so the
-// wall/midline is always horizontal), Snake's board genuinely supports both face-to-face AND
-// side-by-side (see useSeatSplit) - but needsSharedNeutralZone is only ever true for face-to-face
-// (side-by-side already gives each seat its own dedicated half, see its own doc), so the neutral
-// line itself is always the horizontal seam OnboardingOverlay's zoneTop/zoneBottom split already
-// establishes; edgeSlotVertical (full height, fixed left/right edge, vertically centered) lands
-// exactly on it.
-//
-// Corner layout (solo, vsCpu, or 2P side-by-side - no second seat's zone to protect): the same
-// top-left/top-right corners every other screen in the fleet uses (see Home's stats/settings
-// buttons).
-function GameActionChips({ showBack, showSettings, onBack, onSettings, humanPlayerCount, desktopWeb }: GameActionChipsProps) {
-  const seatSplit = useSeatSplit()
-  const insets = useSafeAreaInsets()
-  const { dark } = useAutoPaperTheme()
-  const fg = dark ? '#FFFFFF' : '#000000'
-  const chipBg = dark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.55)'
-
-  if (!showBack && !showSettings) return null
-
-  const neutral = !desktopWeb && needsSharedNeutralZone(seatSplit.orientationMode, humanPlayerCount)
-  const backSlot = neutral ? [styles.edgeSlotVertical, { left: insets.left }] : [styles.cornerSlot, { top: 8 + insets.top, left: 8 + insets.left }]
-  const settingsSlot = neutral ? [styles.edgeSlotVertical, { right: insets.right }] : [styles.cornerSlot, { top: 8 + insets.top, right: 8 + insets.right }]
-  return (
-    <>
-      {showBack && (
-        <View style={backSlot}>
-          <IconButton icon='arrow-left' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onBack} accessibilityLabel='Back' />
-        </View>
-      )}
-      {showSettings && (
-        <View style={settingsSlot}>
-          <IconButton icon='cog' iconColor={fg} containerColor={chipBg} style={styles.chipButton} size={24} onPress={onSettings} accessibilityLabel='Settings' />
-        </View>
-      )}
-    </>
-  )
-}
-
 const styles = StyleSheet.create({
   // See the boardArea View's own comment at its call site for what these two are switching between.
   boardArea: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'absolute' },
   boardAreaFullBleed: { bottom: 0, left: 0, right: 0, top: 0 },
-  chipButton: { margin: 0 },
-  cornerSlot: { position: 'absolute' },
-  // Face-to-face: full screen height at a fixed left/right edge, button centered vertically via
-  // justifyContent - lands exactly on the horizontal 50/50 zone split (see OnboardingOverlay's own
-  // zoneTop/zoneBottom), the one strip of the board neither snake's own zone claims.
-  edgeSlotVertical: { alignItems: 'center', bottom: 0, justifyContent: 'center', position: 'absolute', top: 0 },
   // alignItems/justifyContent center the design-resolution board+touch View (see boardScale's own
   // comment) inside root's live bounds. Every other direct child here (KeyboardInputLayer,
-  // OnboardingOverlay, GameOverDialog, GameActionChips, SettingsDialog) positions itself via
+  // OnboardingOverlay, GameOverDialog, MatchChips, SettingsDialog) positions itself via
   // StyleSheet.absoluteFill or explicit position:'absolute' styles of its own, so centering root
   // has no effect on any of them - only the board's normal-flow scaled View actually gets centered.
   root: { alignItems: 'center', flex: 1, justifyContent: 'center' }
