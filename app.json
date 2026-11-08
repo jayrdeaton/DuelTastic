@@ -37,7 +37,6 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
-          "group.com.infinitetoken.tastic",
           "group.com.infinitetoken.tastic"
         ]
       }
