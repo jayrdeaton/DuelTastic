@@ -65,21 +65,23 @@ Upload in the version's Product Page Information > Header and Search Results (He
 
 **App Privacy:** "No, we don't collect data from this app" (Data Not Collected). Nothing leaves the device except the Expo update check, which carries no personal data (the app version, platform and a random installation ID used to serve the right update), and there is no tracking, so no App Tracking Transparency prompt either. This matches the privacy policy at https://games.infinitetoken.com/privacy. Revisit it if analytics, crash reporting, ads or accounts are ever added.
 
-**App Review Information:** sign-in not required. Contact: name, email and phone (the phone stays out of `store.config.json`, which is public). Notes:
+**App Review Information:** sign-in not required. Contact: name, email and phone (the phone stays out of `store.config.json`, which is public). The same notes go in TestFlight's Test Information (Beta App Review Information) for the first build tested outside the team. Notes (rewritten 2026-11-08 for the OS turning tablets and the opponent button):
 
 > No account or sign-in is needed, and there are no in-app purchases or ads.
 >
-> DuelTastic is four games in one app (Trap, Turf, Tag and Snake): pick one from the Home screen. Two Player is played face to face on one device: each player swipes in their own half of the screen to steer, so the top half's controls and text are upside down on purpose. Seat 2 can also be the CPU, or Nobody in Snake to play alone.
+> DuelTastic is four games in one app (Trap, Turf, Tag and Snake): pick one from the Home screen. Each game opens on a setup screen, where the button beside player 1's own picks the opponent: the CPU at one of three levels, Solo in Snake to play alone, or Player for two people on one device.
 >
-> The app turns its own screen using the motion sensor, so the system orientation stays portrait and the app runs full screen on iPad. Turn the device to see the landscape layout. Lock Orientation is in Settings (the cog on the Home screen).
+> Two Player is played face to face: each player swipes in their own half of the screen to steer, so the top half's buttons and text are upside down on purpose.
+>
+> The iPhone stays in portrait. The iPad turns with the device. On an iPad held sideways, Trap, Turf and Tag keep their tall face-to-face board in the middle of the screen, the same board as on a phone, and Snake's board fills the screen, with two players side by side.
 >
 > Player profiles are shared through an App Group with other Tastic games by the same developer, if any are installed. No profile, progress or other game data leaves the device.
 >
-> Each game shows its How to Play cards the first time it's opened. Tap Skip to go straight to it.
+> Each game shows its How to Play cards the first time it's opened. Tap Skip to go straight to it. The button at the end of each game's row on the Home screen shows them again.
 
 **Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21). Snake's in `src/games/snake/sounds/` came over from Snake's repo with it: confirm they're his too before answering.
 
-**Pricing and Availability:** Free, all territories except China mainland (needs a government game approval number) and Vietnam (needs a game license from a local company), the same as SolitaireTastic. Apple Silicon Mac and Apple Vision Pro availability unticked: the app has never been run on either (no accelerometer on a Mac).
+**Pricing and Availability:** Free, all territories except China mainland (needs a government game approval number) and Vietnam (needs a game license from a local company), the same as SolitaireTastic. Apple Silicon Mac and Apple Vision Pro availability unticked: the app has never been run on either.
 
 **Export compliance:** already answered by `ITSAppUsesNonExemptEncryption: false` in `app.json`, so App Store Connect doesn't ask.
 
