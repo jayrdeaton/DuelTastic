@@ -1,5 +1,6 @@
 import type { GridCell, GridSize } from '@tastic/grid'
 
+import type { Overpass } from '@/shared/match/arenas'
 import type { CpuDifficulty, Direction, GameMode, GamePhase, GridSizeTier, KeyScheme, Player, RoundOutcome, SpeedTier } from '@/shared/match/types'
 
 // The types every game shares, re-exported so Trap's own files read them from one place.
@@ -9,9 +10,9 @@ export type { CpuDifficulty, Direction, GameMode, GamePhase, GridCell, GridSize,
 // buildArenaObstacles, the sole place these are turned into actual GridCell obstacles. 'open' is
 // the original, fully-open rectangle (empty obstacle list) and stays the default everywhere a
 // caller doesn't specify otherwise (see gameEngine.ts's createInitialGameState). 'portals' and
-// 'underpass' don't produce obstacles at all (see buildArenaObstacles' own branch for each) - their
-// geometry lives on GameState.portals/.tunnels instead, since neither one blocks movement the way
-// every other variant's obstacle cells do.
+// 'underpass' (shown as Overpass) don't produce obstacles at all (see buildArenaObstacles' own
+// branch for each) - their geometry lives on GameState.portals/.overpass instead, since neither one
+// blocks movement the way every other variant's obstacle cells do.
 export type ArenaVariant = 'open' | 'pillars' | 'gauntlet' | 'portals' | 'underpass'
 
 // How fast the trail's tail chases the head, not the visible outcome - describing the outcome (a
@@ -79,15 +80,8 @@ export interface Portal {
   b: GridCell
 }
 
-// A short, straight corridor for the 'underpass' arena (see shared/match/arenas.ts's buildArenaTunnels),
-// ordered mouth-to-mouth. Traversing it checks collision against a separate underground-occupancy
-// set instead of the surface one (see gameEngine.ts's buildTunnelOccupiedSet), so a tunnel-
-// traveler and a surface trail can legitimately share the same coordinate without colliding.
-// Direction of travel is unconstrained - either mouth, either direction - since `cells[i]` and
-// `cells[i+1]` are always real geometric neighbors by construction.
-export interface Tunnel {
-  cells: GridCell[]
-}
+// The Overpass arena's crossing: see utils/overpass.ts for its rules.
+export type { Axis, Overpass } from '@/shared/match/arenas'
 
 export interface PlayerState {
   // Ordered cells the cycle has occupied, oldest first - trail[trail.length - 1] is the head.
@@ -164,10 +158,10 @@ export interface GameState {
   // buildArenaPortals) - empty for every other variant. Computed once in createInitialGameState and
   // never mutated after, same as `obstacles`.
   portals: Portal[]
-  // Static per-round tunnel corridor from the 'underpass' ArenaVariant (see shared/match/arenas.ts's
-  // buildArenaTunnels) - empty for every other variant. Computed once in createInitialGameState and
-  // never mutated after, same as `obstacles`.
-  tunnels: Tunnel[]
+  // Static per-round crossing from the 'underpass' ArenaVariant, shown as Overpass (see
+  // shared/match/arenas.ts's buildArenaOverpass and utils/overpass.ts) - null for every other variant.
+  // Computed once in createInitialGameState and never mutated after, same as `obstacles`.
+  overpass: Overpass | null
   // Cells inside the round's device safe-area margin (see gameEngine.ts's buildUnsafeAreaCells) -
   // only non-empty when the round is bleeding under that margin (extendIntoSafeArea; see
   // Settings' own comment), since otherwise the board's own pixel container already stops short

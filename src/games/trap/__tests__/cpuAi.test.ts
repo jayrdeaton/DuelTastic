@@ -149,22 +149,31 @@ describe('chooseCpuDirection', () => {
     expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard', portals })).toBe('left')
   })
 
-  it('correctly avoids a tunnel-occupied hazard invisible to the surface occupied set, instead of misjudging it as open ground', () => {
-    // 'left's very landing cell (29,0) is a tunnel member with a live tunnel-traveler on it - a
-    // hazard the plain `occupied` set (which only has the player's own cell and a wall 4 cells to
-    // the right) has zero visibility into. Without tunnel awareness that cell reads as ordinary open
-    // ground, and the wide-open strip beyond it (30 cells) dwarfs 'right's cramped 3-cell pocket, so
-    // 'left' wins. With it, 'left' is correctly seen as an immediate crash and 'right' - the only
-    // real survivor - wins instead. This is the exact blind spot that gets a tunnel-unaware CPU
-    // killed by a hazard it can't see, not just a suboptimal pick.
+  it('reads a trail on the Overpass by its level: a wall on the level it would ride, open ground on the other', () => {
+    // 'left' lands on (29,0), a crossing cell: with a trail across it there (its own level) 'left' is
+    // an immediate crash and 'right' wins; with a trail up and down it there, 'left' rides over it
+    // onto the wide-open strip and wins.
     const grid = { cols: 60, rows: 1 }
     const player = ps({ trail: [{ x: 30, y: 0 }], direction: 'up' })
-    const occupied = new Set(['30,0', '34,0'])
-    const tunnelCellSet = new Set(['29,0'])
-    const tunnelOccupied = new Set(['29,0'])
+    const overpass = { left: 29, top: 0, right: 29, bottom: 0, over: 'h' as const }
+    expect(chooseCpuDirection({ player, grid, occupied: new Set(['30,0', '34,0', '29,0|h']), difficulty: 'hard', overpass })).toBe('right')
+    expect(chooseCpuDirection({ player, grid, occupied: new Set(['30,0', '34,0', '29,0|v']), difficulty: 'hard', overpass })).toBe('left')
+  })
 
-    expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard' })).toBe('left')
-    expect(chooseCpuDirection({ player, grid, occupied, difficulty: 'hard', tunnelCellSet, tunnelOccupied })).toBe('right')
+  it('goes straight on while its head is on the crossing, where nobody turns', () => {
+    // On the crossing's top row heading up into a wall just past it, with the board open to the
+    // sides: off the crossing it would turn, on it it can't.
+    const grid = { cols: 20, rows: 20 }
+    const player = ps({
+      trail: [
+        { x: 10, y: 9 },
+        { x: 10, y: 8 }
+      ],
+      direction: 'up'
+    })
+    const overpass = { left: 8, top: 8, right: 12, bottom: 12, over: 'h' as const }
+    expect(chooseCpuDirection({ player, grid, occupied: new Set(['10,9|v', '10,8|v', '10,7']), difficulty: 'hard', overpass })).toBe('up')
+    expect(chooseCpuDirection({ player, grid, occupied: new Set(['10,9', '10,8', '10,7']), difficulty: 'hard' })).not.toBe('up')
   })
 
   it("treats the grid edge as connecting to the opposite side once wrapEdges is on for 'hard', instead of misjudging it as a wall", () => {
@@ -205,7 +214,7 @@ describe('applyCpuTurn', () => {
       pickups: [],
       obstacles: [],
       portals: [],
-      tunnels: [],
+      overpass: null,
       unsafeCells: []
     }
   }
@@ -250,7 +259,7 @@ describe('applyCpuTurn', () => {
       pickups: [],
       obstacles: [{ x: 1, y: 0 }],
       portals: [],
-      tunnels: [],
+      overpass: null,
       unsafeCells: []
     }
     const next = applyCpuTurn(state, 'hard')
@@ -279,37 +288,73 @@ describe('applyCpuTurn', () => {
         { x: 7, y: 0 }
       ],
       portals: [{ a: { x: 2, y: 0 }, b: { x: 50, y: 0 } }],
-      tunnels: [],
+      overpass: null,
       unsafeCells: []
     }
     const next = applyCpuTurn(state, 'hard')
     expect(next.players[2].pendingDirection).toBe('left')
   })
 
-  it("steers away from a tunnel-occupied hazard via applyCpuTurn's OWN default occupied/tunnelOccupied parameters (no explicit arguments at all), proving both defaults read state.obstacles/state.tunnels/state.players correctly", () => {
-    // Player 1's own trail sits AT the tunnel's one cell (29,0) - the real, only way tunnelOccupied
-    // is ever populated in actual gameplay (see buildTunnelOccupiedSet). applyCpuTurn is called with
-    // no explicit occupied OR tunnelOccupied argument, so this proves the defaults
-    // (buildOccupiedSet(..., buildTunnelCellSet(state.tunnels)) and
-    // buildTunnelOccupiedSet(state.players, buildTunnelCellSet(state.tunnels))) both correctly read
-    // live state rather than a synthetic set built by the test.
+  it("reads state.overpass in applyCpuTurn's own defaults, riding over a trail going the other way", () => {
+    // Player 1's trail runs down column 29 through a one-cell crossing at (29,1). 'left' rides across
+    // it onto the open left of the board; with no Overpass the same cell is a wall and 'left' is out.
+    function state(overpass: GameState['overpass']): GameState {
+      return {
+        phase: 'playing',
+        grid: { cols: 60, rows: 3 },
+        players: {
+          1: ps({
+            trail: [
+              { x: 29, y: 0 },
+              { x: 29, y: 1 },
+              { x: 29, y: 2 }
+            ],
+            direction: 'down',
+            color: '#3B82F6'
+          }),
+          2: ps({ trail: [{ x: 30, y: 1 }], direction: 'up', color: '#EF4444' })
+        },
+        outcome: null,
+        tick: 0,
+        pickups: [],
+        obstacles: [
+          { x: 34, y: 0 },
+          { x: 34, y: 1 },
+          { x: 34, y: 2 }
+        ],
+        portals: [],
+        overpass,
+        unsafeCells: []
+      }
+    }
+    expect(applyCpuTurn(state({ left: 29, top: 1, right: 29, bottom: 1, over: 'h' }), 'hard').players[2].pendingDirection).toBe('left')
+    expect(applyCpuTurn(state(null), 'hard').players[2].pendingDirection).not.toBe('left')
+  })
+
+  it('queues no turn while its head is on the crossing', () => {
     const state: GameState = {
       phase: 'playing',
-      grid: { cols: 60, rows: 1 },
+      grid: { cols: 20, rows: 20 },
       players: {
-        1: ps({ trail: [{ x: 29, y: 0 }], direction: 'left', color: '#3B82F6' }),
-        2: ps({ trail: [{ x: 30, y: 0 }], direction: 'up', color: '#EF4444' })
+        1: ps({ trail: [{ x: 1, y: 1 }], direction: 'right', color: '#3B82F6' }),
+        2: ps({
+          trail: [
+            { x: 10, y: 11 },
+            { x: 10, y: 10 }
+          ],
+          direction: 'up',
+          color: '#EF4444'
+        })
       },
       outcome: null,
       tick: 0,
       pickups: [],
-      obstacles: [{ x: 34, y: 0 }],
+      obstacles: [{ x: 10, y: 8 }],
       portals: [],
-      tunnels: [{ cells: [{ x: 29, y: 0 }] }],
+      overpass: { left: 8, top: 8, right: 12, bottom: 12, over: 'h' },
       unsafeCells: []
     }
-    const next = applyCpuTurn(state, 'hard')
-    expect(next.players[2].pendingDirection).toBe('right')
+    expect(applyCpuTurn(state, 'hard')).toBe(state)
   })
 
   it("steers through an arena wall while its Shield covers the next tick, and not once it doesn't", () => {
@@ -383,7 +428,7 @@ describe('shouldCpuActivate', () => {
       pickups: [],
       obstacles: [],
       portals: [],
-      tunnels: [],
+      overpass: null,
       unsafeCells: []
     }
   }

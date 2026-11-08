@@ -1,23 +1,24 @@
-import { Canvas, Line, Path, Skia, vec } from '@shopify/react-native-skia'
-import { cellKey, cellToPixel } from '@tastic/grid'
+import { Canvas, Group, Line, Path, Skia, vec } from '@shopify/react-native-skia'
+import { cellToPixel } from '@tastic/grid'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, TRAIL_SEVER_EAT_MAX_MS, TRAIL_SEVER_EAT_MIN_MS, TRAIL_SEVER_EAT_MS_PER_CELL } from '@/games/trap/constants/game'
-import { GamePhase, GridCell, GridSize, OrientationMode, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, SpeedEffect, Tunnel } from '@/games/trap/types'
+import { Axis, GamePhase, GridCell, GridSize, OrientationMode, Overpass, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, SpeedEffect } from '@/games/trap/types'
 import { shouldTrimTrailAt, stepsFor } from '@/games/trap/utils/gameEngine'
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
-import { Gates } from '@/shared/match/Gates'
+import { Gates, useGateColors } from '@/shared/match/Gates'
 import { partialTrailPath, RiderCrash } from '@/shared/match/RiderCrash'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
-import { leadingTrailPath, trailPath } from '@/shared/match/trailPath'
-import { TunnelRoad } from '@/shared/match/TunnelRoad'
+import { leadingRuns, leadingTrailPath, trailPath } from '@/shared/match/trailPath'
 import { GLIDE_LAG_MS, glideCellsBehind, useRiderGlide } from '@/shared/match/useRiderGlide'
 import type { Effects, SpeedKind } from '@/shared/powerups'
+
+import { type DeckRect, OVERPASS_DECK_Z, OVERPASS_OVER_Z, OverpassDeck, overpassRect, OverpassRoad } from './OverpassBridge'
 
 export interface GameBoardProps {
   players: Record<Player, PlayerState>
@@ -42,15 +43,14 @@ export interface GameBoardProps {
   // The app theme's outline color - distinct from primary/secondary/tertiary, so obstacle geometry
   // reads as inert board structure rather than being mistaken for either player's trail or a pickup.
   obstacleColor: string
-  // Static per-round portal pairs (see GameState's own comment) - drawn by Gates. Reuses
-  // obstacleColor rather than a dedicated prop: like obstacles, a portal is static per-round board
-  // structure, not per-player state or a pickup, so the same "inert board structure" color reads
-  // correctly for it too - shape (rings vs. solid blocks) is what tells them apart.
+  // Static per-round portal pairs (see GameState's own comment) - drawn by Gates, each pair in its
+  // own theme-derived color (useGateColors), so a rider can see where a portal comes out.
   portals: Portal[]
-  // Static per-round tunnel corridor (see GameState's own comment) - rendered by Tunnels below, and
-  // fed into PlayerTrail so it can highlight each player's own underground segments. Also reuses
-  // obstacleColor, same reasoning as `portals` above.
-  tunnels: Tunnel[]
+  // The Overpass arena's crossing (see GameState's own comment), or null - drawn by OverpassBridge
+  // in obstacleColor, with what rides over it lifted above its deck by PlayerTrail.
+  overpass: Overpass | null
+  // The board's own background, the Overpass deck's color.
+  deckColor: string
   // The resolved TRAIL_SPEED_RATE number for the active trailSpeedTier (see constants/game.ts) -
   // lets PlayerTrail interpolate the tail's position continuously between trims instead of holding
   // still and then snapping a whole cell forward. Passed as the raw rate, not the tier, so this
@@ -71,6 +71,8 @@ function cellCenter(cell: GridCell, cellPx: number) {
 // (riderSkin.ts).
 const WALL_STROKE_WIDTH = 1.5
 const TRAIL_OPACITY = 1
+// A trail's width, in cells: nearly the whole cell (see PlayerTrail).
+const TRAIL_WIDTH_CELLS = 0.85
 
 // Every game's mystery box (BoardPowerups' PickupGlyph). The arena's blocks and gates are every
 // game's too (ArenaBlocks, Gates).
@@ -79,17 +81,6 @@ function Powerups({ pickups, cellPx, color }: { pickups: PowerupPickup[]; cellPx
     <>
       {pickups.map((pu) => (
         <PickupGlyph key={pu.id} pickup={pu} cellPx={cellPx} color={color} />
-      ))}
-    </>
-  )
-}
-
-// The shared road (TunnelRoad), in the same WALL_STROKE_WIDTH stroke Walls use.
-function Tunnels({ tunnels, cellPx, color }: { tunnels: Tunnel[]; cellPx: number; color: string }) {
-  return (
-    <>
-      {tunnels.map((tunnel) => (
-        <TunnelRoad key={cellKey(tunnel.cells[0])} tunnel={tunnel} cellPx={cellPx} color={color} strokeWidth={WALL_STROKE_WIDTH} />
       ))}
     </>
   )
@@ -137,30 +128,58 @@ function tailProgress(tick: number, growthRate: number, trailLength: number): nu
   return (tick - segmentStart + 1) / (nextTrimTick - segmentStart)
 }
 
-// The underground portion of a player's own trail, as a separate Skia path rendered underneath the
-// normal trail so both players can see at a glance which segments are "safe crossings" that don't
-// block surface traffic (see gameEngine.ts's tickGame). Structurally identical to trailPath above,
-// just filtered to tunnel-member runs instead of walking the whole trail - breaks to a fresh
-// subpath at any non-member gap. Never needs trailPath's own isAdjacent branching: tunnel traversal
-// is always a chain of geometrically adjacent steps (unlike a portal jump), so consecutive
-// tunnel-member cells are always genuinely adjacent here too.
-function tunnelHighlightPath(trail: PlayerState['trail'], tunnelCellSet: ReadonlySet<string>, cellPx: number) {
+// The pieces of a trail that run along `axis`, as one path: on the Overpass, the ones riding over
+// the deck (PlayerTrail clips them to it). `cells` are settled cells, oldest first.
+function axisPath(cells: readonly GridCell[], axis: Axis, cellPx: number) {
   const path = Skia.PathBuilder.Make()
-  let drawing = false
-  for (const cell of trail) {
-    const isMember = tunnelCellSet.has(cellKey(cell))
-    if (!isMember) {
-      drawing = false
-      continue
-    }
-    const { x, y } = cellCenter(cell, cellPx)
-    if (drawing) path.lineTo(x, y)
-    else {
-      path.moveTo(x, y)
-      drawing = true
+  for (let i = 1; i < cells.length; i++) {
+    const a = cells[i - 1]
+    const b = cells[i]
+    const along = axis === 'h' ? a.y === b.y && Math.abs(a.x - b.x) === 1 : a.x === b.x && Math.abs(a.y - b.y) === 1
+    if (!along) continue
+    const from = cellCenter(a, cellPx)
+    const to = cellCenter(b, cellPx)
+    path.moveTo(from.x, from.y)
+    path.lineTo(to.x, to.y)
+  }
+  return path.detach()
+}
+
+// The same for the trail's live front (leadingRuns, up to the gliding head), every frame.
+function leadingAxisPath(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number, axis: Axis) {
+  'worklet'
+  const path = Skia.PathBuilder.Make()
+  for (const run of leadingRuns(cells, x, y, cellPx)) {
+    for (let i = 1; i < run.length; i++) {
+      const a = run[i - 1]
+      const b = run[i]
+      const along = axis === 'h' ? Math.abs(a.y - b.y) < 0.01 : Math.abs(a.x - b.x) < 0.01
+      if (!along) continue
+      path.moveTo(a.x, a.y)
+      path.lineTo(b.x, b.y)
     }
   }
   return path.detach()
+}
+
+// Whether the head at (x, y) is riding over the deck: inside it and, by the last piece of the front
+// it's moved along, going the deck's way. 1 or 0, an opacity.
+function headOnDeck(cells: readonly { x: number; y: number }[], x: number, y: number, cellPx: number, deck: DeckRect, over: Axis, fallback: Axis) {
+  'worklet'
+  if (x < deck.x || x > deck.x + deck.width || y < deck.y || y > deck.y + deck.height) return 0
+  const runs = leadingRuns(cells, x, y, cellPx)
+  let axis = fallback
+  for (let r = runs.length - 1; r >= 0 && axis === fallback; r--) {
+    const run = runs[r]
+    for (let i = run.length - 1; i > 0; i--) {
+      const dx = Math.abs(run[i].x - run[i - 1].x)
+      const dy = Math.abs(run[i].y - run[i - 1].y)
+      if (dx < 0.01 && dy < 0.01) continue
+      axis = dy < 0.01 ? 'h' : 'v'
+      break
+    }
+  }
+  return axis === over ? 1 : 0
 }
 
 // Trap's speed effects in the shared kinds, so its rings are every game's (BoardPowerups'
@@ -170,12 +189,12 @@ function sharedEffects({ speed, control, shield }: PlayerEffects): Effects {
   return { speed: speed && { kind: SPEED_KINDS[speed.type], expiresAtTick: speed.expiresAtTick }, reverse: control, shield }
 }
 
-function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tunnelCellSet }: { player: PlayerState; tickIntervalMs: number; cellPx: number; tick: number; trailSpeedRate: number; tunnelCellSet: ReadonlySet<string> }) {
+function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, deck }: { player: PlayerState; tickIntervalMs: number; cellPx: number; tick: number; trailSpeedRate: number; deck: { rect: DeckRect; over: Axis } | null }) {
   // Nearly fill their own cell on purpose - combined with a small cellPx (see constants/game.ts's
   // GRID_CELL_PX), this makes the actual hit-detection boundary obvious at a glance: a trail or head
   // reads as occupying essentially the whole cell it's in, so a one-cell gap between two trails
   // looks (and is) a real, precise near-miss rather than a vague blob-to-blob distance.
-  const trailWidth = cellPx * 0.85
+  const trailWidth = cellPx * TRAIL_WIDTH_CELLS
   const headRadius = cellPx * HEAD_RADIUS_CELLS
 
   const trail = player.trail
@@ -302,11 +321,6 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
   // nothing) once fully eaten, or when there's no severed segment at all - the idle default.
   const severedPath = useDerivedValue(() => partialTrailPath(severedCells.value, severedProgress.value, cellPx))
 
-  // This player's own underground segments - see tunnelHighlightPath's own comment. A plain useMemo
-  // (not a shared value/worklet) is enough: unlike the death/sever animations above, there's nothing
-  // here that needs to animate frame-by-frame, only to update when the trail itself changes.
-  const tunnelPath = useMemo(() => tunnelHighlightPath(trail, tunnelCellSet, cellPx), [trail, tunnelCellSet, cellPx])
-
   // `anchorCell` is where the head stood BEFORE its most recent move, as a GRID cell - matching
   // `trail`'s own element type, not `head`'s pixel one, since boundaryIndex below searches for it
   // WITHIN `trail`; comparing pixel coordinates against grid ones there would never match at all.
@@ -359,6 +373,17 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
   const leadCells = useMemo(() => trail.slice(leadStart).map((c) => ({ x: c.x, y: c.y })), [trail, leadStart])
   const leadPath = useDerivedValue(() => leadingTrailPath(leadCells, animX.value, animY.value, cellPx))
 
+  // On the Overpass: the same pieces again, only those running the deck's way, clipped to the deck
+  // and drawn over it (OVERPASS_OVER_Z), so the trail riding across shows on top and the trail
+  // riding under stays under the deck. The head too, while it's riding over.
+  const deckOver = deck?.over ?? 'h'
+  const deckRect = deck?.rect ?? { x: 0, y: 0, width: 0, height: 0 }
+  const settledOverPath = useMemo(() => (deck ? axisPath(trail.slice(1, leadStart + 1), deck.over, cellPx) : null), [deck, trail, leadStart, cellPx])
+  const tailOver = deck !== null && trail.length > 1 && (deck.over === 'h' ? trail[0].y === trail[1].y : trail[0].x === trail[1].x)
+  const leadOverPath = useDerivedValue(() => leadingAxisPath(leadCells, animX.value, animY.value, cellPx, deckOver))
+  const directionAxis: Axis = player.direction === 'left' || player.direction === 'right' ? 'h' : 'v'
+  const overHeadOpacity = useDerivedValue(() => (deck ? headOnDeck(leadCells, animX.value, animY.value, cellPx, deckRect, deckOver, directionAxis) : 0))
+
   const tailEdgeStart = useDerivedValue(() => vec(tailAnimX.value, tailAnimY.value))
   // trail[1] (nextCell/nextCenter, computed above) IS the head itself once the trail's down to two
   // cells or less - early in a round, before the trail has grown past a couple of cells - so there's
@@ -373,58 +398,84 @@ function PlayerTrail({ player, tickIntervalMs, cellPx, tick, trailSpeedRate, tun
   // valid on-grid cell short of it.
   const deathCenter = player.crashCell ? cellCenter(player.crashCell, cellPx) : head
 
+  // Every piece is in a Group: Skia sorts a level's groups by zIndex but draws a bare drawing in
+  // place, which draws everything grouped before it first, the Overpass deck included.
   return (
     <>
-      {player.alive ? (
-        <>
-          {/* Underneath everything else - see tunnelHighlightPath's own comment. */}
-          <Path path={tunnelPath} style='stroke' strokeWidth={trailWidth * 1.6} strokeCap='round' strokeJoin='round' color={player.color} opacity={0.35} />
-          <Path path={settledPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
-          {/* The chain a Prune/Shield break just cut off `trail` entirely - no longer part of
+      <Group>
+        {player.alive ? (
+          <>
+            <Path path={settledPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
+            {/* The chain a Prune/Shield break just cut off `trail` entirely - no longer part of
           settledPath/tailEdgeEnd's own data at all, but still visibly eating itself away for a
           beat rather than just vanishing. See severedPath's own comment. */}
-          <Path path={severedPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
-          <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />
-          {/* Skipped while the tail's own segment already reaches the head (trail.length <= 2 - see
+            <Path path={severedPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
+            <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />
+            {/* Skipped while the tail's own segment already reaches the head (trail.length <= 2 - see
           tailEdgeEnd's comment): there's nothing for the front to add. */}
-          {trail.length > 2 && <Path path={leadPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />}
-          {/* Over the trail, so its whole ring shows. */}
-          <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} />
-          {/* Every game's effect rings, colored by what's driving the effect, so Overdrive and
+            {trail.length > 2 && <Path path={leadPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />}
+            {/* Over the trail, so its whole ring shows. */}
+            <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} />
+            {/* Every game's effect rings, colored by what's driving the effect, so Overdrive and
           Overclock read differently despite sharing the same 2x multiplier. */}
-          <EffectRings x={animX} y={animY} headRadius={headRadius} effects={sharedEffects(player.effects)} />
-        </>
-      ) : (
-        // Round already decided for this player: every game's crash (RiderCrash), mounted the moment
-        // `alive` flips false and gone with the next round's fresh rider. The head bursts apart,
-        // then the trail wipes itself out from head to tail, leaving nothing behind.
-        <>
-          <Path path={tunnelPath} style='stroke' strokeWidth={trailWidth * 1.6} strokeCap='round' strokeJoin='round' color={player.color} opacity={0.35} />
+            <EffectRings x={animX} y={animY} headRadius={headRadius} effects={sharedEffects(player.effects)} />
+          </>
+        ) : (
+          // Round already decided for this player: every game's crash (RiderCrash), mounted the moment
+          // `alive` flips false and gone with the next round's fresh rider. The head bursts apart,
+          // then the trail wipes itself out from head to tail, leaving nothing behind.
           <RiderCrash x={deathCenter.x} y={deathCenter.y} trail={trail} cellPx={cellPx} headRadius={headRadius} trailWidth={trailWidth} color={player.color} />
+        )}
+      </Group>
+      {player.alive && deck && settledOverPath && (
+        <>
+          <Group zIndex={OVERPASS_OVER_Z} clip={deck.rect}>
+            <Path path={settledOverPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />
+            {tailOver && <Line p1={tailEdgeStart} p2={tailEdgeEnd} strokeWidth={trailWidth} strokeCap='round' color={player.color} opacity={TRAIL_OPACITY} />}
+            {trail.length > 2 && <Path path={leadOverPath} style='stroke' strokeWidth={trailWidth} strokeCap='round' strokeJoin='round' color={player.color} opacity={TRAIL_OPACITY} />}
+          </Group>
+          <Group zIndex={OVERPASS_OVER_Z} opacity={overHeadOpacity}>
+            <RiderHead x={animX} y={animY} radius={headRadius} color={player.color} />
+            <EffectRings x={animX} y={animY} headRadius={headRadius} effects={sharedEffects(player.effects)} />
+          </Group>
         </>
       )}
     </>
   )
 }
 
-export function GameBoard({ players, phase, tickIntervalMs, cellPx, grid, orientationMode, p1OnRight, tick, pickups, pickupColor, obstacles, obstacleColor, portals, tunnels, trailSpeedRate, wrapEdges }: GameBoardProps) {
-  // Computed once here (not inside PlayerTrail) so both players' own PlayerTrail instances share
-  // the exact same Set rather than each rebuilding an identical one from the same static `tunnels`.
-  const tunnelCellSet = useMemo(() => new Set(tunnels.flatMap((tunnel) => tunnel.cells.map(cellKey))), [tunnels])
+export function GameBoard({ players, phase, tickIntervalMs, cellPx, grid, orientationMode, p1OnRight, tick, pickups, pickupColor, obstacles, obstacleColor, portals, overpass, deckColor, trailSpeedRate, wrapEdges }: GameBoardProps) {
+  // Computed once here (not inside PlayerTrail) so both players' PlayerTrails share one deck, from
+  // the round's static `overpass`.
+  const deck = useMemo(() => (overpass ? { rect: overpassRect(overpass, cellPx), over: overpass.over } : null), [overpass, cellPx])
+  // Read out here: the Canvas below runs its own renderer, so the theme can't be read inside Gates.
+  const gateColors = useGateColors()
 
   return (
     <View style={styles.container}>
       <Canvas style={StyleSheet.absoluteFill}>
-        <Walls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} players={players} phase={phase} wrapEdges={wrapEdges} />
-        {/* Unlike Walls above, not hidden during onboarding - obstacle/portal/tunnel placement is
-        gameplay information a player needs to see before the round starts, not just a boundary
-        marker that clutters the countdown's own zone overlay. */}
-        <ArenaBlocks cells={obstacles} cellPx={cellPx} color={obstacleColor} />
-        <Gates portals={portals} cellPx={cellPx} color={obstacleColor} />
-        <Tunnels tunnels={tunnels} cellPx={cellPx} color={obstacleColor} />
-        <Powerups pickups={pickups} cellPx={cellPx} color={pickupColor} />
-        <PlayerTrail player={players[1]} tickIntervalMs={tickIntervalMs} cellPx={cellPx} tick={tick} trailSpeedRate={trailSpeedRate} tunnelCellSet={tunnelCellSet} />
-        <PlayerTrail player={players[2]} tickIntervalMs={tickIntervalMs} cellPx={cellPx} tick={tick} trailSpeedRate={trailSpeedRate} tunnelCellSet={tunnelCellSet} />
+        {/* One Group round the board, each layer a Group in it: Skia sorts a Group's child groups by
+        zIndex (never the canvas's own top level), so the Overpass deck and what rides over it draw
+        above the rest (see PlayerTrail's return). */}
+        <Group>
+          <Group>
+            <Walls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} players={players} phase={phase} wrapEdges={wrapEdges} />
+            {/* Unlike Walls above, not hidden during onboarding - obstacle/portal/Overpass placement is
+            gameplay information a player needs to see before the round starts, not just a boundary
+            marker that clutters the countdown's own zone overlay. */}
+            <ArenaBlocks cells={obstacles} cellPx={cellPx} color={obstacleColor} />
+            <Gates portals={portals} cellPx={cellPx} colors={gateColors} />
+            {overpass && <OverpassRoad overpass={overpass} cellPx={cellPx} color={obstacleColor} strokeWidth={WALL_STROKE_WIDTH} />}
+            <Powerups pickups={pickups} cellPx={cellPx} color={pickupColor} />
+          </Group>
+          {overpass && (
+            <Group zIndex={OVERPASS_DECK_Z}>
+              <OverpassDeck overpass={overpass} cellPx={cellPx} color={obstacleColor} deckColor={deckColor} />
+            </Group>
+          )}
+          <PlayerTrail player={players[1]} tickIntervalMs={tickIntervalMs} cellPx={cellPx} tick={tick} trailSpeedRate={trailSpeedRate} deck={deck} />
+          <PlayerTrail player={players[2]} tickIntervalMs={tickIntervalMs} cellPx={cellPx} tick={tick} trailSpeedRate={trailSpeedRate} deck={deck} />
+        </Group>
       </Canvas>
     </View>
   )

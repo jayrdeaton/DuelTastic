@@ -22,8 +22,8 @@ export type TagLayout = 'faceToFace' | 'sideBySide'
 // loses. 'leastIt': whoever spent less of the round as It wins.
 export type TagRule = 'hotPotato' | 'leastIt'
 
-// What's on the board besides the riders: every shared arena but Tunnels, which only means something
-// where a rider can cross a trail in it, and Tag has no trails to cross.
+// What's on the board besides the riders: every shared arena but 'underpass' (Snake's Tunnels, Trap's
+// Overpass), which only means something where a trail can cross another there, and Tag has no trails.
 export type TagArena = Exclude<SharedArenaVariant, 'underpass'>
 
 // Tag's powerups, Tag's names for the effects every game shares (src/games/shared/powerups.ts: same

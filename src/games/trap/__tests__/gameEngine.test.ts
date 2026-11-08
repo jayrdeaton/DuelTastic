@@ -1,6 +1,6 @@
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_ALL_TYPES, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/games/trap/constants/game'
-import { GameState, GridCell, PlayerEffects, PlayerState } from '@/games/trap/types'
-import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/games/trap/utils/gameEngine'
+import { GameState, GridCell, Overpass, PlayerEffects, PlayerState } from '@/games/trap/types'
+import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/games/trap/utils/gameEngine'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 
 // Fills in the fields every fixture needs regardless of what it's actually testing, so each call
@@ -22,7 +22,7 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
     pickups: [],
     obstacles: [],
     portals: [],
-    tunnels: [],
+    overpass: null,
     unsafeCells: []
   }
   return { ...base, ...overrides }
@@ -994,163 +994,246 @@ describe('tickGame', () => {
     })
   })
 
-  describe('tunnels', () => {
-    // A 4-cell horizontal corridor along row y=5 - see arenas.ts's buildTunnel for the real
-    // generator; this fixture is hand-placed so the tests below can target specific interior/mouth
-    // cells precisely.
-    const TUNNEL = {
-      cells: [
+  describe('the Overpass', () => {
+    // A 4 x 4 crossing in the middle of the 10 x 10 board: riding across (along a row) is over the
+    // bridge, riding up or down (along a column) is under it. Hand-placed, see arenas.ts's
+    // buildOverpass for the real one.
+    const OVERPASS: Overpass = { left: 3, top: 3, right: 6, bottom: 6, over: 'h' }
+    const OUT_OF_THE_WAY = ps({ trail: [{ x: 0, y: 9 }], direction: 'up', color: '#EF4444' })
+
+    it('lets a rider going up or down cross a trail going across, on the crossing and nowhere else', () => {
+      const players = {
+        // Rode across row 4, through the crossing.
+        1: ps({
+          trail: [
+            { x: 2, y: 4 },
+            { x: 3, y: 4 },
+            { x: 4, y: 4 },
+            { x: 5, y: 4 }
+          ],
+          direction: 'right',
+          color: '#3B82F6'
+        }),
+        // About to ride down into (4,4).
+        2: ps({
+          trail: [
+            { x: 4, y: 2 },
+            { x: 4, y: 3 }
+          ],
+          direction: 'down',
+          color: '#EF4444'
+        })
+      }
+      const next = tickGame(makeState({ players, overpass: OVERPASS }))
+      expect(next.phase).toBe('playing')
+      expect(next.players[2].trail.at(-1)).toEqual({ x: 4, y: 4 })
+      // The same crossing anywhere else is a crash.
+      expect(tickGame(makeState({ players })).outcome).toEqual({ type: 'win', winner: 1 })
+    })
+
+    it('blocks a trail on its own level, the rider’s own included', () => {
+      // Rode up column 4 through the crossing, round, and back up the same lane.
+      const trail = [
+        { x: 4, y: 5 },
+        { x: 4, y: 4 },
+        { x: 4, y: 3 },
+        { x: 4, y: 2 },
+        { x: 3, y: 2 },
+        { x: 2, y: 2 },
+        { x: 2, y: 3 },
+        { x: 2, y: 4 },
+        { x: 2, y: 5 },
+        { x: 2, y: 6 },
+        { x: 2, y: 7 },
+        { x: 3, y: 7 },
+        { x: 4, y: 7 },
+        { x: 4, y: 6 }
+      ]
+      const next = tickGame(makeState({ players: { 1: ps({ trail, direction: 'up', color: '#3B82F6' }), 2: OUT_OF_THE_WAY }, overpass: OVERPASS }))
+      expect(next.outcome).toEqual({ type: 'win', winner: 2 })
+      expect(next.players[1].crashCell).toEqual({ x: 4, y: 5 })
+    })
+
+    it('lets a rider cross its own trail on the other level', () => {
+      // Rode across row 5, round, and now down column 4, over its own trail at (4,5).
+      const trail = [
+        { x: 2, y: 5 },
         { x: 3, y: 5 },
         { x: 4, y: 5 },
         { x: 5, y: 5 },
-        { x: 6, y: 5 }
+        { x: 6, y: 5 },
+        { x: 7, y: 5 },
+        { x: 7, y: 4 },
+        { x: 7, y: 3 },
+        { x: 7, y: 2 },
+        { x: 6, y: 2 },
+        { x: 5, y: 2 },
+        { x: 4, y: 2 },
+        { x: 4, y: 3 },
+        { x: 4, y: 4 }
       ]
-    }
-    const TUNNELS = [TUNNEL]
-
-    it('traverses the corridor cell-by-cell like any open ground - entering it is never itself a crash', () => {
-      const state = makeState({
-        players: {
-          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }),
-          2: ps({ trail: [{ x: 0, y: 0 }], direction: 'down', color: '#EF4444' })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
+      const next = tickGame(makeState({ players: { 1: ps({ trail, direction: 'down', color: '#3B82F6' }), 2: OUT_OF_THE_WAY }, overpass: OVERPASS }))
       expect(next.phase).toBe('playing')
-      expect(next.players[1].trail).toEqual([
-        { x: 2, y: 5 },
-        { x: 3, y: 5 }
-      ])
+      expect(next.players[1].trail.at(-1)).toEqual({ x: 4, y: 5 })
     })
 
-    it('a freshly-derived buildOccupiedSet excludes a just-entered tunnel cell, while buildTunnelOccupiedSet includes it', () => {
-      const state = makeState({
-        players: {
-          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }),
-          2: ps({ trail: [{ x: 0, y: 0 }], direction: 'down', color: '#EF4444' })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
-      const tunnelCellSet = buildTunnelCellSet(next.tunnels)
-      expect(buildOccupiedSet(next.players, next.obstacles, tunnelCellSet).has('3,5')).toBe(false)
-      expect(buildTunnelOccupiedSet(next.players, tunnelCellSet).has('3,5')).toBe(true)
+    it('passes two riders over and under each other in one cell, but a head-on on one level is still a draw', () => {
+      const crossing = tickGame(
+        makeState({
+          players: {
+            1: ps({ trail: [{ x: 2, y: 4 }], direction: 'right', color: '#3B82F6' }),
+            2: ps({ trail: [{ x: 3, y: 3 }], direction: 'down', color: '#EF4444' })
+          },
+          overpass: OVERPASS
+        })
+      )
+      expect(crossing.phase).toBe('playing')
+      expect(crossing.players[1].trail.at(-1)).toEqual({ x: 3, y: 4 })
+      expect(crossing.players[2].trail.at(-1)).toEqual({ x: 3, y: 4 })
+
+      const headOn = tickGame(
+        makeState({
+          players: {
+            1: ps({ trail: [{ x: 2, y: 4 }], direction: 'right', color: '#3B82F6' }),
+            2: ps({ trail: [{ x: 4, y: 4 }], direction: 'left', color: '#EF4444' })
+          },
+          overpass: OVERPASS
+        })
+      )
+      expect(headOn.outcome).toEqual({ type: 'draw' })
     })
 
-    it('crashes into a tunnel cell already occupied by another tunnel-traveler, same as any other blocked cell', () => {
-      const state = makeState({
+    it('holds a turn pressed on the crossing until the rider is off it', () => {
+      let state = makeState({
         players: {
-          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6' }),
-          2: ps({ trail: [{ x: 3, y: 5 }], direction: 'up', color: '#EF4444' })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
-      expect(next.outcome).toEqual({ type: 'win', winner: 2 })
-      expect(next.players[1].alive).toBe(false)
-    })
-
-    it('never crashes into its own earlier tunnel trail - looping back through a cell you yourself already crossed underground stays safe, unlike an opponent occupying that same cell', () => {
-      const state = makeState({
-        players: {
-          // Already looped through the tunnel mouth (3,5) once (oldest trail cell), then up and
-          // around back to (3,6) - now turning 'up' to re-enter (3,5) a second time, from a
-          // different direction than the first pass. A player's own underground trail should never
-          // trap them the way the previous test's opponent trail does (see types/index.ts's own
-          // Tunnel comment on the corridor's whole promise).
           1: ps({
             trail: [
-              { x: 3, y: 5 },
-              { x: 3, y: 4 },
-              { x: 2, y: 4 },
-              { x: 2, y: 5 },
-              { x: 2, y: 6 },
-              { x: 3, y: 6 }
-            ],
-            direction: 'up',
-            color: '#3B82F6'
-          }),
-          2: ps({ trail: [{ x: 0, y: 0 }], direction: 'down', color: '#EF4444' })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
-      expect(next.phase).toBe('playing')
-      expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].trail.at(-1)).toEqual({ x: 3, y: 5 })
-    })
-
-    it('checks side (perpendicular) entry into an interior tunnel cell against the SAME underground occupancy - not exempt just because the approach angle is unusual', () => {
-      const state = makeState({
-        players: {
-          1: ps({ trail: [{ x: 4, y: 4 }], direction: 'down', color: '#3B82F6' }), // approaches the tunnel from directly above, not through a mouth
-          2: ps({ trail: [{ x: 4, y: 5 }], direction: 'left', color: '#EF4444' })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
-      expect(next.outcome).toEqual({ type: 'win', winner: 2 })
-      expect(next.players[1].alive).toBe(false)
-    })
-
-    it('resurfaces immediately on a mid-tunnel turn - the very next step off tunnel geometry is checked against ordinary SURFACE occupancy', () => {
-      const state = makeState({
-        players: {
-          // Already one step into the corridor (head at (4,5)); turns 'up' this tick, off tunnel
-          // geometry entirely, onto (4,4) - a plain surface cell player 2's own trail already
-          // occupies. A buggy implementation that kept checking tunnel occupancy after leaving the
-          // corridor would miss this collision entirely (tunnelOccupied never contains (4,4)).
-          1: ps({
-            trail: [
-              { x: 3, y: 5 },
+              { x: 4, y: 7 },
+              { x: 4, y: 6 },
               { x: 4, y: 5 }
             ],
-            direction: 'right',
-            pendingDirection: 'up',
+            direction: 'up',
+            pendingDirection: 'left',
             color: '#3B82F6'
           }),
-          2: ps({ trail: [{ x: 4, y: 4 }], direction: 'left', color: '#EF4444' })
+          2: OUT_OF_THE_WAY
         },
-        tunnels: TUNNELS
+        overpass: OVERPASS
       })
-      const next = tickGame(state)
-      expect(next.outcome).toEqual({ type: 'win', winner: 2 })
-      expect(next.players[1].alive).toBe(false)
+      // (4,5) to (4,4) and (4,4) to (4,3): straight on, the turn still queued.
+      state = tickGame(state)
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 4, y: 3 })
+      expect(state.players[1].direction).toBe('up')
+      expect(state.players[1].pendingDirection).toBe('left')
+      // Off the crossing at (4,2), still going straight.
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 4, y: 2 })
+      expect(state.players[1].pendingDirection).toBe('left')
+      // Now the turn.
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 3, y: 2 })
+      expect(state.players[1].direction).toBe('left')
+      expect(state.players[1].pendingDirection).toBeNull()
     })
 
-    it('a shielded player breaks through a tunnel-traveler occupying the entrance, same shape as any other wall break', () => {
-      // Mirrors the portal Shield test above: the break point is deliberately player 2's own
-      // CURRENT head (their trail's last/newest cell), so trimTrailAtCell's clamp keeps exactly
-      // that one cell, onto which player 2's own unrelated 'up' step this tick then appends.
-      const state = makeState({
-        players: {
-          1: ps({ trail: [{ x: 2, y: 5 }], direction: 'right', color: '#3B82F6', effects: { speed: null, control: null, shield: { expiresAtTick: 100 } } }),
-          2: ps({
-            trail: [
-              { x: 6, y: 5 },
-              { x: 5, y: 5 },
-              { x: 4, y: 5 },
-              { x: 3, y: 5 }
-            ],
-            direction: 'up',
-            color: '#EF4444'
-          })
-        },
-        tunnels: TUNNELS
-      })
-      const next = tickGame(state)
-      expect(next.phase).toBe('playing')
-      expect(next.players[1].alive).toBe(true)
-      expect(next.players[1].effects.shield).toEqual({ expiresAtTick: 100 })
-      expect(next.players[1].trail).toEqual([
-        { x: 2, y: 5 },
-        { x: 3, y: 5 }
-      ])
-      expect(next.players[2].trail).toEqual([
-        { x: 3, y: 5 },
-        { x: 3, y: 4 }
-      ])
+    it('takes a turn pressed just before the crossing, so a rider can ride in from the side', () => {
+      const next = tickGame(
+        makeState({
+          players: {
+            1: ps({
+              trail: [
+                { x: 2, y: 3 },
+                { x: 2, y: 4 }
+              ],
+              direction: 'down',
+              pendingDirection: 'right',
+              color: '#3B82F6'
+            }),
+            2: OUT_OF_THE_WAY
+          },
+          overpass: OVERPASS
+        })
+      )
+      expect(next.players[1].trail.at(-1)).toEqual({ x: 3, y: 4 })
+      expect(next.players[1].direction).toBe('right')
+    })
+
+    it('lets a Shield break through a trail on its own level, and leaves the other level’s alone', () => {
+      const shield = { speed: null, control: null, shield: { expiresAtTick: 100 } }
+      // Player 2's trail, trimmed to start on the crossing, running across row 4.
+      const across = [
+        { x: 3, y: 4 },
+        { x: 4, y: 4 },
+        { x: 5, y: 4 },
+        { x: 6, y: 4 },
+        { x: 7, y: 4 },
+        { x: 8, y: 4 }
+      ]
+      const sameLevel = tickGame(
+        makeState({
+          players: {
+            1: ps({
+              trail: [
+                { x: 1, y: 4 },
+                { x: 2, y: 4 }
+              ],
+              direction: 'right',
+              color: '#3B82F6',
+              effects: shield
+            }),
+            2: ps({ trail: across, direction: 'down', color: '#EF4444' })
+          },
+          overpass: OVERPASS
+        })
+      )
+      expect(sameLevel.players[1].alive).toBe(true)
+      expect(sameLevel.players[2].trail[0]).toEqual({ x: 4, y: 4 })
+
+      const otherLevel = tickGame(
+        makeState({
+          players: {
+            1: ps({
+              trail: [
+                { x: 4, y: 2 },
+                { x: 4, y: 3 }
+              ],
+              direction: 'down',
+              color: '#3B82F6',
+              effects: shield
+            }),
+            2: ps({ trail: across, direction: 'down', color: '#EF4444' })
+          },
+          overpass: OVERPASS
+        })
+      )
+      expect(otherLevel.players[1].trail.at(-1)).toEqual({ x: 4, y: 4 })
+      expect(otherLevel.players[2].trail[0]).toEqual({ x: 3, y: 4 })
+    })
+
+    it('never puts a powerup box on the crossing or next to it', () => {
+      const big: Overpass = { left: 8, top: 8, right: 11, bottom: 11, over: 'h' }
+      for (let i = 0; i < 40; i++) {
+        const r = i / 40
+        const next = tickGame(
+          makeState({
+            grid: { cols: 20, rows: 20 },
+            players: { 1: ps({ trail: [{ x: 2, y: 2 }], direction: 'right', color: '#3B82F6' }), 2: ps({ trail: [{ x: 17, y: 17 }], direction: 'left', color: '#EF4444' }) },
+            overpass: big
+          }),
+          undefined,
+          1,
+          ['shield'],
+          () => r
+        )
+        const { x, y } = next.pickups[0].cell
+        expect(x >= big.left - 1 && x <= big.right + 1 && y >= big.top - 1 && y <= big.bottom + 1).toBe(false)
+      }
+    })
+
+    it('is built for the underpass variant and no other', () => {
+      expect(createInitialGameState(393, 760, 'faceToFace', { 1: '#3B82F6', 2: '#EF4444' }, GRID_CELL_PX.medium, true, 'underpass').overpass).not.toBeNull()
+      expect(createInitialGameState(393, 760, 'faceToFace', { 1: '#3B82F6', 2: '#EF4444' }, GRID_CELL_PX.medium, true, 'portals').overpass).toBeNull()
     })
   })
 })
@@ -1291,66 +1374,26 @@ describe('buildOccupiedSet', () => {
     expect(occupied).toEqual(new Set(['2,5', '7,5']))
   })
 
-  it('excludes a trail cell that is itself a tunnel member, even though it is still part of the trail array', () => {
-    const state = makeState({
-      players: {
-        1: ps({
-          trail: [
-            { x: 2, y: 5 },
-            { x: 3, y: 5 }
-          ],
-          direction: 'right',
-          color: '#3B82F6'
-        }),
-        2: ps({ trail: [{ x: 7, y: 5 }], direction: 'left', color: '#EF4444' })
-      }
-    })
-    const tunnelCellSet = new Set(['3,5'])
-    const occupied = buildOccupiedSet(state.players, state.obstacles, tunnelCellSet)
-    expect(occupied.has('2,5')).toBe(true)
-    expect(occupied.has('3,5')).toBe(false)
-    expect(occupied.has('7,5')).toBe(true)
-  })
-})
-
-describe('buildTunnelCellSet', () => {
-  it('flattens every cell across every tunnel into one membership set', () => {
-    const cellSet = buildTunnelCellSet([
-      {
-        cells: [
-          { x: 3, y: 5 },
-          { x: 4, y: 5 }
-        ]
-      }
-    ])
-    expect(cellSet).toEqual(new Set(['3,5', '4,5']))
-  })
-
-  it('is empty with no tunnels', () => {
-    expect(buildTunnelCellSet([]).size).toBe(0)
-  })
-})
-
-describe('buildTunnelOccupiedSet', () => {
-  it('includes only the trail cells that are tunnel members - the exact complement of buildOccupiedSet’s own exclusion', () => {
+  it('keys a trail cell on the Overpass by the level it’s on', () => {
     const players = {
       1: ps({
         trail: [
-          { x: 2, y: 5 },
-          { x: 3, y: 5 }
+          { x: 2, y: 4 },
+          { x: 3, y: 4 }
         ],
         direction: 'right',
         color: '#3B82F6'
       }),
-      2: ps({ trail: [{ x: 7, y: 5 }], direction: 'left', color: '#EF4444' })
+      2: ps({
+        trail: [
+          { x: 7, y: 2 },
+          { x: 7, y: 3 }
+        ],
+        direction: 'down',
+        color: '#EF4444'
+      })
     }
-    const tunnelCellSet = new Set(['3,5'])
-    const tunnelOccupied = buildTunnelOccupiedSet(players, tunnelCellSet)
-    expect(tunnelOccupied).toEqual(new Set(['3,5']))
-  })
-
-  it('is empty when no trail cell is a tunnel member', () => {
-    const state = makeState()
-    expect(buildTunnelOccupiedSet(state.players, new Set()).size).toBe(0)
+    const occupied = buildOccupiedSet(players, [], { left: 3, top: 3, right: 7, bottom: 7, over: 'h' })
+    expect(occupied).toEqual(new Set(['2,4', '3,4|h', '7,2', '7,3|v']))
   })
 })

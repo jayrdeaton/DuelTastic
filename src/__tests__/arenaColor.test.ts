@@ -24,7 +24,9 @@ function rgb(hex: string): [number, number, number] {
 
 describe('the arena color', () => {
   it.each(['trap', 'turf', 'tag'])("is boardStructureColor in %s's play screen, never the background", (game) => {
-    const source = readFileSync(join(GAMES, game, 'PlayScreen.tsx'), 'utf8')
+    // Trap's Overpass deck is the one thing drawn in the background, on purpose: it's the board's own
+    // color laid over the riders under the bridge, so they show dimmed through it.
+    const source = readFileSync(join(GAMES, game, 'PlayScreen.tsx'), 'utf8').replace('deckColor={themeColors.background}', '')
     expect(source).toMatch(/boardStructureColor\(themeColors\)/)
     expect(source).not.toMatch(/'#000000'|'#FFFFFF'|colors\.background/i)
   })
@@ -36,10 +38,11 @@ describe('the arena color', () => {
   })
 
   // Snake's portals were rings in the theme's secondaryContainer, a shade of player 2's color, with
-  // nothing to tell the two pairs apart (2026-11-04).
-  it("is Snake's portals' too, drawn as every game's gates", () => {
+  // nothing to tell the two pairs apart (2026-11-04). They're every game's gates, which have colors of
+  // their own (below).
+  it("is not Snake's portals' color", () => {
     const source = readFileSync(join(GAMES, 'snake', 'components', 'SnakeBoardCanvas.tsx'), 'utf8')
-    expect(source).toMatch(/<Gates [^\n]*color=\{structureColor\}/)
+    expect(source).toMatch(/<Gates\b/)
     expect(source).not.toMatch(/colors\.secondaryContainer/)
   })
 
@@ -67,5 +70,24 @@ describe("Snake's boxes", () => {
 
   it("are never a seat's color or the food's", () => {
     expect(source).not.toMatch(/<Pickups [^\n]*color=\{colors\.(primary|secondary|tertiary)\}/)
+  })
+})
+
+// The gates were rings in the arena gray, the two pairs told apart only by die dots (2026-11-08). Each
+// pair has its own color now, from the theme (shared/match/gateColors.ts), read by every board outside
+// its Skia Canvas, since the theme is React context and doesn't reach inside one.
+describe('the gate colors', () => {
+  const BOARDS = {
+    trap: join(GAMES, 'trap', 'components', 'GameBoard.tsx'),
+    turf: join(GAMES, 'turf', 'TurfBoard.tsx'),
+    tag: join(GAMES, 'tag', 'TagBoard.tsx'),
+    snake: join(GAMES, 'snake', 'components', 'SnakeBoardCanvas.tsx')
+  }
+
+  it.each(Object.entries(BOARDS))("are the theme's in %s's board, not the arena gray", (_, file) => {
+    const source = readFileSync(file, 'utf8')
+    expect(source).toMatch(/const gateColors = useGateColors\(\)/)
+    expect(source).toMatch(/<Gates [^\n]*colors=\{gateColors\}/)
+    expect(source).not.toMatch(/<Gates [^\n]*\bcolor=/)
   })
 })

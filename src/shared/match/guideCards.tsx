@@ -37,7 +37,7 @@ function twoPlayerBody(keys: Record<Player, KeyScheme>): string {
 }
 
 // Steering is absolute, not relative: a swipe, drag or key turns you that way on the board. `noun`
-// is what the game calls the thing you steer (every game's 'rider'; Trap's said 'cycle' until it was renamed from Trap). A touch screen steers by swiping, a
+// is what the game calls the thing you steer (every game's 'rider'; Trap's said 'cycle' until LightCycles was renamed Trap). A touch screen steers by swiping, a
 // desktop by seat 1's scheme (the mouse or a key cluster).
 export function steeringStep(touch: boolean, p1: KeyScheme, noun: string): GuideStep {
   return {

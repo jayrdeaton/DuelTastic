@@ -1,8 +1,9 @@
 import { cellKey, computeGridSize, isInBounds, isOppositeDirection, stepCell, wrapCell } from '@tastic/grid'
 
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_COLLECT_RADIUS_CELLS, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/games/trap/constants/game'
-import { ArenaVariant, ControlEffect, Direction, GameState, GridCell, GridSize, OrientationMode, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, PowerupType, RoundOutcome, ShieldEffect, SpeedEffect, Tunnel } from '@/games/trap/types'
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from '@/shared/match/arenas'
+import { ArenaVariant, ControlEffect, Direction, GameState, GridCell, GridSize, OrientationMode, Overpass, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, PowerupType, RoundOutcome, ShieldEffect, SpeedEffect } from '@/games/trap/types'
+import { axisOf, isOnOverpass, overpassFootprint, stepKey, trailKeys } from '@/games/trap/utils/overpass'
+import { buildArenaObstacles, buildArenaOverpass, buildArenaPortals } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
 
 function createPlayerState(grid: GridSize, player: Player, mode: OrientationMode, color: string, p1OnRight: boolean): PlayerState {
@@ -50,7 +51,7 @@ export function createInitialGameState(width: number, height: number, mode: Orie
     pickups: [],
     obstacles: buildArenaObstacles(arenaVariant, grid, mode, p1OnRight),
     portals: buildArenaPortals(arenaVariant, grid, mode, p1OnRight),
-    tunnels: buildArenaTunnels(arenaVariant, grid, mode, p1OnRight),
+    overpass: buildArenaOverpass(arenaVariant, grid, mode, p1OnRight),
     unsafeCells: buildUnsafeAreaCells(grid, cellPx, safeAreaInsetsPx)
   }
 }
@@ -64,46 +65,13 @@ export function startPlaying(state: GameState): GameState {
 // scoring read from, built the same way in both places so they can never disagree about what
 // counts as occupied. `obstacles` defaults to [] so any existing call site/test that only ever
 // passed `players` keeps compiling and behaves exactly as before (an 'open' round has none anyway).
-// `tunnelCellSet` excludes any trail cell that's a tunnel member (see buildTunnelOccupiedSet below,
-// which builds the underground counterpart from exactly the cells this excludes) - a tunnel-
-// traveler's trail is never visible to surface collision, which is the entire point of the
-// mechanic: a surface trail can legitimately cross the same coordinate without either side hitting
-// the other. Defaults to empty so every existing call site/test (predating tunnels) is unaffected.
-export function buildOccupiedSet(players: Record<Player, PlayerState>, obstacles: GridCell[] = [], tunnelCellSet: ReadonlySet<string> = new Set()): Set<string> {
+// A trail cell on the Overpass's crossing is keyed by the level it's on (see utils/overpass.ts's
+// trailKeys), so it blocks only riders on that level; `overpass` defaults to none.
+export function buildOccupiedSet(players: Record<Player, PlayerState>, obstacles: GridCell[] = [], overpass: Overpass | null = null): Set<string> {
   const occupied = new Set<string>()
-  for (const cell of players[1].trail) if (!tunnelCellSet.has(cellKey(cell))) occupied.add(cellKey(cell))
-  for (const cell of players[2].trail) if (!tunnelCellSet.has(cellKey(cell))) occupied.add(cellKey(cell))
+  for (const key of trailKeys(players[1].trail, overpass)) occupied.add(key)
+  for (const key of trailKeys(players[2].trail, overpass)) occupied.add(key)
   for (const cell of obstacles) occupied.add(cellKey(cell))
-  return occupied
-}
-
-// Flat membership set of every cell across the round's tunnel corridor(s) (see types/index.ts's own
-// Tunnel comment) - the single source of truth for "is this coordinate part of the underground
-// layer," consumed by buildOccupiedSet's own exclusion above, buildTunnelOccupiedSet below, and
-// tickGame's own collision/deposit routing, so none of them can ever disagree about which cells are
-// tunnel members.
-export function buildTunnelCellSet(tunnels: Tunnel[]): Set<string> {
-  const cells = new Set<string>()
-  for (const tunnel of tunnels) for (const cell of tunnel.cells) cells.add(cellKey(cell))
-  return cells
-}
-
-// The underground counterpart to buildOccupiedSet: every trail cell that IS a tunnel member,
-// instead of every one that isn't. A trail cell is always exactly one or the other (never both,
-// never neither - buildOccupiedSet excludes precisely what this includes), so together the two
-// exactly partition `trail`, purely by re-deriving from `trail` + static tunnel geometry every time
-// - no bookkeeping of when or how a cell was entered.
-//
-// `excludePlayer`, when given, leaves that player's own trail out - the set becomes "tunnel cells
-// hazardous to THIS player specifically," i.e. only the opponent's underground trail. That's the
-// actual promise the corridor makes (see types/index.ts's own Tunnel comment): crossing it should
-// never trap you behind your own earlier pass, only behind someone else's. Omitted (the default),
-// both players merge into one set - the "is ANY tunnel cell occupied at all" view every pre-existing
-// caller (rendering, the standalone buildTunnelOccupiedSet tests) still wants.
-export function buildTunnelOccupiedSet(players: Record<Player, PlayerState>, tunnelCellSet: ReadonlySet<string>, excludePlayer?: Player): Set<string> {
-  const occupied = new Set<string>()
-  if (excludePlayer !== 1) for (const cell of players[1].trail) if (tunnelCellSet.has(cellKey(cell))) occupied.add(cellKey(cell))
-  if (excludePlayer !== 2) for (const cell of players[2].trail) if (tunnelCellSet.has(cellKey(cell))) occupied.add(cellKey(cell))
   return occupied
 }
 
@@ -167,23 +135,24 @@ function trimTrailFront(trail: GridCell[], count: number): GridCell[] {
   return trail.slice(Math.min(count, maxRemovable))
 }
 
-// Shield's break-through variant: destroys everything at-or-behind `cell` (the point a shielded
-// player just punched through), keeping only the newer portion - clamped, via trimTrailFront, so
-// the trail's own current head always survives even if `cell` happens to be it (e.g. a shielded
-// player passing through the exact cell the trail's owner currently occupies).
-function trimTrailAtCell(trail: GridCell[], cell: GridCell): GridCell[] {
-  const index = trail.findIndex((c) => c.x === cell.x && c.y === cell.y)
+// Shield's break-through variant: destroys everything at-or-behind the cell the trail takes up
+// under `key` (the point a shielded player just punched through; a stepKey, so on the Overpass it's
+// the trail's cell on that level, not the other), keeping only the newer portion - clamped, via
+// trimTrailFront, so the trail's own current head always survives even if that cell happens to be
+// it (e.g. a shielded player passing through the exact cell the trail's owner currently occupies).
+function trimTrailAtKey(trail: GridCell[], key: string, overpass: Overpass | null): GridCell[] {
+  const index = trailKeys(trail, overpass).indexOf(key)
   if (index === -1) return trail
   return trimTrailFront(trail, index + 1)
 }
 
-// Which trail (if either) currently contains `cell` - used only once a Shield negation has already
-// confirmed the cell is occupied, to decide which trail trimTrailAtCell above should apply to. A
-// cell can only ever belong to one trail at a time (the collision rules that already exist prevent
-// both trails from ever double-occupying the same cell), so this is an either/or, never both.
-function locateOccupyingTrail(cell: GridCell, trail1: GridCell[], trail2: GridCell[]): Player | null {
-  if (trail1.some((c) => c.x === cell.x && c.y === cell.y)) return 1
-  if (trail2.some((c) => c.x === cell.x && c.y === cell.y)) return 2
+// Which trail (if either) currently takes up `key` - used only once a Shield negation has already
+// confirmed it's occupied, to decide which trail trimTrailAtKey above should apply to. A key can
+// only ever belong to one trail at a time (the collision rules that already exist prevent both
+// trails from ever double-occupying it), so this is an either/or, never both.
+function locateOccupyingTrail(key: string, trail1: GridCell[], trail2: GridCell[], overpass: Overpass | null): Player | null {
+  if (trailKeys(trail1, overpass).includes(key)) return 1
+  if (trailKeys(trail2, overpass).includes(key)) return 2
   return null
 }
 
@@ -210,22 +179,23 @@ function hasClearCollectionArea(cell: GridCell, grid: GridSize, occupied: Readon
 }
 
 // Only ever called with an empty `pickups` (see maybeSpawnPickup's own guard), so there's no
-// "avoid the other live pickup's cell" case to account for here. `portalCells`/`tunnelCells`/
-// `unsafeCells` all default to empty so every existing call site/test (predating portals/tunnels/
-// safe-area avoidance) stays byte-identical - neither a portal cell nor a tunnel cell is itself
-// ever in `occupied` (see buildPortalLookup's own comment, and buildOccupiedSet's tunnel exclusion
-// above), so without this a pickup could otherwise spawn directly on a portal mouth or a live
-// tunnel cell. `unsafeCells` (see buildUnsafeAreaCells) is the device safe-area margin - same
+// "avoid the other live pickup's cell" case to account for here. `portalCells`/`overpassCells`/
+// `unsafeCells` all default to empty so every existing call site/test (predating portals/the
+// Overpass/safe-area avoidance) stays byte-identical - a portal cell is never itself in `occupied`
+// (see buildPortalLookup's own comment), and a crossing cell is keyed by level there (see
+// buildOccupiedSet), so without this a pickup could otherwise spawn directly on a portal mouth or on
+// the bridge. `overpassCells` is the crossing plus a ring around it (overpassFootprint), so a box
+// never hangs over the bridge's edge either. `unsafeCells` (see buildUnsafeAreaCells) is the device safe-area margin - same
 // treatment, since a cell inside it is still fully traversable board, just not somewhere a pickup
 // should ever land. The outer POWERUP_EDGE_MARGIN_CELLS along every edge are skipped too, where the
 // glyph would hang over the wall.
-function pickRandomEmptyCell(grid: GridSize, occupied: ReadonlySet<string>, random: () => number, portalCells: ReadonlySet<string> = new Set(), tunnelCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): GridCell | null {
+function pickRandomEmptyCell(grid: GridSize, occupied: ReadonlySet<string>, random: () => number, portalCells: ReadonlySet<string> = new Set(), overpassCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): GridCell | null {
   const candidates: GridCell[] = []
   const m = POWERUP_EDGE_MARGIN_CELLS
   for (let x = m; x < grid.cols - m; x++) {
     for (let y = m; y < grid.rows - m; y++) {
       const cell = { x, y }
-      if (portalCells.has(cellKey(cell)) || tunnelCells.has(cellKey(cell)) || unsafeCells.has(cellKey(cell))) continue
+      if (portalCells.has(cellKey(cell)) || overpassCells.has(cellKey(cell)) || unsafeCells.has(cellKey(cell))) continue
       if (hasClearCollectionArea(cell, grid, occupied)) candidates.push(cell)
     }
   }
@@ -240,10 +210,10 @@ function pickRandomEmptyCell(grid: GridSize, occupied: ReadonlySet<string>, rand
 // cycle that just moved there. `enabledPowerups` is the per-round selection from Settings - an
 // empty list (the "powerups off" case, see Settings' own comment) means this never spawns
 // anything at all.
-function maybeSpawnPickup(grid: GridSize, tick: number, pickups: PowerupPickup[], occupied: ReadonlySet<string>, enabledPowerups: PowerupType[], random: () => number, portalCells: ReadonlySet<string> = new Set(), tunnelCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): PowerupPickup[] {
+function maybeSpawnPickup(grid: GridSize, tick: number, pickups: PowerupPickup[], occupied: ReadonlySet<string>, enabledPowerups: PowerupType[], random: () => number, portalCells: ReadonlySet<string> = new Set(), overpassCells: ReadonlySet<string> = new Set(), unsafeCells: ReadonlySet<string> = new Set()): PowerupPickup[] {
   if (enabledPowerups.length === 0) return pickups
   if (pickups.length > 0) return pickups
-  const cell = pickRandomEmptyCell(grid, occupied, random, portalCells, tunnelCells, unsafeCells)
+  const cell = pickRandomEmptyCell(grid, occupied, random, portalCells, overpassCells, unsafeCells)
   if (!cell) return pickups
   const type = enabledPowerups[Math.floor(random() * enabledPowerups.length)]
   return [...pickups, { id: pickupId(tick, cell), type, cell }]
@@ -329,32 +299,26 @@ export function stepsFor(effects: PlayerEffects): number {
 // `enabledPowerups` is what "powerups off" actually means (see Settings' own comment) - there's
 // no separate boolean gate. `portalLookup` defaults to a fresh build from `state.portals` (empty
 // for every arena but 'portals'), same "rebuild by default, or pass an already-built one" shape as
-// `occupied` itself. The per-player tunnel-hazard sets aren't threaded as their own params at all -
-// see buildTunnelOccupiedSet's own `excludePlayer` comment for why each player needs a DIFFERENT
-// view (their opponent's underground trail, never their own), so a single shared param the way
-// `occupied` uses one couldn't represent both anyway; they're derived fresh from `state.players`
-// below instead, right alongside `tunnelCellSet`. `wrapEdges` defaults to false (the original
-// behavior - an off-grid step always crashes) so every existing call site/test stays unaffected.
-export function tickGame(state: GameState, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, buildTunnelCellSet(state.tunnels)), trailSpeedRate: number = 1, enabledPowerups: PowerupType[] = [], random: () => number = Math.random, portalLookup: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false): GameState {
+// `occupied` itself. On the Overpass, a step's collision key is its level's (see utils/overpass.ts),
+// and a rider whose head is on the crossing goes straight: its queued turn waits until it's off.
+// `wrapEdges` defaults to false (the original behavior - an off-grid step always crashes) so every
+// existing call site/test stays unaffected.
+export function tickGame(state: GameState, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, state.overpass), trailSpeedRate: number = 1, enabledPowerups: PowerupType[] = [], random: () => number = Math.random, portalLookup: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false): GameState {
   if (state.phase !== 'playing') return state
 
   const { grid } = state
   const p1 = state.players[1]
   const p2 = state.players[2]
-  // Derived fresh from `state.tunnels` here too (not threaded as its own param) - every one of the
-  // several places below that needs it can just close over this one local, rather than each
-  // rebuilding it (or the caller having to pass yet another argument neither `occupied` nor either
-  // tunnel-hazard set already covers).
-  const tunnelCellSet = buildTunnelCellSet(state.tunnels)
-  // Each player's OWN underground trail is never a hazard to them - only the opponent's is (see
-  // buildTunnelOccupiedSet's own `excludePlayer` comment). Re-derived from `state.players` every
-  // tick rather than threaded through as params, same "always re-derive, no bookkeeping" shape
-  // buildTunnelOccupiedSet itself already uses for the merged view.
-  const tunnelHazardFor1 = buildTunnelOccupiedSet(state.players, tunnelCellSet, 1)
-  const tunnelHazardFor2 = buildTunnelOccupiedSet(state.players, tunnelCellSet, 2)
+  const overpass = state.overpass
+  // Nobody turns on the Overpass's crossing: a rider whose head is on it keeps going straight, and a
+  // turn it queued there stays queued until it's off (pendingDirection is kept below).
+  const held1 = isOnOverpass(p1.trail[p1.trail.length - 1], overpass)
+  const held2 = isOnOverpass(p2.trail[p2.trail.length - 1], overpass)
 
-  const dir1 = p1.pendingDirection ?? p1.direction
-  const dir2 = p2.pendingDirection ?? p2.direction
+  const dir1 = held1 ? p1.direction : (p1.pendingDirection ?? p1.direction)
+  const dir2 = held2 ? p2.direction : (p2.pendingDirection ?? p2.direction)
+  const axis1 = axisOf(dir1)
+  const axis2 = axisOf(dir2)
 
   const tick = state.tick + 1
 
@@ -370,19 +334,6 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
   const effects2 = p2.effects
   let pickups = state.pickups
   const working = new Set(occupied)
-  const tunnelWorking1 = new Set(tunnelHazardFor1)
-  const tunnelWorking2 = new Set(tunnelHazardFor2)
-  // Which set a given cell's collision check (and, below, its deposit once a step there commits)
-  // routes through - a function of tunnel-cell membership (never of how the mover got there or
-  // whether they're "currently traversing" anything, see types/index.ts's own Tunnel comment) AND,
-  // within that, of whose hazard set it is: a cell that's part of a tunnel is checked against the
-  // MOVING player's own tunnelWorking1/2 - which only ever contains the OTHER player's underground
-  // trail, never their own (see buildTunnelOccupiedSet's own `excludePlayer` comment) - so looping
-  // back through your own earlier tunnel crossing is exactly as safe as the corridor promises. Every
-  // other cell, including a tunnel's own mouths approached from outside, uses `working` exactly as
-  // it always has.
-  const isBlockedFor1 = (cell: GridCell): boolean => (tunnelCellSet.has(cellKey(cell)) ? tunnelWorking1 : working).has(cellKey(cell))
-  const isBlockedFor2 = (cell: GridCell): boolean => (tunnelCellSet.has(cellKey(cell)) ? tunnelWorking2 : working).has(cellKey(cell))
 
   let crash1 = false
   let crash2 = false
@@ -415,13 +366,18 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
     if (next1 && portalLookup.has(cellKey(next1))) next1 = portalLookup.get(cellKey(next1))!
     if (next2 && portalLookup.has(cellKey(next2))) next2 = portalLookup.get(cellKey(next2))!
 
-    // Both cycles moving into the same cell on the same sub-step - a head-on collision.
-    const headOn = stepping1 && stepping2 && next1!.x === next2!.x && next1!.y === next2!.y
+    // What each step is checked and laid under: its cell, or on the Overpass its cell on the level
+    // it's riding (see utils/overpass.ts).
+    const key1 = stepping1 ? stepKey(next1!, axis1, overpass) : ''
+    const key2 = stepping2 ? stepKey(next2!, axis2, overpass) : ''
+    // Both cycles moving into the same cell on the same sub-step - a head-on collision. Not on the
+    // Overpass when one goes over and the other under: same cell, different keys.
+    const headOn = stepping1 && stepping2 && key1 === key2
     const oob1 = stepping1 && !isInBounds(next1!, grid)
     const oob2 = stepping2 && !isInBounds(next2!, grid)
 
-    const rawHit1 = stepping1 && !headOn && !oob1 && isBlockedFor1(next1!)
-    const rawHit2 = stepping2 && !headOn && !oob2 && isBlockedFor2(next2!)
+    const rawHit1 = stepping1 && !headOn && !oob1 && working.has(key1)
+    const rawHit2 = stepping2 && !headOn && !oob2 && working.has(key2)
 
     const shield1Active = effects1.shield !== null && tick <= effects1.shield.expiresAtTick
     const shield2Active = effects2.shield !== null && tick <= effects2.shield.expiresAtTick
@@ -458,29 +414,23 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
     // correctly regardless of order - each lookup re-finds its own cell in whatever the trail
     // currently is, rather than risking a stale index into an already-shortened array.
     if (wallNegated1) {
-      const owner = locateOccupyingTrail(next1!, trail1, trail2)
-      if (owner === 1) trail1 = trimTrailAtCell(trail1, next1!)
-      else if (owner === 2) trail2 = trimTrailAtCell(trail2, next1!)
+      const owner = locateOccupyingTrail(key1, trail1, trail2, overpass)
+      if (owner === 1) trail1 = trimTrailAtKey(trail1, key1, overpass)
+      else if (owner === 2) trail2 = trimTrailAtKey(trail2, key1, overpass)
     }
     if (wallNegated2) {
-      const owner = locateOccupyingTrail(next2!, trail1, trail2)
-      if (owner === 1) trail1 = trimTrailAtCell(trail1, next2!)
-      else if (owner === 2) trail2 = trimTrailAtCell(trail2, next2!)
+      const owner = locateOccupyingTrail(key2, trail1, trail2, overpass)
+      if (owner === 1) trail1 = trimTrailAtKey(trail1, key2, overpass)
+      else if (owner === 2) trail2 = trimTrailAtKey(trail2, key2, overpass)
     }
 
-    // A committed tunnel step deposits into the OTHER player's hazard set, never the mover's own -
-    // mirroring isBlockedFor1/2 above, this is what actually makes a player's own underground trail
-    // stay permanently safe for them while still becoming a real wall for their opponent the moment
-    // it's laid.
     if (stepping1) {
       trail1 = [...trail1, next1!]
-      const target1 = tunnelCellSet.has(cellKey(next1!)) ? tunnelWorking2 : working
-      target1.add(cellKey(next1!))
+      working.add(key1)
     }
     if (stepping2) {
       trail2 = [...trail2, next2!]
-      const target2 = tunnelCellSet.has(cellKey(next2!)) ? tunnelWorking1 : working
-      target2.add(cellKey(next2!))
+      working.add(key2)
     }
 
     // Pickup collection - per sub-step, so a boosted player can't glide past a pickup on an
@@ -540,7 +490,7 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
   if (trimDue && steps1 > 0 && trail1.length > MIN_TRAIL_LENGTH_BEFORE_TRIM) trail1 = trimTrailFront(trail1, 1)
   if (trimDue && steps2 > 0 && trail2.length > MIN_TRAIL_LENGTH_BEFORE_TRIM) trail2 = trimTrailFront(trail2, 1)
 
-  const spawnedPickups = maybeSpawnPickup(grid, tick, pickups, working, enabledPowerups, random, new Set(portalLookup.keys()), tunnelCellSet, new Set(state.unsafeCells.map(cellKey)))
+  const spawnedPickups = maybeSpawnPickup(grid, tick, pickups, working, enabledPowerups, random, new Set(portalLookup.keys()), overpassFootprint(overpass, POWERUP_COLLECT_RADIUS_CELLS), new Set(state.unsafeCells.map(cellKey)))
 
   // Effect expiry - cleared once `tick` has fully consumed the effect's own expiresAtTick.
   const expire = (effects: PlayerEffects): PlayerEffects => ({
@@ -553,14 +503,15 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
   // where that player actually stepped. A 0-step (Stasis'd) player keeps their pre-freeze
   // `direction` and their still-unresolved `pendingDirection` untouched - see applyTurnIntent's own
   // comment for why that pin matters (it's what stops turns queued across separate frozen ticks
-  // from compounding into an unnoticed 180°).
+  // from compounding into an unnoticed 180°). A rider held straight on the Overpass keeps its
+  // queued turn too.
   return {
     ...state,
     tick,
     pickups: spawnedPickups,
     players: {
-      1: { ...p1, trail: trail1, direction: steps1 > 0 ? dir1 : p1.direction, pendingDirection: steps1 > 0 ? null : p1.pendingDirection, heldPowerup: heldPowerup1, effects: expire(effects1) },
-      2: { ...p2, trail: trail2, direction: steps2 > 0 ? dir2 : p2.direction, pendingDirection: steps2 > 0 ? null : p2.pendingDirection, heldPowerup: heldPowerup2, effects: expire(effects2) }
+      1: { ...p1, trail: trail1, direction: steps1 > 0 ? dir1 : p1.direction, pendingDirection: steps1 > 0 && !held1 ? null : p1.pendingDirection, heldPowerup: heldPowerup1, effects: expire(effects1) },
+      2: { ...p2, trail: trail2, direction: steps2 > 0 ? dir2 : p2.direction, pendingDirection: steps2 > 0 && !held2 ? null : p2.pendingDirection, heldPowerup: heldPowerup2, effects: expire(effects2) }
     }
   }
 }

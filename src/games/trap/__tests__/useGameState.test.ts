@@ -100,11 +100,9 @@ describe('useGameState', () => {
     expect(result.current.state.portals.length).toBeGreaterThan(0)
   })
 
-  it('threads settings.arenaVariant through createInitialGameState into state.tunnels', async () => {
-    // Same clears-the-minimums reasoning as the obstacles/portals cases above - see arenas.test.ts's
-    // own TUNNEL_MIN_ALONG_LENGTH/TUNNEL_MIN_CROSS_LENGTH thresholds.
+  it('threads settings.arenaVariant through createInitialGameState into state.overpass', async () => {
     const { result } = await renderHook(() => useGameState(390, 844, { ...SETTINGS, gridSizeTier: 'small', arenaVariant: 'underpass' }, COLORS, ORIENTATION, P1_ON_RIGHT))
-    expect(result.current.state.tunnels.length).toBeGreaterThan(0)
+    expect(result.current.state.overpass).not.toBeNull()
   })
 
   it('applies the CPU turn in the same tick it is consumed, when gameMode is vsCpu', async () => {

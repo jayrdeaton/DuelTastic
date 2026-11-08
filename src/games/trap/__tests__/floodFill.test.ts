@@ -61,32 +61,25 @@ describe('countReachableCells', () => {
     expect(countReachableCells({ x: 0, y: 0 }, grid, occupied, Infinity, portals)).toBe(20)
   })
 
-  it('lets a tunnel-member cell through even though it looks blocked on the surface - the underground occupancy set is what actually governs it', () => {
-    // (2,0) sits in `occupied` (as if a surface trail/obstacle were there) but is ALSO a tunnel
-    // member with nothing occupying it underground - a tunnel-aware search crosses it exactly like
-    // open ground, breaching the otherwise full-width wall at that one cell. The other 4 wall cells
-    // (2,1..2,4) aren't tunnel members, so they're still real blockers - reachable is 25 minus just
-    // those 4, not the full board: this cell alone reconnects the two pockets, it doesn't erase the
-    // rest of the wall.
+  it('crosses a trail on the Overpass’s other level, and counts each level of a crossing cell once', () => {
+    // Column 2 is a crossing, and a trail runs down it on the up-and-down level: a wall to anything
+    // going up or down, nothing to a search going across. 10 cells each side plus column 2 across.
     const grid = { cols: 5, rows: 5 }
-    const occupied = new Set(['2,0', '2,1', '2,2', '2,3', '2,4'])
-    const tunnelCellSet = new Set(['2,0'])
-    const tunnelOccupied = new Set<string>()
-    expect(countReachableCells({ x: 0, y: 0 }, grid, occupied, Infinity, new Map(), tunnelCellSet, tunnelOccupied)).toBe(21)
+    const overpass = { left: 2, top: 0, right: 2, bottom: 4, over: 'h' as const }
+    const trailDown = new Set(['2,0|v', '2,1|v', '2,2|v', '2,3|v', '2,4|v'])
+    expect(countReachableCells({ x: 0, y: 0 }, grid, trailDown, Infinity, new Map(), false, overpass)).toBe(25)
+    // The same trail anywhere else is a wall.
+    expect(countReachableCells({ x: 0, y: 0 }, grid, new Set(['2,0', '2,1', '2,2', '2,3', '2,4']))).toBe(10)
   })
 
-  it('blocks a tunnel-member cell that IS occupied underground, even though the surface set never marked it - the exact blind spot the CPU params exist to close', () => {
-    // (2,0) is the only gap in an otherwise full-width wall - clear on the surface (not in
-    // `occupied` at all) but a live tunnel-traveler sits there. Called WITHOUT the tunnel params,
-    // this search wrongly treats (2,0) as open ground and (going around through it) connects both
-    // pockets into one 21-cell region (25 minus the 4 real wall cells); called WITH them, it
-    // correctly sees the underground hazard, the gap closes, and the two 10-cell pockets stay split.
-    const grid = { cols: 5, rows: 5 }
-    const occupied = new Set(['2,1', '2,2', '2,3', '2,4'])
-    const tunnelCellSet = new Set(['2,0'])
-    const tunnelOccupied = new Set(['2,0'])
-    expect(countReachableCells({ x: 0, y: 0 }, grid, occupied)).toBe(21)
-    expect(countReachableCells({ x: 0, y: 0 }, grid, occupied, Infinity, new Map(), tunnelCellSet, tunnelOccupied)).toBe(10)
+  it('only goes straight on from a crossing cell, the way it was reached', () => {
+    // (1,1) is a crossing with both ways across blocked: reached going across it's a dead end, but
+    // reached going up or down it opens onto the rest of the board.
+    const grid = { cols: 3, rows: 3 }
+    const overpass = { left: 1, top: 1, right: 1, bottom: 1, over: 'h' as const }
+    const occupied = new Set(['0,1', '2,1'])
+    expect(countReachableCells({ x: 1, y: 1 }, grid, occupied, Infinity, new Map(), false, overpass, 'h')).toBe(1)
+    expect(countReachableCells({ x: 1, y: 1 }, grid, occupied, Infinity, new Map(), false, overpass, 'v')).toBe(7)
   })
 
   it('crosses the grid edge via wrapCell when wrapEdges is on, reconnecting a pocket an ordinary bounds check would leave sealed', () => {
@@ -96,7 +89,7 @@ describe('countReachableCells', () => {
     const grid = { cols: 5, rows: 1 }
     const occupied = new Set(['2,0'])
     expect(countReachableCells({ x: 0, y: 0 }, grid, occupied)).toBe(2)
-    expect(countReachableCells({ x: 0, y: 0 }, grid, occupied, Infinity, new Map(), new Set(), new Set(), true)).toBe(4)
+    expect(countReachableCells({ x: 0, y: 0 }, grid, occupied, Infinity, new Map(), true)).toBe(4)
   })
 })
 
@@ -124,21 +117,12 @@ describe('distanceToNearestTarget', () => {
     expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, portals)).not.toBeNull()
   })
 
-  it('finds a target through a tunnel cell the surface set alone would have blocked', () => {
+  it('finds a target across a trail on the Overpass’s other level', () => {
     const grid = { cols: 5, rows: 5 }
-    const occupied = new Set(['2,0', '2,1', '2,2', '2,3', '2,4'])
-    const tunnelCellSet = new Set(['2,0'])
-    const tunnelOccupied = new Set<string>()
-    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, new Map(), tunnelCellSet, tunnelOccupied)).not.toBeNull()
-  })
-
-  it('correctly reports a target unreachable when a tunnel-member chokepoint is occupied underground, even though the surface set never marked it', () => {
-    const grid = { cols: 5, rows: 5 }
-    const occupied = new Set(['2,1', '2,2', '2,3', '2,4'])
-    const tunnelCellSet = new Set(['2,0'])
-    const tunnelOccupied = new Set(['2,0'])
-    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']))).not.toBeNull()
-    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, new Map(), tunnelCellSet, tunnelOccupied)).toBeNull()
+    const overpass = { left: 2, top: 0, right: 2, bottom: 4, over: 'h' as const }
+    const trailDown = new Set(['2,0|v', '2,1|v', '2,2|v', '2,3|v', '2,4|v'])
+    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, trailDown, new Set(['4,0']), Infinity, new Map(), false, overpass)).toBe(4)
+    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, new Set(['2,0', '2,1', '2,2', '2,3', '2,4']), new Set(['4,0']))).toBeNull()
   })
 
   it('finds a target only reachable by wrapping around the grid edge', () => {
@@ -148,6 +132,6 @@ describe('distanceToNearestTarget', () => {
     const grid = { cols: 5, rows: 1 }
     const occupied = new Set(['2,0'])
     expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']))).toBeNull()
-    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, new Map(), new Set(), new Set(), true)).toBe(1)
+    expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, new Map(), true)).toBe(1)
   })
 })

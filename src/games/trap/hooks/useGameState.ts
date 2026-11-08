@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_TICK_DT_MS, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_MIN_INTERVAL_MS, SPEED_TIER_INTERVAL_MS, TRAIL_SPEED_RATE } from '@/games/trap/constants/game'
 import { Direction, OrientationMode, Player, RoundSettings } from '@/games/trap/types'
 import { applyCpuActivation, applyCpuTurn } from '@/games/trap/utils/cpuAi'
-import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/games/trap/utils/gameEngine'
+import { applyActivation, applyTurnIntent, buildOccupiedSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/games/trap/utils/gameEngine'
 import { GRID_CELL_PX, scaleMsForCellPx } from '@/shared/match/constants'
 
 // orientationMode/p1OnRight are passed separately rather than read off `settings` - they're
@@ -95,22 +95,15 @@ export function useGameState(width: number, height: number, settings: RoundSetti
           // swipe would land at, so the bot's move and the tick that consumes it commit together.
           // Activation is decided first, ahead of the turn - a Prune activation can shrink a
           // trail, so `occupied` is rebuilt fresh afterward rather than reused stale from before
-          // it. `obstacles`/`tunnels` never change mid-round (see GameState's own comment), so
+          // it. `obstacles`/`overpass` never change mid-round (see GameState's own comment), so
           // every rebuild here threads the same `s`/`afterActivation` state's own fields through
-          // unchanged - `tunnelCellSet` in particular is genuinely round-constant, not just
-          // per-tick-constant, so it's computed once up front rather than per rebuild. Unlike
-          // `occupied`, the tunnel hazard set is never built here at all - it's player-scoped (see
-          // buildTunnelOccupiedSet's own `excludePlayer` comment), so tickGame/applyCpuTurn/
-          // applyCpuActivation each derive their own view from `state.players` internally rather
-          // than sharing one merged set the way `occupied` is shared. `portalLookup` is NOT
-          // threaded explicitly the same way either - every callee below already defaults it from
-          // `state.portals` on its own, and a portal pair costs nothing to rebuild (see
-          // buildPortalLookup's own comment), so there's no benefit to doing it here that would
-          // offset the extra positional-arg noise of passing it through explicitly.
-          const tunnelCellSet = buildTunnelCellSet(s.tunnels)
-          const preOccupied = buildOccupiedSet(s.players, s.obstacles, tunnelCellSet)
+          // unchanged. `portalLookup` is NOT threaded explicitly the same way - every callee below
+          // already defaults it from `state.portals` on its own, and a portal pair costs nothing to
+          // rebuild (see buildPortalLookup's own comment), so there's no benefit to doing it here
+          // that would offset the extra positional-arg noise of passing it through explicitly.
+          const preOccupied = buildOccupiedSet(s.players, s.obstacles, s.overpass)
           const afterActivation = enabledPowerups.length > 0 ? applyCpuActivation(s, settings.cpuDifficulty, preOccupied, undefined, undefined, settings.wrapEdges) : s
-          const occupied = buildOccupiedSet(afterActivation.players, afterActivation.obstacles, tunnelCellSet)
+          const occupied = buildOccupiedSet(afterActivation.players, afterActivation.obstacles, afterActivation.overpass)
           return tickGame(applyCpuTurn(afterActivation, settings.cpuDifficulty, occupied, undefined, undefined, settings.wrapEdges), occupied, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
         })
         catchUpTicks += 1

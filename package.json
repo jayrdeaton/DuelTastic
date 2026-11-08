@@ -52,7 +52,7 @@
     "@tastic/profile": "^0.18.0",
     "@tastic/shell": "^0.7.0",
     "@tastic/split-screen": "^0.5.5",
-    "@tastic/sprites": "^0.2.1",
+    "@tastic/sprites": "^0.3.0",
     "expo": "~58.0.23",
     "expo-asset": "~58.0.16",
     "expo-audio": "~58.0.11",

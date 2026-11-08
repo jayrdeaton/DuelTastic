@@ -2,7 +2,7 @@ import { cellKey, computeGridSize, isAdjacent, isInBounds } from '@tastic/grid'
 
 import { ArenaVariant, GridCell, GridSizeTier, OrientationMode } from '@/games/trap/types'
 import { distanceToNearestTarget } from '@/games/trap/utils/floodFill'
-import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS, TUNNEL_LENGTH_CELLS, TUNNEL_MIN_ALONG_LENGTH, TUNNEL_MIN_CROSS_LENGTH, TUNNEL_MIN_LENGTH_CELLS, TUNNEL_SPAWN_CLEARANCE_CELLS } from '@/shared/match/arenas'
+import { buildArenaObstacles, buildArenaOverpass, buildArenaPortals, GAUNTLET_MIN_ALONG_LENGTH, GAUNTLET_MIN_CROSS_LENGTH, GAUNTLET_SPAWN_CLEARANCE_CELLS, OVERPASS_MAX_LANES, OVERPASS_MIN_LANES, OVERPASS_SMALLEST_LANES, OVERPASS_SPAWN_CLEARANCE_CELLS, overpassCells, PILLAR_MIN_ALONG_LENGTH, PILLAR_MIN_CROSS_LENGTH, PILLAR_SPAWN_CLEARANCE_CELLS, PORTAL_MIN_COLS, PORTAL_MIN_PAIR_DISTANCE_CELLS, PORTAL_MIN_ROWS, PORTAL_SPAWN_CLEARANCE_CELLS } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 import { startingStateFor } from '@/shared/match/grid'
 
@@ -30,7 +30,7 @@ describe('buildArenaObstacles', () => {
   })
 
   describe("'underpass' variant", () => {
-    it('never produces obstacles - tunnel geometry lives on buildArenaTunnels instead', () => {
+    it('never produces obstacles - the Overpass lives on buildArenaOverpass instead', () => {
       expect(buildArenaObstacles('underpass', { cols: 40, rows: 80 }, 'faceToFace', true)).toEqual([])
       expect(buildArenaObstacles('underpass', { cols: 1, rows: 1 }, 'faceToFace', true)).toEqual([])
     })
@@ -362,105 +362,86 @@ describe('buildArenaPortals', () => {
   })
 })
 
-// ─── Underpass ──────────────────────────────────────────────────────────────
-// Same "kept separate from the pillars/gauntlet reachability/clearance matrix" reasoning as
-// buildArenaPortals above - a tunnel's own reachability invariant is structurally guaranteed (it
-// never marks a cell as an obstacle, see buildArenaObstacles' own 'underpass' branch), not
-// something the generator could actually fail.
-describe('buildArenaTunnels', () => {
-  it('returns no tunnels for every variant except underpass', () => {
+// ─── Overpass ───────────────────────────────────────────────────────────────
+// Trap's name for the 'underpass' variant: a crossing in the middle where riding across is on one
+// level and riding up or down on the other. Same "kept separate from the pillars/gauntlet
+// reachability matrix" reasoning as buildArenaPortals above: it never marks a cell as an obstacle.
+describe('buildArenaOverpass', () => {
+  const lanesAcross = (o: { left: number; right: number; top: number; bottom: number; over: 'h' | 'v' }) => (o.over === 'h' ? o.right - o.left + 1 : o.bottom - o.top + 1)
+
+  it('is null for every variant but underpass', () => {
     for (const variant of ['open', 'pillars', 'gauntlet', 'portals'] as const) {
-      expect(buildArenaTunnels(variant, { cols: 40, rows: 80 }, 'faceToFace', true)).toEqual([])
+      expect(buildArenaOverpass(variant, { cols: 40, rows: 80 }, 'faceToFace', true)).toBeNull()
     }
   })
 
-  it('returns no tunnels just under TUNNEL_MIN_ALONG_LENGTH, with an otherwise-generous cross length', () => {
-    const grid = { cols: TUNNEL_MIN_ALONG_LENGTH - 1, rows: 40 } // sideBySide: along=cols, cross=rows
-    expect(buildArenaTunnels('underpass', grid, 'sideBySide', true)).toEqual([])
+  // An iPhone 15's board: 7 lanes at the medium size, 5 at Large, 11 at Small.
+  it.each([
+    ['small', 11],
+    ['medium', 7],
+    ['large', 5]
+  ] as const)('has several lanes on a phone at the %s size (%i)', (tier, lanes) => {
+    const grid = computeGridSize(393, 760, GRID_CELL_PX[tier])
+    const overpass = buildArenaOverpass('underpass', grid, 'faceToFace', true)!
+    expect(lanesAcross(overpass)).toBe(lanes)
+    expect(lanes).toBeGreaterThanOrEqual(OVERPASS_MIN_LANES)
+    expect(lanes).toBeLessThanOrEqual(OVERPASS_MAX_LANES)
   })
 
-  it('returns no tunnels just under TUNNEL_MIN_CROSS_LENGTH, with an otherwise-generous along length', () => {
-    const grid = { cols: 40, rows: TUNNEL_MIN_CROSS_LENGTH - 1 }
-    expect(buildArenaTunnels('underpass', grid, 'sideBySide', true)).toEqual([])
-  })
-
-  it('places a single corridor, shortened but at least TUNNEL_MIN_LENGTH_CELLS, at exactly the minimums, all in bounds and collinear', () => {
-    const grid = { cols: TUNNEL_MIN_ALONG_LENGTH, rows: TUNNEL_MIN_CROSS_LENGTH } // sideBySide: along=cols, cross=rows
-    const tunnels = buildArenaTunnels('underpass', grid, 'sideBySide', true)
-    expect(tunnels).toHaveLength(1)
-    const { cells } = tunnels[0]
-    expect(cells.length).toBeGreaterThanOrEqual(TUNNEL_MIN_LENGTH_CELLS)
-    expect(cells.length).toBeLessThan(TUNNEL_LENGTH_CELLS)
-    const p1Head = startingStateFor(1, grid, 'sideBySide', true).head
-    const p2Head = startingStateFor(2, grid, 'sideBySide', true).head
-    for (const cell of cells) {
-      expect(isInBounds(cell, grid)).toBe(true)
-      expect(chebyshev(cell, p1Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
-      expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
-    }
-    for (let i = 1; i < cells.length; i++) expect(isAdjacent(cells[i - 1], cells[i])).toBe(true)
-  })
-
-  // The Large size on an iPhone SE-size board is 42 cells long: under the 50 the full corridor used to
-  // need, so there was no tunnel at all. Now the longest that clears both spawns.
-  it('shortens the corridor on a board too short for the full length, rather than leaving it out', () => {
-    const grid = computeGridSize(375, 600, GRID_CELL_PX.large)
-    const tunnels = buildArenaTunnels('underpass', grid, 'faceToFace', false)
-    expect(tunnels).toHaveLength(1)
-    expect(tunnels[0].cells.length).toBeGreaterThanOrEqual(TUNNEL_MIN_LENGTH_CELLS)
-    expect(tunnels[0].cells.length).toBeLessThan(TUNNEL_LENGTH_CELLS)
-    const p1Head = startingStateFor(1, grid, 'faceToFace', false).head
-    const p2Head = startingStateFor(2, grid, 'faceToFace', false).head
-    for (const cell of tunnels[0].cells) {
-      expect(chebyshev(cell, p1Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
-      expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
+  it.each([
+    ['faceToFace', 'h'],
+    ['sideBySide', 'v']
+  ] as const)('sits between the spawns and on their line, %s, with riding across them over the bridge', (mode, over) => {
+    const grid = mode === 'faceToFace' ? computeGridSize(393, 760, GRID_CELL_PX.medium) : computeGridSize(1180, 760, GRID_CELL_PX.medium)
+    const overpass = buildArenaOverpass('underpass', grid, mode, true)!
+    expect(overpass.over).toBe(over)
+    const p1Head = startingStateFor(1, grid, mode, true).head
+    const p2Head = startingStateFor(2, grid, mode, true).head
+    if (mode === 'faceToFace') {
+      // The riders' column is its middle lane, and it's as far from one spawn as from the other.
+      expect((overpass.left + overpass.right) / 2).toBe(p1Head.x)
+      expect(overpass.top - Math.min(p1Head.y, p2Head.y)).toBe(Math.max(p1Head.y, p2Head.y) - overpass.bottom)
+    } else {
+      expect((overpass.top + overpass.bottom) / 2).toBe(p1Head.y)
+      expect(overpass.left - Math.min(p1Head.x, p2Head.x)).toBe(Math.max(p1Head.x, p2Head.x) - overpass.right)
     }
   })
 
-  it('keeps every tunnel cell at least TUNNEL_SPAWN_CLEARANCE_CELLS away from both spawn heads', () => {
-    const grid = { cols: 40, rows: 80 }
-    const tunnels = buildArenaTunnels('underpass', grid, 'faceToFace', true)
-    expect(tunnels).toHaveLength(1)
-    const p1Head = startingStateFor(1, grid, 'faceToFace', true).head
-    const p2Head = startingStateFor(2, grid, 'faceToFace', true).head
-    for (const cell of tunnels[0].cells) {
-      expect(chebyshev(cell, p1Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
-      expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(TUNNEL_SPAWN_CLEARANCE_CELLS)
-    }
-  })
-
-  // Hand-computed fixtures, same "exact coordinate" style as the pillar/portal symmetry tests above.
-  it('centers the corridor on the along axis players are divided on, in faceToFace mode', () => {
-    const grid = { cols: 40, rows: 80 }
-    expect(buildArenaTunnels('underpass', grid, 'faceToFace', true)).toEqual([
-      {
-        cells: Array.from({ length: TUNNEL_LENGTH_CELLS }, (_, i) => ({ x: 20, y: 35 + i }))
+  it('keeps every cell in bounds and OVERPASS_SPAWN_CLEARANCE_CELLS from both spawns, on every phone size and tier', () => {
+    for (const [width, height] of [
+      [375, 600],
+      [393, 760],
+      [430, 900]
+    ]) {
+      for (const tier of ['small', 'medium', 'large'] as const) {
+        const grid = computeGridSize(width, height, GRID_CELL_PX[tier])
+        const overpass = buildArenaOverpass('underpass', grid, 'faceToFace', true)
+        expect(overpass).not.toBeNull()
+        const p1Head = startingStateFor(1, grid, 'faceToFace', true).head
+        const p2Head = startingStateFor(2, grid, 'faceToFace', true).head
+        for (const cell of overpassCells(overpass!)) {
+          expect(isInBounds(cell, grid)).toBe(true)
+          expect(chebyshev(cell, p1Head)).toBeGreaterThanOrEqual(OVERPASS_SPAWN_CLEARANCE_CELLS)
+          expect(chebyshev(cell, p2Head)).toBeGreaterThanOrEqual(OVERPASS_SPAWN_CLEARANCE_CELLS)
+        }
       }
-    ])
+    }
   })
 
-  it('centers the corridor on the along axis players are divided on, in sideBySide mode', () => {
-    const grid = { cols: 80, rows: 40 }
-    expect(buildArenaTunnels('underpass', grid, 'sideBySide', false)).toEqual([
-      {
-        cells: Array.from({ length: TUNNEL_LENGTH_CELLS }, (_, i) => ({ x: 35 + i, y: 20 }))
-      }
-    ])
+  // A board too short for the full crossing gets a smaller one, then none.
+  it('shrinks on a small board rather than leaving the crossing out, and is null on a tiny one', () => {
+    const small = buildArenaOverpass('underpass', { cols: 20, rows: 30 }, 'faceToFace', true)!
+    expect(lanesAcross(small)).toBeGreaterThanOrEqual(OVERPASS_SMALLEST_LANES)
+    expect(buildArenaOverpass('underpass', { cols: 12, rows: 20 }, 'faceToFace', true)).toBeNull()
+    expect(buildArenaOverpass('underpass', { cols: 3, rows: 3 }, 'sideBySide', true)).toBeNull()
   })
 
-  it('never fully partitions the board - a tunnel never marks a cell as an obstacle', () => {
+  it('never fully partitions the board - the crossing never marks a cell as an obstacle', () => {
     const grid = { cols: 40, rows: 80 }
     const obstacles = buildArenaObstacles('underpass', grid, 'faceToFace', true)
     const p1Head = startingStateFor(1, grid, 'faceToFace', true).head
     const p2Head = startingStateFor(2, grid, 'faceToFace', true).head
     const occupied = new Set(obstacles.map(cellKey))
     expect(distanceToNearestTarget(p1Head, grid, occupied, new Set([cellKey(p2Head)]))).not.toBeNull()
-  })
-
-  it('never throws and never produces an out-of-bounds tunnel cell on a tiny degenerate grid', () => {
-    for (const mode of ['faceToFace', 'sideBySide'] as const) {
-      const grid = { cols: 3, rows: 3 }
-      expect(buildArenaTunnels('underpass', grid, mode, true)).toEqual([])
-    }
   })
 })

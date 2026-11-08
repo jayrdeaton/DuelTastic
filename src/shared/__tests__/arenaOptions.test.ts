@@ -1,13 +1,20 @@
 import { sharedArenaOptions } from '@/shared/match/arenaOptions'
 
-// Tunnels only mean something where a rider can cross its own trail in them: Trap's and
-// Snake's. Turf has Cross Your Own Trail for that, and Tag has no trails to cross.
+// The 'underpass' variant (Snake's Tunnels, Trap's Overpass) only means something where a trail can
+// cross one: Trap's and Snake's. Turf has Cross Your Own Trail for that, and Tag has no trails.
 describe('the arena pickers', () => {
-  it.each(['trap', 'snake'] as const)('offer Tunnels in %s', (mode) => {
+  it('call the variant Overpass in Trap, with its own icon, and Tunnels in Snake', () => {
+    const trap = sharedArenaOptions('trap').find((o) => o.value === 'underpass')
+    const snake = sharedArenaOptions('snake').find((o) => o.value === 'underpass')
+    expect(trap).toMatchObject({ label: 'Overpass', icon: 'bridge' })
+    expect(snake).toMatchObject({ label: 'Tunnels', icon: 'tunnel' })
+  })
+
+  it.each(['trap', 'snake'] as const)('offer it in %s', (mode) => {
     expect(sharedArenaOptions(mode).map((o) => o.value)).toEqual(['open', 'pillars', 'gauntlet', 'portals', 'underpass'])
   })
 
-  it.each(['turf', 'tag'] as const)('leave Tunnels out of %s', (mode) => {
+  it.each(['turf', 'tag'] as const)('leave it out of %s', (mode) => {
     expect(sharedArenaOptions(mode).map((o) => o.value)).toEqual(['open', 'pillars', 'gauntlet', 'portals'])
   })
 

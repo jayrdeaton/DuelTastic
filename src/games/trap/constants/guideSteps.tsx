@@ -17,7 +17,7 @@ interface GuideStepsInput {
 //
 // What's here is what a first-time player cannot work out alone (none of it is printed anywhere in
 // the game): steering is absolute, not relative; walls and ANY trail are lethal, your own included;
-// the last cycle riding wins; and in two-player one phone is shared face to face (the steering and
+// the last rider riding wins; and in two-player one phone is shared face to face (the steering and
 // two-player cards are shared/match's, the same in every game in the pack).
 export function getGuideSteps({ touch, keys }: GuideStepsInput): GuideStep[] {
   return [

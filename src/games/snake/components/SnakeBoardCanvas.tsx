@@ -26,7 +26,7 @@ import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedV
 import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, SNAKE_POWERUP_PULSE_DURATION_MS, SNAKE_POWERUP_PULSE_SCALE, SNAKE_POWERUP_SPAWN_FADE_MS, snakeDeathFadeMs } from '@/games/snake/constants/snake'
 import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
 import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
-import { Gates } from '@/shared/match/Gates'
+import { Gates, useGateColors } from '@/shared/match/Gates'
 import { splitWallPath } from '@/shared/match/SplitWalls'
 import { boardStructureColor } from '@/shared/match/structureColor'
 
@@ -1282,21 +1282,23 @@ function Pickups({ pickups, cellPx, color }: { pickups: SnakePowerupPickup[]; ce
 // which is tinted toward player 1's color) - distinguished from each other by shape, not color.
 // Boxes are the theme's text color (white on the dark board, near-black on the light one): no seat,
 // no food and no effect ring is drawn in it (they were the theme's secondary, player 2's red).
-// Portals are every game's gates (shared/match/Gates.tsx: a ring in the arena gray, with one dot for
-// the first pair and two for the second, so a snake can see where one comes out), at the size of
-// Snake's own boxes (they were rings in secondaryContainer, a shade of player 2's color).
+// Portals are every game's gates (shared/match/Gates.tsx: a spinning vortex, each pair in its own
+// theme-derived color and the second pair turning the other way, so a snake can see where one comes
+// out), at the size of Snake's own boxes (they were rings in secondaryContainer, a shade of player 2's
+// color).
 // First-pass color choices - verify visually against the app's actual light/dark palettes.
 export function SnakeBoard({ snakes, food, obstacles, portals, tunnels, pickups, phase, cellPx, grid, tick, tickIntervalMs, wrapEdges, onboarding }: SnakeBoardProps) {
   const { colors } = useAutoPaperTheme()
   const phaseDriver = useContinuousPhase()
   const structureColor = boardStructureColor(colors)
+  const gateColors = useGateColors()
 
   return (
     <Canvas style={StyleSheet.absoluteFill}>
       <Walls snakes={snakes} grid={grid} cellPx={cellPx} wrapEdges={wrapEdges} onboarding={onboarding} />
       <Obstacles obstacles={obstacles} cellPx={cellPx} color={structureColor} />
       <Tunnels tunnels={tunnels} cellPx={cellPx} color={structureColor} />
-      <Gates portals={portals} cellPx={cellPx} color={structureColor} radius={cellPx * SNAKE_POWERUP_PICKUP_RADIUS_RATIO} />
+      <Gates portals={portals} cellPx={cellPx} colors={gateColors} radius={cellPx * SNAKE_POWERUP_PICKUP_RADIUS_RATIO} />
       <FoodDot food={food} cellPx={cellPx} phase={phaseDriver} color={colors.tertiary} />
       <Pickups pickups={pickups} cellPx={cellPx} color={colors.onSurface} />
       {snakes.map((snake) => (

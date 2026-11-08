@@ -10,8 +10,19 @@ export interface Portal {
   b: GridCell
 }
 
-export interface Tunnel {
-  cells: GridCell[]
+// Which way a rider is going: across ('h') or up and down ('v'). The Overpass keeps the two apart.
+export type Axis = 'h' | 'v'
+
+// The Overpass arena's crossing (see buildOverpass): a block of cells in the middle of the board,
+// inclusive bounds, where riders going one way ride over the bridge and riders going the other way
+// ride under it. `over` is the axis on the bridge: across the board, the way the riders don't start
+// out heading, so riding straight from the start goes under.
+export interface Overpass {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  over: Axis
 }
 
 // ─── Pillars ────────────────────────────────────────────────────────────────
@@ -143,31 +154,18 @@ export const GAUNTLET_GAP_WIDTH_MIN_CELLS = 3
 export const GAUNTLET_GAP_WIDTH_MAX_CELLS = 6
 export const GAUNTLET_GAP_OFFSET_FRACTION = 0.25
 
-// ─── Underpass ──────────────────────────────────────────────────────────────
-// Same graceful-degrade reasoning as the pillar/gauntlet/portal thresholds above: the shortest board
-// a TUNNEL_MIN_LENGTH_CELLS corridor still clears both spawns on (see buildTunnel). It was 50, the
-// shortest the full TUNNEL_LENGTH_CELLS fits, which left an iPhone SE-size board at the Large size
-// (42 cells long) with no tunnel at all.
-export const TUNNEL_MIN_ALONG_LENGTH = 32
-export const TUNNEL_MIN_CROSS_LENGTH = 16
-
-// Long enough to feel like a real corridor - several ticks of travel, enough time for a surface
-// trail to legitimately cross the same coordinate while a tunnel-traveler is passing underneath -
-// per explicit user feedback that the original 4-cell version read as too small next to the other
-// arenas' own "bigger" passes (pillars' 3x3 blocks, portals' powerup-sized rings). Still short
-// enough to keep the collision-domain small, which is the entire cost argument for this mechanic
-// over a board-wide layer system (see types/index.ts's own Tunnel comment) - a longer corridor is
-// still just more entries in one flat Set, not a different kind of mechanic.
-export const TUNNEL_LENGTH_CELLS = 12
-
-// On a board too short for the full corridor to clear both spawns, buildTunnel shortens it, never
-// below this: at the Large size (14px cells) 6 cells is about as long on screen as the full 12 at
-// the default 8px.
-export const TUNNEL_MIN_LENGTH_CELLS = 6
-
-// Minimum Chebyshev distance any tunnel cell (mouth or interior) must keep from either spawn head -
-// the same isGroupClear check every other arena generator here already shares.
-export const TUNNEL_SPAWN_CLEARANCE_CELLS = 5
+// ─── Overpass ───────────────────────────────────────────────────────────────
+// How many lanes the crossing has each way, as a fraction of the board's width across the riders'
+// line, kept odd (so it centers on their lane) and between the min and max: 7 lanes on a phone at
+// the medium size, 5 at Large, 11 at Small. Several lanes, so the crossing can be used more than once
+// a round (Jay, 2026-11-08: the one-lane Underpass was "pretty useless").
+export const OVERPASS_SIZE_FRACTION = 0.15
+export const OVERPASS_MIN_LANES = 5
+export const OVERPASS_MAX_LANES = 11
+// On a board too small for that, the crossing shrinks to clear the starts, never below this.
+export const OVERPASS_SMALLEST_LANES = 3
+// Minimum Chebyshev distance every crossing cell keeps from both spawn heads.
+export const OVERPASS_SPAWN_CLEARANCE_CELLS = 5
 
 // ─── Tuning ─────────────────────────────────────────────────────────────────
 // Every count above is in cells, tuned for GRID_CELL_PX, the cell size every game that builds these
@@ -192,11 +190,11 @@ export interface ArenaTuning {
   gauntletWallSpacing: number
   gauntletGapWidthMin: number
   gauntletGapWidthMax: number
-  tunnelMinAlong: number
-  tunnelMinCross: number
-  tunnelLength: number
-  tunnelMinLength: number
-  tunnelSpawnClearance: number
+  overpassSizeFraction: number
+  overpassMinLanes: number
+  overpassMaxLanes: number
+  overpassSmallestLanes: number
+  overpassSpawnClearance: number
 }
 
 export const FINE_ARENA_TUNING: ArenaTuning = {
@@ -216,11 +214,11 @@ export const FINE_ARENA_TUNING: ArenaTuning = {
   gauntletWallSpacing: GAUNTLET_WALL_SPACING_CELLS,
   gauntletGapWidthMin: GAUNTLET_GAP_WIDTH_MIN_CELLS,
   gauntletGapWidthMax: GAUNTLET_GAP_WIDTH_MAX_CELLS,
-  tunnelMinAlong: TUNNEL_MIN_ALONG_LENGTH,
-  tunnelMinCross: TUNNEL_MIN_CROSS_LENGTH,
-  tunnelLength: TUNNEL_LENGTH_CELLS,
-  tunnelMinLength: TUNNEL_MIN_LENGTH_CELLS,
-  tunnelSpawnClearance: TUNNEL_SPAWN_CLEARANCE_CELLS
+  overpassSizeFraction: OVERPASS_SIZE_FRACTION,
+  overpassMinLanes: OVERPASS_MIN_LANES,
+  overpassMaxLanes: OVERPASS_MAX_LANES,
+  overpassSmallestLanes: OVERPASS_SMALLEST_LANES,
+  overpassSpawnClearance: OVERPASS_SPAWN_CLEARANCE_CELLS
 }
 
 // ─── Axis helpers ───────────────────────────────────────────────────────────
@@ -400,33 +398,37 @@ function buildGauntlet(grid: GridSize, mode: OrientationMode, p1Head: GridCell, 
   return obstacles
 }
 
-// ─── Underpass ──────────────────────────────────────────────────────────────
-// A single straight corridor, oriented ALONG the split axis (not across it) and centered at
-// board-center - so a player driving straight from spawn toward the opponent runs directly into the
-// near mouth, no detour required: the most literal reading of "just goes forward a bit... with a
-// hallway to get there." Unlike pillars/portals, this is never mirrored into a second copy: a
-// pillar/gauntlet obstacle BLOCKS movement, so an asymmetric placement would hand one player a worse
-// path - mirroring is what keeps that fair. A tunnel blocks nothing (see buildArenaObstacles' own
-// 'underpass' branch, which always returns []), so it's already fair simply by sitting equidistant
-// from both spawns at board-center; a second tunnel would only double the rendering/collision/
-// testing surface for no fairness gain. The full tunnelLength where it clears both spawns, else the
-// longest that does, down to tunnelMinLength: a short board gets a shorter tunnel, not none.
-function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): Tunnel[] {
-  const alongLength = alongLengthFor(grid, mode)
+// ─── Overpass ───────────────────────────────────────────────────────────────
+// One crossing in the middle: centered between the two spawn heads along the split axis (on their
+// own sum, as buildGauntlet's walls are, so it's exactly as far from each) and on their shared line
+// across, so riding straight from the start runs into its middle lane. Never mirrored into a
+// second copy: it blocks nothing, and it already sits equidistant from both spawns. Odd lane counts
+// from the board's size down to t.overpassSmallestLanes, the first that clears both spawns: a short
+// board gets a smaller crossing, not none. Along the split axis it's that many cells, or one more
+// when the spawns' sum is odd (the middle falls between two cells).
+function buildOverpass(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2Head: GridCell, t: ArenaTuning): Overpass | null {
   const crossLength = crossLengthFor(grid, mode)
-  if (alongLength < t.tunnelMinAlong || crossLength < t.tunnelMinCross) return []
-
-  const alongCenter = Math.floor(alongLength / 2)
-  const crossCenter = Math.floor(crossLength / 2)
-  for (let length = t.tunnelLength; length >= t.tunnelMinLength; length--) {
-    const startOffset = Math.floor((length - 1) / 2)
-    const cells: GridCell[] = []
-    for (let i = 0; i < length; i++) {
-      cells.push(fromAxisCoords(alongCenter - startOffset + i, crossCenter, mode))
-    }
-    if (isGroupClear(cells, grid, p1Head, p2Head, t.tunnelSpawnClearance)) return [{ cells }]
+  const axisSum = alongCoordOf(p1Head, mode) + alongCoordOf(p2Head, mode)
+  const crossCenter = mode === 'faceToFace' ? p1Head.x : p1Head.y
+  const fitted = Math.round(crossLength * t.overpassSizeFraction)
+  const largest = Math.min(t.overpassMaxLanes, Math.max(t.overpassMinLanes, fitted % 2 === 0 ? fitted - 1 : fitted))
+  for (let lanes = largest; lanes >= t.overpassSmallestLanes; lanes -= 2) {
+    const half = (lanes - 1) / 2
+    const alongStart = Math.floor(axisSum / 2) - half
+    const alongEnd = axisSum - alongStart
+    const a = fromAxisCoords(alongStart, crossCenter - half, mode)
+    const b = fromAxisCoords(alongEnd, crossCenter + half, mode)
+    const overpass: Overpass = { left: Math.min(a.x, b.x), top: Math.min(a.y, b.y), right: Math.max(a.x, b.x), bottom: Math.max(a.y, b.y), over: mode === 'faceToFace' ? 'h' : 'v' }
+    if (isGroupClear(overpassCells(overpass), grid, p1Head, p2Head, t.overpassSpawnClearance)) return overpass
   }
-  return []
+  return null
+}
+
+// Every cell of a crossing, row by row.
+export function overpassCells({ left, top, right, bottom }: Overpass): GridCell[] {
+  const cells: GridCell[] = []
+  for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) cells.push({ x, y })
+  return cells
 }
 
 // Deterministic static obstacle layout for the selected arena variant - same inputs always produce
@@ -435,9 +437,9 @@ function buildTunnel(grid: GridSize, mode: OrientationMode, p1Head: GridCell, p2
 // computed against the REAL spawn heads from startingStateFor, never assumed geometry, so obstacle
 // placement stays correct even if that function's own zone-centering logic changes later.
 export function buildArenaObstacles(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): GridCell[] {
-  // Neither 'portals' nor 'underpass' blocks movement the way every other variant's cells do -
-  // their geometry lives on GameState.portals/.tunnels instead (see buildArenaPortals below and
-  // buildArenaTunnels), so both are obstacle-free exactly like 'open'.
+  // Neither 'portals' nor 'underpass' (Trap's Overpass) blocks movement the way every other
+  // variant's cells do - their geometry lives on GameState.portals/.overpass instead (see
+  // buildArenaPortals and buildArenaOverpass below), so both are obstacle-free exactly like 'open'.
   if (variant === 'open' || variant === 'portals' || variant === 'underpass') return []
 
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
@@ -459,13 +461,11 @@ export function buildArenaPortals(variant: SharedArenaVariant, grid: GridSize, m
   return buildPortals(grid, p1Head, p2Head, tuning)
 }
 
-// Sibling to buildArenaObstacles/buildArenaPortals above, same reasoning: a Tunnel's shape
-// (`{ cells: GridCell[] }`) and collision semantics (see gameEngine.ts's tickGame) are different
-// enough from either that folding it into one of their return types would only complicate every
-// existing caller for a field they never asked for.
-export function buildArenaTunnels(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): Tunnel[] {
-  if (variant !== 'underpass') return []
+// The 'underpass' variant's crossing (Trap calls it the Overpass), or null for every other variant
+// and for a board too small to fit one clear of the spawns.
+export function buildArenaOverpass(variant: SharedArenaVariant, grid: GridSize, mode: OrientationMode, p1OnRight: boolean, tuning: ArenaTuning = FINE_ARENA_TUNING): Overpass | null {
+  if (variant !== 'underpass') return null
   const p1Head = startingStateFor(1, grid, mode, p1OnRight).head
   const p2Head = startingStateFor(2, grid, mode, p1OnRight).head
-  return buildTunnel(grid, mode, p1Head, p2Head, tuning)
+  return buildOverpass(grid, mode, p1Head, p2Head, tuning)
 }

@@ -129,7 +129,7 @@ Open for Jay: whether PuckTastic should start dark and set Paper's text in `MONO
 Calls for Jay from the review of Copilot's 2026-10-26 commits; what each change is now is in CLAUDE.md, "Copilot's 2026-10-26 changes". Its three bugs are fixed ("Quit, Tunnels and Turf's CPU").
 
 1. ✅ **Should the Vs CPU back and settings chips turn with the phone again?** Settled 2026-11-06: nothing turns with the hold any more, Home included (CLAUDE.md, "The OS turns tablets").
-2. **One name per arena across the pack, or each game's own?** Today Trap says Portals and Underpass, Snake Holes and Tunnels, Tag Holes, Turf Gates.
+2. **One name per arena across the pack, or each game's own?** Today Trap says Portals and Overpass (Underpass until 2026-11-08, when it became a two-level crossing), Snake Holes and Tunnels, Tag Holes, Turf Gates.
 3. **Powerup copy:** "opponent" (the loadout's lines) or "the other rider" (How to Play), and do Turf's and Tag's own lines come back?
 4. ✅ **Take the second App Group out of `app.json`?** Done 2026-11-08 (Jay), before DuelTastic's first TestFlight build. The portrait lock's iPad settings came out 2026-11-06 (CLAUDE.md, "The OS turns tablets"); `orientation` and `UIViewControllerBasedStatusBarAppearance` stay on purpose.
 5. **Seat-colored board edges in Turf and Tag, or the arena gray?** On Turf's solid ground a seat's own half of the edge disappears.

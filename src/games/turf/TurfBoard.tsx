@@ -7,7 +7,7 @@ import { useDerivedValue } from 'react-native-reanimated'
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
 import { DazeStars } from '@/shared/match/DazeStars'
-import { Gates } from '@/shared/match/Gates'
+import { Gates, useGateColors } from '@/shared/match/Gates'
 import { RiderCrash } from '@/shared/match/RiderCrash'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
@@ -121,6 +121,7 @@ function Rider({ seat, player, color, cellPx, tick, intervalMs }: { seat: TurfSe
 export function TurfBoard({ grid, cellPx, owner, obstacles, portals, players, colors, orientationMode, p1OnRight, phase, tick, intervalMs, structureColor, pickups, pickupColor }: TurfBoardProps) {
   const ground = useMemo(() => SEATS.map((seat) => groundPath(owner, grid, cellPx, seat)), [owner, grid, cellPx])
   const trails = useMemo(() => SEATS.map((seat) => trailPath(trailCells(players[seat]), cellPx)), [players, cellPx])
+  const gateColors = useGateColors()
 
   return (
     <View style={styles.container}>
@@ -129,7 +130,7 @@ export function TurfBoard({ grid, cellPx, owner, obstacles, portals, players, co
           <Path key={`ground-${seat}`} path={ground[i]} color={colors[seat]} />
         ))}
         <ArenaBlocks cells={obstacles} cellPx={cellPx} color={structureColor} />
-        <Gates portals={portals} cellPx={cellPx} color={structureColor} />
+        <Gates portals={portals} cellPx={cellPx} colors={gateColors} />
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />

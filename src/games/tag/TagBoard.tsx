@@ -7,7 +7,7 @@ import { Easing, type SharedValue, useDerivedValue, useSharedValue, withRepeat, 
 import { EffectRings, PickupGlyph } from '@/shared/BoardPowerups'
 import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
 import { DazeStars } from '@/shared/match/DazeStars'
-import { Gates } from '@/shared/match/Gates'
+import { Gates, useGateColors } from '@/shared/match/Gates'
 import { RiderHead } from '@/shared/match/RiderHead'
 import { HEAD_RADIUS_CELLS } from '@/shared/match/riderSkin'
 import { SplitWalls } from '@/shared/match/SplitWalls'
@@ -127,13 +127,14 @@ export function TagBoard({ grid, cellPx, pillars, portals, players, it, orientat
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1, { duration: IT_PULSE_MS, easing: Easing.inOut(Easing.quad) }), -1, true)
   }, [pulse])
+  const gateColors = useGateColors()
 
   return (
     <View style={styles.container}>
       <Canvas style={StyleSheet.absoluteFill}>
         {phase !== 'onboarding' && <SplitWalls grid={grid} cellPx={cellPx} orientationMode={orientationMode} p1OnRight={p1OnRight} colors={colors} strokeWidth={EDGE_STROKE_WIDTH} />}
         <ArenaBlocks cells={blockCells} cellPx={cellPx} color={structureColor} />
-        <Gates portals={portals} cellPx={cellPx} color={structureColor} />
+        <Gates portals={portals} cellPx={cellPx} colors={gateColors} />
         {pickups.map((pickup) => (
           <PickupGlyph key={pickup.id} pickup={pickup} cellPx={cellPx} color={pickupColor} />
         ))}
