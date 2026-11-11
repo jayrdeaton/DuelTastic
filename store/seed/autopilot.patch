@@ -1,42 +1,106 @@
-diff --git a/src/hooks/useGameState.ts b/src/hooks/useGameState.ts
-index c3df438..b8253d4 100644
---- a/src/hooks/useGameState.ts
-+++ b/src/hooks/useGameState.ts
-@@ -2,8 +2,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
- 
- import { GRID_CELL_PX, MAX_TICK_DT_MS, scaleMsForCellPx, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_MIN_INTERVAL_MS, SPEED_TIER_INTERVAL_MS, TRAIL_SPEED_RATE } from '@/constants/game'
- import { Direction, OrientationMode, Player, Settings } from '@/types'
--import { applyCpuActivation, applyCpuTurn } from '@/utils/cpuAi'
--import { applyActivation, applyTurnIntent, buildOccupiedSet, buildTunnelCellSet, computeTickIntervalMs, createInitialGameState, startPlaying, tickGame } from '@/utils/gameEngine'
-+import { applyCpuActivation, applyCpuTurn, chooseCpuDirection } from '@/utils/cpuAi'
-+import { applyActivation, applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, computeTickIntervalMs, createInitialGameState, startPlaying, stepsFor, tickGame } from '@/utils/gameEngine'
-+import type { GameState } from '@/types'
-+
-+// TEMPORARY (App Store screenshots only, never commit): steers the human seats with the CPU's own AI.
-+function storeAutopilot(s: GameState, settings: Settings): GameState {
-+  if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT !== '1' || s.phase !== 'playing') return s
-+  const seats: Player[] = settings.gameMode === 'vsCpu' ? [1] : [1, 2]
-+  let next = s
-+  for (const seat of seats) {
-+    const player = next.players[seat]
-+    if (!player.alive) continue
-+    const tunnelCellSet = buildTunnelCellSet(next.tunnels)
-+    const occupied = buildOccupiedSet(next.players, next.obstacles, tunnelCellSet)
-+    const direction = chooseCpuDirection({ player, grid: next.grid, occupied, difficulty: 'normal', ownSteps: stepsFor(player.effects), pickups: next.pickups, heldPowerup: player.heldPowerup, portals: buildPortalLookup(next.portals), tunnelCellSet, tunnelOccupied: buildTunnelOccupiedSet(next.players, tunnelCellSet, seat), wrapEdges: settings.wrapEdges })
-+    next = applyTurnIntent(next, seat, direction)
-+  }
-+  return next
-+}
- 
- // orientationMode/p1OnRight are passed separately rather than read off `settings` - they're
- // derived live from the device's own physical tilt (see useOrientationState), not a stored
-@@ -81,7 +98,8 @@ export function useGameState(width: number, height: number, settings: Settings,
+diff --git a/src/games/snake/hooks/useSnakeState.ts b/src/games/snake/hooks/useSnakeState.ts
+index 2b00808..e890484 100644
+--- a/src/games/snake/hooks/useSnakeState.ts
++++ b/src/games/snake/hooks/useSnakeState.ts
+@@ -143,6 +143,13 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
+           // move, and the tick that consumes them all commit together. Every other mode (solo,
+           // twoPlayer) has no CPU seat, so it's just a plain tickSnake call.
+           if (mode === 'vsCpu') {
++            // TEMPORARY (store screenshots only, never commit): the CPU's own AI steers seat 1
++            if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT === '1') {
++              const other = s.snakes.find((sn) => sn.id === CPU_SNAKE_ID)?.body.at(-1)
++              const near = other ? [{ x: other.x + 1, y: other.y }, { x: other.x - 1, y: other.y }, { x: other.x, y: other.y + 1 }, { x: other.x, y: other.y - 1 }] : []
++              const turned = applyCpuSnakeTurn({ ...s, obstacles: [...s.obstacles, ...near] }, 1, 'hard', Math.random)
++              s = { ...turned, obstacles: s.obstacles }
++            }
+             const afterActivation = hasPowerups ? applyCpuSnakePowerupActivation(s, CPU_SNAKE_ID, cpuDifficulty, Math.random) : s
+             return tickSnake(applyCpuSnakeTurn(afterActivation, CPU_SNAKE_ID, cpuDifficulty, Math.random), Math.random)
+           }
+diff --git a/src/games/tag/useTagState.ts b/src/games/tag/useTagState.ts
+index 7e26eaf..d6a9961 100644
+--- a/src/games/tag/useTagState.ts
++++ b/src/games/tag/useTagState.ts
+@@ -94,6 +94,8 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
+         let left = dt / intervalMs
+         // A tick at a time, so the CPU decides at the start of each one.
+         while (left > 0 && round.phase === 'playing') {
++          // TEMPORARY (store screenshots only, never commit): the CPU's own AI steers seat 1
++          if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT === '1' && round.sinceTick === 0) round = applyTagCpu(round, 1, 'normal')
+           if (cpu && round.sinceTick === 0) round = applyTagCpu(round, 2, cpu)
+           const part = Math.min(left, 1 - round.sinceTick)
+           round = tickTag(round, options.powerups, Math.random, part)
+diff --git a/src/games/trap/hooks/useGameState.ts b/src/games/trap/hooks/useGameState.ts
+index c98f979..a9a733e 100644
+--- a/src/games/trap/hooks/useGameState.ts
++++ b/src/games/trap/hooks/useGameState.ts
+@@ -87,7 +87,17 @@ export function useGameState(width: number, height: number, settings: RoundSetti
          setTickIntervalMs(intervalMs)
          const trailSpeedRate = TRAIL_SPEED_RATE[settings.trailSpeedTier]
          const enabledPowerups = settings.enabledPowerups
 -        setState((s) => {
 +        setState((prev) => {
-+          const s = storeAutopilot(prev, settings)
++          // TEMPORARY (store screenshots only, never commit): the CPU's own AI steers the human seats
++          let s = prev
++          if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT === '1') {
++            for (const seat of (settings.gameMode === 'vsCpu' ? [1] : [1, 2]) as Player[]) {
++              const other = s.players[seat === 1 ? 2 : 1].trail.at(-1)
++              const near = other ? [{ x: other.x + 1, y: other.y }, { x: other.x - 1, y: other.y }, { x: other.x, y: other.y + 1 }, { x: other.x, y: other.y - 1 }] : []
++              const turned = applyCpuTurn({ ...s, pickups: [], obstacles: [...s.obstacles, ...near] }, 'hard', undefined, undefined, undefined, settings.wrapEdges, seat)
++              s = { ...turned, pickups: s.pickups, obstacles: s.obstacles }
++            }
++          }
            if (settings.gameMode !== 'vsCpu') return tickGame(s, undefined, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
            // Built once and reused for both - see buildOccupiedSet's own comment on why this is
            // always safe, not just an optimization that happens to hold today. The CPU decides its
+diff --git a/src/games/trap/utils/cpuAi.ts b/src/games/trap/utils/cpuAi.ts
+index b2eea2d..34fcf9a 100644
+--- a/src/games/trap/utils/cpuAi.ts
++++ b/src/games/trap/utils/cpuAi.ts
+@@ -207,9 +207,9 @@ function shouldCompensateForHack(difficulty: CpuDifficulty, random: () => number
+ // existing-call-site-safety reason and, like `occupied`/`portals`, is the raw per-round truth -
+ // useGameState.ts passes settings.wrapEdges straight through with no difficulty pre-gating; see
+ // chooseCpuDirection's own wrapAware local for where that gate actually lives.
+-export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, state.overpass), random?: () => number, portals: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false): GameState {
++export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupied: ReadonlySet<string> = buildOccupiedSet(state.players, state.obstacles, state.overpass), random?: () => number, portals: ReadonlyMap<string, GridCell> = buildPortalLookup(state.portals), wrapEdges: boolean = false, seat: Player = CPU_PLAYER): GameState {
+   if (state.phase !== 'playing') return state
+-  const player = state.players[CPU_PLAYER]
++  const player = state.players[seat]
+   if (!player.alive) return state
+ 
+   // On the crossing it can only go straight, and a turn queued there would wait until it's off,
+@@ -219,7 +219,7 @@ export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupi
+   const hacked = player.effects.control?.type === 'hack'
+   const compensates = hacked && shouldCompensateForHack(difficulty, random ?? Math.random)
+   const direction = hacked && !compensates ? applyControlInversion(rawDirection, true) : rawDirection
+-  return applyTurnIntent(state, CPU_PLAYER, direction)
++  return applyTurnIntent(state, seat, direction)
+ }
+ 
+ // Decides whether the CPU should activate its held powerup this tick - a difficulty-gated
+diff --git a/src/games/turf/useTurfState.ts b/src/games/turf/useTurfState.ts
+index eb0ebcb..e3d8df1 100644
+--- a/src/games/turf/useTurfState.ts
++++ b/src/games/turf/useTurfState.ts
+@@ -8,6 +8,9 @@ import { applyTurfCpu, type TurfCpuDifficulty, type TurfCpuPlan } from './cpu'
+ import { applyTurfActivation, applyTurfTurn, createTurfState, finishTurfOnTime, startTurf, tickTurf } from './engine'
+ import type { TurfEvents, TurfLayout, TurfOptions, TurfSeat, TurfState } from './types'
+ 
++// TEMPORARY (store screenshots only, never commit): the CPU's own AI steers seat 1
++let autopilotPlan: TurfCpuPlan | null = null
++
+ const NO_INSETS = { top: 0, right: 0, bottom: 0, left: 0 }
+ 
+ export interface UseTurfStateParams {
+@@ -102,6 +105,12 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
+               // still sounds.
+               const events: TurfEvents = { captured: { 1: 0, 2: 0 }, crashed: [], sentHome: [], collected: [] }
+               for (let i = 0; i < steps && round.phase === 'playing'; i++) {
++                if (process.env.EXPO_PUBLIC_STORE_AUTOPILOT === '1') {
++                  if (round.tick === 0) autopilotPlan = null
++                  const auto = applyTurfCpu(round, 1, 'normal', autopilotPlan, options)
++                  round = auto.state
++                  autopilotPlan = auto.plan
++                }
+                 if (cpu) {
+                   const decided = applyTurfCpu(round, 2, cpu, plan, options)
+                   round = decided.state

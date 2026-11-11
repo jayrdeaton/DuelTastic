@@ -7,7 +7,8 @@
 //
 //   node store/creative/build.mjs
 //
-// Writes store/screenshots/header.png (3840 x 1646) and store/screenshots/search.png (3840 x 2560), each with -safe
+// Writes store/screenshots/header.png (3840 x 1646), store/screenshots/search.png (3840 x 2560) and Google Play's
+// store/screenshots/google-play/feature-graphic.png (1024 x 500, the header's round cropped), each with -safe
 // and -384 previews, through the app-store-prep skill's creative.mjs (CREATIVE=/path/to/creative.mjs to override).
 // Deterministic: the round's seed is fixed (SEED below).
 import { execFileSync } from 'node:child_process'
@@ -32,9 +33,12 @@ const HEADER = { width: 3840, height: 1646, cell: 48, safe: { x0: 1097, x1: 2743
 const SEED = Number(process.env.SEED ?? 0)
 
 const ENTRY = `
-import { DEFAULT_P1_COLOR, DEFAULT_P2_COLOR } from '@/constants/game'
-import { chooseCpuDirection } from '@/utils/cpuAi'
-import { applyTurnIntent, buildOccupiedSet, buildPortalLookup, buildTunnelCellSet, buildTunnelOccupiedSet, createInitialGameState, startPlaying, stepsFor, tickGame } from '@/utils/gameEngine'
+import { chooseCpuDirection } from '@/games/trap/utils/cpuAi'
+import { applyTurnIntent, buildOccupiedSet, buildPortalLookup, createInitialGameState, startPlaying, stepsFor, tickGame } from '@/games/trap/utils/gameEngine'
+
+// The seat colors (pack.ts's seatColors): blue for player 1, red for player 2
+const P1 = '#2196f3'
+const P2 = '#f44336'
 
 function rng(seed) {
   return () => {
@@ -49,14 +53,14 @@ function rng(seed) {
 // which suits a wide board.
 export function playRound(width, height, cell, seed) {
   const random = rng(seed)
-  let s = startPlaying(createInitialGameState(width, height, 'sideBySide', { 1: DEFAULT_P1_COLOR, 2: DEFAULT_P2_COLOR }, cell, false))
+  let s = startPlaying(createInitialGameState(width, height, 'sideBySide', { 1: P1, 2: P2 }, cell, false))
   const states = [s]
   while (s.phase === 'playing' && states.length < 2000) {
+    const portals = buildPortalLookup(s.portals)
     for (const seat of [1, 2]) {
       const player = s.players[seat]
-      const tunnelCellSet = buildTunnelCellSet(s.tunnels)
-      const occupied = buildOccupiedSet(s.players, s.obstacles, tunnelCellSet)
-      const direction = chooseCpuDirection({ player, grid: s.grid, occupied, difficulty: 'normal', random, ownSteps: stepsFor(player.effects), pickups: s.pickups, heldPowerup: player.heldPowerup, portals: buildPortalLookup(s.portals), tunnelCellSet, tunnelOccupied: buildTunnelOccupiedSet(s.players, tunnelCellSet, seat) })
+      const occupied = buildOccupiedSet(s.players, s.obstacles, s.overpass)
+      const direction = chooseCpuDirection({ player, grid: s.grid, occupied, difficulty: 'normal', random, ownSteps: stepsFor(player.effects), pickups: s.pickups, heldPowerup: player.heldPowerup, portals, overpass: s.overpass })
       s = applyTurnIntent(s, seat, direction)
     }
     s = tickGame(s, undefined, 1, [], random)
@@ -90,8 +94,8 @@ function pickFrame(states, { cell, safe }) {
   return best
 }
 
-// GameBoard.tsx's trail: a 0.85-cell stroke through the cell centers, round caps and joins, then the head, a filled
-// 0.95-cell circle with a white ring. The glow under it is the hero title trails' (HeroTitleTrails.tsx).
+// GameBoard.tsx's trail: a 0.85-cell stroke through the cell centers, round caps and joins, then the head (RiderHead's
+// classic skin), a filled 0.95-cell circle with a white ring and a thin black line outside it. The glow under it is the hero title trails' (HeroTitleTrails.tsx).
 function trailSvg(player, cell) {
   const pts = player.trail.map((c) => `${(c.x + 0.5) * cell},${(c.y + 0.5) * cell}`)
   const head = player.trail.at(-1)
@@ -104,7 +108,8 @@ function trailSvg(player, cell) {
     <polyline points="${pts.join(' ')}" fill="none" stroke="${player.color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="${cx}" cy="${cy}" r="${r * 1.6}" fill="${player.color}" opacity="0.5" filter="url(#glow)"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="${player.color}"/>
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ffffff" stroke-width="${cell * 0.12}"/>`
+    <circle cx="${cx}" cy="${cy}" r="${r + cell * 0.095}" fill="none" stroke="#000000" stroke-width="${cell * 0.12}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r - cell * 0.05}" fill="none" stroke="#ffffff" stroke-width="${cell * 0.18}"/>`
 }
 
 function headerPage(state) {
@@ -136,11 +141,21 @@ html,body { margin:0; background:#000; }
 .phone img { width:100%; height:100%; border-radius:70px; display:block; }
 </style></head><body><div class="page">
   <div class="copy">
-    <div class="title"><span class="p1">Light</span> <span class="p2">Cycle</span><br>Duels</div>
-    <div class="sub">Two players, one phone.<br>Or take on the CPU.</div>
+    <div class="title"><span class="p1">Four</span> <span class="p2">Duel</span><br>Games</div>
+    <div class="sub">Trap, Turf, Tag and Snake.<br>Two players, one phone.</div>
   </div>
   <div class="phone"><img src="${capture}"></div>
 </div></body></html>`
+}
+
+// Google Play's feature graphic (1024 x 500, no words): the header's round, cropped to Play's shape around the middle
+// of Apple's safe area, where both heads are.
+function featurePage(state) {
+  const { width, height, cell, safe } = HEADER
+  const cropH = height
+  const cropW = Math.round((cropH * 1024) / 500)
+  const x0 = Math.round((safe.x0 + safe.x1) / 2 - cropW / 2)
+  return headerPage(state).replace(`width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"`, `width="1024" height="500" viewBox="${x0} 0 ${cropW} ${cropH}"`).replace('<rect width=', `<rect x="${x0}" width=`)
 }
 
 function render(page, kind, out) {
@@ -160,6 +175,8 @@ try {
   if (!pick) throw new Error('No round put both heads in the safe area with enough trail')
   console.log(`header: seed ${pick.seed}, tick ${pick.state.tick}, ${pick.length} trail cells`)
   render(headerPage(pick.state), 'header', path.join(OUT_DIR, 'header.png'))
+  fs.mkdirSync(path.join(OUT_DIR, 'google-play'), { recursive: true })
+  render(featurePage(pick.state), 'feature', path.join(OUT_DIR, 'google-play', 'feature-graphic.png'))
   if (fs.existsSync(CAPTURE)) render(searchPage(), 'search', path.join(OUT_DIR, 'search.png'))
   else console.log(`search: skipped, no capture at ${path.relative(ROOT, CAPTURE)} yet`)
 } finally {

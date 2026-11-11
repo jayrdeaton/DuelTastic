@@ -2,6 +2,12 @@
   "font": "../node_modules/@expo-google-fonts/orbitron/700Bold/Orbitron_700Bold.ttf",
   "out": "screenshots",
   "raw": "screenshots/raw",
+  "devices": [
+    "iphone",
+    "iphone-medium",
+    "ipad",
+    "android"
+  ],
   "background": [
     "#0b1820",
     "#000000"
@@ -26,55 +32,79 @@
       "device": "ipad"
     },
     {
-      "name": "02-cpu",
+      "name": "01-duel",
+      "title": "Two Players, One Phone",
+      "sub": "Face to face, each in your own half",
+      "device": "android",
+      "alt": "Trap played face to face: two riders' light trails filling the board, one player at each end of the phone"
+    },
+    {
+      "name": "02-home",
+      "title": "Four Duel Games",
+      "sub": "Trap, Turf, Tag and Snake",
+      "device": "iphone"
+    },
+    {
+      "name": "02-home",
+      "title": "Four Duel Games",
+      "sub": "Trap, Turf, Tag and Snake",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "02-home",
+      "title": "Four Duel Games",
+      "sub": "Trap, Turf, Tag and Snake",
+      "device": "ipad"
+    },
+    {
+      "name": "03-turf",
+      "title": "Claim the Most Ground",
+      "sub": "Loop out, then cut their trail",
+      "alt": "Turf against the CPU: each rider's colored ground spreading over the board, a trail looping out from it"
+    },
+    {
+      "name": "04-tag",
+      "title": "Tag, You're It",
+      "sub": "Catch them, then run",
+      "device": "iphone"
+    },
+    {
+      "name": "04-tag",
+      "title": "Tag, You're It",
+      "sub": "Catch them, then run",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "04-tag",
+      "title": "Tag, You're It",
+      "sub": "Catch them, then run",
+      "alt": "Tag against the CPU: the rider who is It glowing as it chases the other between pillars",
+      "device": "android"
+    },
+    {
+      "name": "05-snake",
+      "title": "The Arcade Classic",
+      "sub": "Or play alone for a high score",
+      "device": "iphone"
+    },
+    {
+      "name": "05-snake",
+      "title": "The Arcade Classic",
+      "sub": "Or play alone for a high score",
+      "device": "iphone-medium"
+    },
+    {
+      "name": "06-cpu",
       "title": "Take On the CPU",
-      "sub": "From Drone up to Mainframe"
-    },
-    {
-      "name": "03-win",
-      "title": "Last Cycle Riding Wins",
-      "sub": "Walls and every trail are deadly"
-    },
-    {
-      "name": "04-powerups",
-      "title": "Six Powerups",
-      "sub": "Turn on any of them, or none",
-      "device": "iphone"
-    },
-    {
-      "name": "04-powerups",
-      "title": "Six Powerups",
-      "sub": "Turn on any of them, or none",
-      "device": "iphone-medium"
-    },
-    {
-      "name": "05-arenas",
-      "title": "Five Arenas",
-      "sub": "Plus Wrap Edges and Full Screen",
-      "device": "iphone"
-    },
-    {
-      "name": "05-arenas",
-      "title": "Five Arenas",
-      "sub": "Plus Wrap Edges and Full Screen",
-      "device": "iphone-medium"
-    },
-    {
-      "name": "06-profiles",
-      "title": "A Profile for Every Player",
-      "sub": "Each with its own name and color",
-      "device": "iphone"
-    },
-    {
-      "name": "06-profiles",
-      "title": "A Profile for Every Player",
-      "sub": "Each with its own name and color",
-      "device": "iphone-medium"
+      "sub": "From Drone up to Mainframe",
+      "alt": "Trap against the hardest CPU, Mainframe, on the Portals arena"
     },
     {
       "name": "07-stats",
-      "title": "Stats and Achievements",
-      "sub": "For every player and color"
+      "title": "123 Achievements",
+      "sub": "Stats for every player",
+      "alt": "The stats screen: a player's record, rankings and unlocked achievements"
     }
-  ]
+  ],
+  "_note": "Tag and Snake skip the iPad (too small to read on the 13-inch board). Android leaves out Home (Android's wider monospace cuts three blurbs off with an ellipsis) and Snake (the heads came apart from the bodies on the loaded emulator); add them back once both are fixed or checked on a device. alt is Play's alt text (140 at most)."
 }

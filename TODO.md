@@ -6,6 +6,16 @@ Open fixes from the 2026-10-15 review of the 2026-10-08 fleet audit. Line number
 
 Nothing open: the 2026-10-15 live checks passed and keep-awake is in (see CLAUDE.md).
 
+## Found while shooting the store screenshots (2026-11-11)
+
+On the shared `Pixel_9` emulator (Android 16), under heavy load; none checked on an Android device yet:
+
+1. **Home's blurbs are cut off on Android.** Trap's, Tag's and Snake's end in an ellipsis ("Box the other rider i…"): Android's monospace runs wider than iOS's and Home's rows (`@tastic/shell`) clamp the blurb to two lines. Shorter blurbs, a third line, or a smaller size on Android. Android's store set leaves Home out until then.
+2. **The Android splash clips the art.** Android 12's splash shows the image inside a round mask, which cuts the trails' right-hand corners. An Android splash image with more room around the art (the adaptive icon's foreground fits the mask).
+3. **Snake's heads came apart from their bodies** on the emulator (drawn elsewhere, or missing), and its countdown took over a minute while Trap's took about fifteen seconds. Likely the loaded emulator's UI thread falling behind, but check on a device. Android's store set leaves Snake out until then.
+4. **Pillars show seams** between their cells on Android (each cell drawn as its own square), where iOS draws them solid.
+5. **The Stats tab's Everyone totals** count both seats of every two-player round, so Wins plus Losses run past Played (51 and 30 from 61). Per-seat counting is deliberate, but it reads as a mistake out of context: worth a word or a different split.
+
 ## After launch
 
 1. ✅ **Android hardware back and web browser back skip "Quit Match?"** (audit F093). Fixed 2026-10-26 with a route-level back block (`usePreventRemove`) that sends a back through Quit Match?. That block also stopped Quit's own navigation, so Quit Match?'s and Paused's Quit did nothing once a round had been played; fixed 2026-11-06 (CLAUDE.md, "Quit, Tunnels and Turf's CPU").
