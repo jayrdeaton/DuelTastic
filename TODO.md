@@ -22,9 +22,9 @@ Deferred to ship SDK 58 the same day:
 - **React Native 0.88 strict types.** `@infinitetoken/tsconfig` 0.6 resolves React Native 0.88's legacy types, and React Native drops them after 0.88. This app's own code is already clean under the strict types (checked 2026-10-16 with `customConditions: ["react-native"]` only); the errors it sees are all in package source it type-checks (`@tastic/hud` 15, `@tastic/split-screen` 6, `@rific/auto-paper` 3, `@tastic/profile` 3, `@tastic/core` 1, `@rific/updater` 1). Fix those packages first (their TODO.md files), then drop the deferral.
 - ✅ **Web tab title in the static HTML.** Done 2026-11-11 (CLAUDE.md, "Search and link previews"): every route exports `generateMetadata()`, so each exported page has its title, description, canonical link and link preview, and draws its own title for after hydration. Left: `@tastic/shell`'s `Fonts.tsx` still renders `<Head>` with the app's name, which each page's own title overrides; drop it in the shell once every pack draws its own.
 
-## Store ignores back to the root .gitignore (2026-10-19)
+## ✅ Store ignores back to the root .gitignore (2026-10-19)
 
-`store/.gitignore` holds `screenshots/` and `seed/seed.json` only because the root `.gitignore` is part of the EAS fingerprint (`ios/` and `android/` are gitignored, so it decides what's generated): adding them there changed the runtime version and would have cut OTA updates off from build 1.1.3 (28). Move them back, and delete `store/.gitignore`, in the same change as the next native change that bumps the fingerprint anyway (a native dependency, a config plugin, an `app.json` native field). Check with `eas fingerprint:compare --build-id <id>` that the fingerprint was already changing before adding this to it.
+Done 2026-11-11, with the Android adaptive icon and blocked permissions in `app.json`, a native change that moves the fingerprint anyway (and DuelTastic has no build out yet): `/store/screenshots/` and `/store/seed/seed.json` are in the root `.gitignore`, and `store/.gitignore` is gone.
 
 ## Move the shell into @tastic/shell (plan, 2026-10-25)
 

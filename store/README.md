@@ -1,10 +1,10 @@
 # App Store
 
-Everything the iOS listing needs. The text lives in `store.config.json` (repo root), which `eas metadata:push` sends to App Store Connect. The rest is set by hand in App Store Connect once and carries over to later versions.
+Everything the iOS listing needs. Google Play's checklist is `store/google-play.md`. The text lives in `store.config.json` (repo root), which `eas metadata:push` sends to App Store Connect. The rest is set by hand in App Store Connect once and carries over to later versions.
 
 ## Pushed by EAS Metadata (`store.config.json`)
 
-Title, subtitle, promotional text, description, keywords, marketing/support/privacy URLs, copyright, categories (Games > Action, Casual) and the age rating answers (all None, so 4+).
+Title, subtitle, promotional text, description, keywords, marketing/support/privacy URLs, copyright and categories (Games > Action, Casual). Not the age rating: see Age rating under "Set by hand" (removed from `store.config.json` 2026-11-11).
 
 ```bash
 eas metadata:lint
@@ -63,7 +63,16 @@ Upload in the version's Product Page Information > Header and Search Results (He
 
 ## Set by hand in App Store Connect
 
-**App Privacy:** "No, we don't collect data from this app" (Data Not Collected). Nothing leaves the device except the Expo update check, which carries no personal data (the app version, platform and a random installation ID used to serve the right update), and there is no tracking, so no App Tracking Transparency prompt either. This matches the privacy policy at https://games.infinitetoken.com/privacy. Revisit it if analytics, crash reporting, ads or accounts are ever added.
+**App Privacy** (Jay, 2026-11-11, following Expo's store privacy guide, https://docs.expo.dev/eas-update/store-privacy-declarations/, and matching Google Play's Data safety in `store/google-play.md`): "Yes, we collect data from this app", two types, both from the over-the-air update check (expo-updates to Expo's EAS Update), and nothing the player makes (profiles, settings, stats) ever leaves the device:
+
+| Data type | Purposes | Linked to the user | Tracking |
+| --- | --- | --- | --- |
+| Identifiers, Device ID | App Functionality, Analytics | No | No |
+| Diagnostics, Crash Data | App Functionality | No | No |
+
+The Device ID is the random client ID expo-updates makes at install and sends with every update check; the crash data is the IDs of updates that failed to launch and the launch error, sent back with the next check. The privacy policy at https://games.infinitetoken.com/privacy already describes the check and its random installation ID. There's no tracking, so no App Tracking Transparency prompt. Revisit it if analytics, crash reporting, ads or accounts are ever added.
+
+**Age rating** (by hand until eas-cli can send it): Apple has required an answer to its Social Media question since September 2026, and eas-cli 27.7.2's metadata schema has no `socialMedia` field, so a push with `advisory` updates everything else and then fails ("You must provide a value for the attribute 'socialMedia'"). It's out of `store.config.json`; answer it in App Store Connect (App Information, Age Rating). Every content question None: no cartoon, fantasy or realistic violence (riders crash into walls and trails; nothing is hurt), no horror, mature themes, profanity, substances, sexual content, medical or wellness topics, contests or simulated gambling. No gambling, loot boxes, ads, messaging or chat, user-generated content, social media, unrestricted web access, parental controls or age assurance. Not made for kids (no Kids category). The result is 4+. Put `advisory` back once eas-cli's schema has `socialMedia`.
 
 **App Review Information:** sign-in not required. Contact: name, email and phone (the phone stays out of `store.config.json`, which is public). The same notes go in TestFlight's Test Information (Beta App Review Information) for the first build tested outside the team. Notes (rewritten 2026-11-08 for the OS turning tablets and the opponent button):
 

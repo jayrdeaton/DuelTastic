@@ -51,3 +51,7 @@ yarn-error.*
 
 # vercel
 .vercel
+
+# store screenshots (build output) and the generated seed
+/store/screenshots/
+/store/seed/seed.json
