@@ -29,6 +29,14 @@ describe("every board's shared pieces", () => {
     expect(board).not.toMatch(/MysteryPickup|ObstacleRect|RoundedRect|addCircle/)
   })
 
+  // Snake has its own board (its snakes, food and boxes are its own), but its arena blocks are the
+  // pack's: a square per cell at 0.85 showed seams on Android until 2026-11-11.
+  it('Snake draws its arena blocks with the shared ArenaBlocks, not a square per cell', () => {
+    const board = readFileSync(join(__dirname, '..', 'games', 'snake', 'components', 'SnakeBoardCanvas.tsx'), 'utf8')
+    expect(board).toMatch(/<ArenaBlocks\b/)
+    expect(board).not.toMatch(/ObstacleRect/)
+  })
+
   // Turf's trail and Tag's tail are see-through, and were the cells behind the head plus a line on to
   // it, which doubled up into a bright patch just behind the head (and Tag's back end dropped a cell
   // every step) until 2026-11-05. Each is one path now, built from the gliding head.

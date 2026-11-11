@@ -18,7 +18,7 @@
 import { getColorRoles, useAutoPaperTheme } from '@rific/auto-paper'
 import { Canvas, Circle, Group, Path, Rect, Skia, type SkPath } from '@shopify/react-native-skia'
 import { cellToPixel } from '@tastic/grid'
-import { MysteryPickup, ObstacleRect } from '@tastic/sprites/shapes'
+import { MysteryPickup } from '@tastic/sprites/shapes'
 import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { StyleSheet } from 'react-native'
 import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedValue, withSequence, withTiming } from 'react-native-reanimated'
@@ -26,6 +26,7 @@ import { Easing, type SharedValue, useDerivedValue, useFrameCallback, useSharedV
 import { SNAKE_DEATH_FADE_BAND_CELLS, SNAKE_POWERUP_EFFECT_COLORS, SNAKE_POWERUP_PICKUP_RADIUS_RATIO, SNAKE_POWERUP_PULSE_DURATION_MS, SNAKE_POWERUP_PULSE_SCALE, SNAKE_POWERUP_SPAWN_FADE_MS, snakeDeathFadeMs } from '@/games/snake/constants/snake'
 import { useSeatSplit } from '@/games/snake/hooks/useSeatSplit'
 import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakePortal, SnakePowerupPickup, SnakeTunnel } from '@/games/snake/types'
+import { ArenaBlocks } from '@/shared/match/ArenaBlocks'
 import { Gates, useGateColors } from '@/shared/match/Gates'
 import { splitWallPath } from '@/shared/match/SplitWalls'
 import { boardStructureColor } from '@/shared/match/structureColor'
@@ -1205,21 +1206,12 @@ function GameOverFlash({ phase, grid, cellPx }: GameOverFlashProps) {
   return <Rect x={0} y={0} width={grid.cols * cellPx} height={grid.rows * cellPx} color='#FFFFFF' opacity={opacity} />
 }
 
-// Obstacles - a static filled block per cell (see utils/arenas.ts's buildArenaObstacles), the
-// 'pillars'/'gauntlet' arena variants' only visual. Purely static, unlike every other board feature
-// here - these never move or change for the life of a round, so there's nothing to animate. Renders
-// via @tastic/sprites' shared ObstacleRect (reconciled from BoxHockey/AirHockey's plain-fill Rect and
-// Trap's own fill-plus-stroke GameBoard.tsx ObstacleCell) - Snake passes no strokeColor, so this
-// renders exactly the same single opaque Rect at 0.85 opacity Snake always has, no outline added.
+// Obstacles - the 'pillars'/'gauntlet' arena variants' only visual, drawn as every game in the pack
+// draws them: the shared ArenaBlocks, one solid rounded block per pillar or wall in the arena gray.
+// Until 2026-11-11 this was a 0.85-opacity square per cell, and on Android's fractional pixel
+// densities neighboring squares overlapped at their anti-aliased edges, which showed as seams.
 function Obstacles({ obstacles, cellPx, color }: { obstacles: GridCell[]; cellPx: number; color: string }) {
-  return (
-    <>
-      {obstacles.map((cell) => {
-        const { x, y } = cellToPixel(cell, cellPx)
-        return <ObstacleRect key={`${x},${y}`} x={x} y={y} width={cellPx} height={cellPx} color={color} opacity={0.85} />
-      })}
-    </>
-  )
+  return <ArenaBlocks cells={obstacles} cellPx={cellPx} color={color} />
 }
 
 // Tunnels - Snake's own adapted 'underpass' arena (see types/index.ts's SnakeTunnel comment for how
