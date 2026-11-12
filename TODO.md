@@ -18,7 +18,7 @@ On the shared `Pixel_9` emulator (Android 16), under heavy load; none checked on
 
 ## After launch
 
-1. ✅ **Android hardware back and web browser back skip "Quit Match?"** (audit F093). Fixed 2026-10-26 with a route-level back block (`usePreventRemove`) that sends a back through Quit Match?. That block also stopped Quit's own navigation, so Quit Match?'s and Paused's Quit did nothing once a round had been played; fixed 2026-11-06 (CLAUDE.md, "Quit, Tunnels and Turf's CPU").
+1. ✅ **Android hardware back and web browser back skip "Quit Match?"** (audit F093). Fixed 2026-10-26 with a route-level back block (`usePreventRemove`) that sends a back through Quit Match?. That block also stopped Quit's own navigation, so Quit Match?'s and Paused's Quit did nothing once a round had been played; fixed 2026-11-06 (CLAUDE.md, "Quit, Tunnels and Turf's CPU"). Since 2026-11-12 the block is `@tastic/shell`'s `useBackBlock`, shared with PuckTastic (CLAUDE.md, "The back block moved to the shell") (on `@tastic/shell` ^0.9.0, released 2026-11-12).
 2. ✅ **The Update Available prompt and toasts stay portrait while the screen is turned** (audit F007). Fixed 2026-10-26 by passing live rotation to UpdateDialog and mounting root toasts in a rotated frame.
 3. ✅ **Home's hero trails keep animating under `/lobby` and `/game`** (audit F016). Fixed 2026-10-26 by gating hero-trail animation on Home focus and active app state.
 4. ✅ **The tick loop rounds every tick up to a whole frame** (audit F065). Fixed 2026-10-26 in LightCycles and Snake by switching to fixed-step accumulation with bounded catch-up and retuning speed intervals to preserve feel.

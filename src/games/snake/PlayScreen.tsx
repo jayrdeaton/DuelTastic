@@ -6,9 +6,8 @@ import { broadcastDeviceUnlocks, resultFor } from '@tastic/achievements'
 import { computeContentBounds, useBackgroundPause, useSettledWindowDimensions } from '@tastic/core'
 import { computeGridSize } from '@tastic/grid'
 import { ConfirmDialog, useQuitConfirmation } from '@tastic/hud'
-import { liveplayActions, MatchChips, safeBack, SettingsDialog, useActiveRound, useAtComputer, useProfiles } from '@tastic/shell'
+import { liveplayActions, MatchChips, safeBack, SettingsDialog, useActiveRound, useAtComputer, useBackBlock, useProfiles } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
-import { usePreventRemove } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
@@ -147,22 +146,11 @@ export default function PlayScreen() {
 
   // See localPhase's own comment above.
   const phase: GamePhase = state.phase === 'roundOver' ? 'gameOver' : localPhase
-  // The block stops every navigation off this screen while it's on, Quit's own included, so
-  // handleQuit marks the way out first and the block lets that one through with `repeat`
-  // (expo-router's way to carry on with a navigation it stopped), as the pack's useMatchControls does,
-  // turning the block off in the same handler, as expo-router asks of a `repeat`.
-  const leavingRef = useRef(false)
-  const [leaving, setLeaving] = useState(false)
-  usePreventRemove(!leaving && phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), ({ repeat }) => {
-    if (leavingRef.current) {
-      setLeaving(true)
-      repeat()
-    } else requestBack()
-  })
-  const handleQuit = useCallback(() => {
-    leavingRef.current = true
-    safeBack()
-  }, [])
+  // While Quit Match? would ask, Android's back and the browser's back open it too (audit F093):
+  // @tastic/shell's useBackBlock holds the route, as the pack's useMatchControls does, and handleQuit
+  // (Quit Match?'s and Paused's Quit) gets past the block. The same test as the getter above, read
+  // from the state that now exists.
+  const handleQuit = useBackBlock(phase !== 'gameOver' && ((state.snakes[0]?.score ?? 0) > 0 || (state.snakes[1]?.score ?? 0) > 0), requestBack)
 
   const handleBeginPlaying = useCallback(() => {
     beginPlaying()

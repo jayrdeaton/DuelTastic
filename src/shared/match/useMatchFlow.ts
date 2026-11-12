@@ -3,8 +3,7 @@ import { useVibration } from '@rific/feedback-press'
 import { useToast } from '@rific/toaster'
 import { useBackgroundPause } from '@tastic/core'
 import { useQuitConfirmation } from '@tastic/hud'
-import { liveplayActions, safeBack, useAtComputer } from '@tastic/shell'
-import { usePreventRemove } from 'expo-router'
+import { liveplayActions, safeBack, useAtComputer, useBackBlock } from '@tastic/shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import type { Action, Dispatch } from 'redux'
@@ -53,24 +52,10 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // card itself already offers the same exit path.
   const shouldConfirmBack = roundHistory.length > 0 && !matchOver && phase !== 'roundOver'
   const { confirmVisible, requestBack, cancelBack } = useQuitConfirmation(() => shouldConfirmBack, safeBack)
-  // The block stops every navigation off this screen while it's on, Quit's own included, so quit()
-  // marks the way out first and the block lets that one through with `repeat` (expo-router's way to
-  // carry on with a navigation it stopped). A system back or swipe opens Quit Match? instead. The
-  // block goes off in the same handler as `repeat`, the order expo-router documents (it warns
-  // otherwise): turned off any sooner, it can stand aside after it has stopped the navigation and no
-  // longer hand it to this callback, so Quit would do nothing again.
-  const leavingRef = useRef(false)
-  const [leaving, setLeaving] = useState(false)
-  usePreventRemove(shouldConfirmBack && !leaving, ({ repeat }) => {
-    if (leavingRef.current) {
-      setLeaving(true)
-      repeat()
-    } else requestBack()
-  })
-  const quit = useCallback(() => {
-    leavingRef.current = true
-    safeBack()
-  }, [])
+  // While it would ask, Android's back and the browser's back open Quit Match? too (audit F093).
+  // @tastic/shell's useBackBlock holds the route, and its quit() is Quit Match?'s and Paused's Quit,
+  // which gets past the block (this file had its own copy until the shell took it, 2026-11-12).
+  const quit = useBackBlock(shouldConfirmBack, requestBack)
   // Leaving the app mid-match latches a pause that only the Paused dialog's Resume clears (see
   // @tastic/core's useBackgroundPause). Skipped once the round is over, or while a dialog already
   // holds the pause.
