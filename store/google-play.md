@@ -13,6 +13,7 @@ Checked 2026-11-11 against Play Console Help, the Developer Program Policies and
 - **Shared profiles are iOS and web only:** `@tastic/profile` has no Android store (its App Group bridge is Apple's), so on Android each Tastic game keeps its own profiles. The Android description leaves out the iOS line about sharing them.
 - **The icon:** Android draws `app.json`'s adaptive icon (`android-icon-foreground.png` and `android-icon-monochrome.png` over `#050505`, made by `store/creative/android-icons.py`), so a launcher's mask never cuts the art and themed icons work.
 - **Tablets and Chromebooks:** Android 16 ignores the portrait lock on screens 600dp and wider, so a tablet turns with the OS, as the iPad does (CLAUDE.md, "The OS turns tablets").
+- **ARM only (2026-11-12):** `eas.json`'s production profile builds Android for `armeabi-v7a` and `arm64-v8a` only (`android.env.ORG_GRADLE_PROJECT_reactNativeArchitectures`). With all four architectures, Skia's native libraries ran EAS's free Android machine (4 CPUs, 16 GB) out of memory and Gradle was killed ("Gradle build daemon disappeared unexpectedly"). Every Android phone is ARM, so only x86 emulators and some Intel Chromebooks lose out. CardTastic has no Skia and builds all four. The iOS fingerprint doesn't read `eas.json`, so the iOS builds are unaffected.
 
 ## Jay's steps, in order
 
