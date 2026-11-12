@@ -83,7 +83,7 @@ The Device ID is the random client ID expo-updates makes at install and sends wi
 
 **Accessibility (optional):** Dark Interface could be claimed (the app is dark by default and follows Settings' appearance). Nothing else until each feature has been checked on a device. Apple asks per feature (VoiceOver, Larger Text, Dark Interface, Reduced Motion and so on), and a claim that doesn't hold up is worse than none.
 
-**Version release:** manual (you press Release), so it goes live together with SolitaireTastic (or whatever pack Solitaire becomes).
+**Version release:** automatic after approval (Jay, 2026-11-12: nothing to wait for; 1.0.0 submitted that day with PuckTastic and CardTastic).
 
 ## Shipping a version
 
