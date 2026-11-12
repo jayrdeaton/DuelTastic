@@ -61,14 +61,15 @@ Open source on GitHub: https://github.com/jayrdeaton/DuelTastic
 
 - **App icon:** `icon-512.png`, 512 x 512, 32-bit PNG with alpha, from `assets/images/icon-dark.png`. Google rounds its corners itself.
 - **Feature graphic:** `feature-graphic.png`, 1024 x 500, no alpha: the App Store header's real Trap round (`store/creative/build.mjs`, the app's own engine with the CPU's AI riding both seats), cropped to Play's shape around the middle, where both heads are. No words.
-- **Phone screenshots:** `store/screenshots/android/`, 1440x2560, five shots, with alt text (from `store/screenshots.json`):
+- **Phone screenshots:** `store/screenshots/android/`, 1440x2560, six shots, with alt text (from `store/screenshots.json`):
   1. Two Players, One Phone: "Trap played face to face: two riders' light trails filling the board, one player at each end of the phone"
-  2. Claim the Most Ground: "Turf against the CPU: each rider's colored ground spreading over the board, a trail looping out from it"
-  3. Tag, You're It: "Tag against the CPU: the rider who is It glowing as it chases the other between pillars"
-  4. Take On the CPU: "Trap against the hardest CPU, Mainframe, on the Portals arena"
-  5. 123 Achievements: "The stats screen: a player's record, rankings and unlocked achievements"
+  2. Four Duel Games: "DuelTastic's Home screen listing its four games: Trap, Turf, Tag and Snake"
+  3. Claim the Most Ground: "Turf against the CPU: each rider's colored ground spreading over the board, a trail looping out from it"
+  4. Tag, You're It: "Tag against the CPU: the rider who is It glowing as it chases the other between pillars"
+  5. Take On the CPU: "Trap against the hardest CPU, Mainframe, on the Portals arena"
+  6. 123 Achievements: "The stats screen: a player's record, rankings and unlocked achievements"
 
-  Home and Snake are left out for now: Home's blurbs are cut off with an ellipsis on Android (its monospace runs wider than iOS's), and on the emulator Snake's heads were drawn apart from their bodies or not at all. Add them once each is fixed or checked on a device.
+  Snake is left out for now: on the emulator, which was thrashing for memory at the time, its heads were drawn apart from their bodies or not at all. Play it on an Android phone before adding it. Home was recaptured on 2026-11-12 with `@tastic/shell` 0.8.1, which lets its blurbs wrap to three lines (two cut them off on this 411dp phone).
 
 How the screenshots were made (2026-11-11): the shared `Pixel_9` emulator (Android 16, dark, demo mode at 9:41), a local release build made `debuggable` (in the generated `android/`) so `store/seed/reseed-android.sh` could write the seed into AsyncStorage, built with the autopilot (`store/seed/autopilot.patch`, `EXPO_PUBLIC_STORE_AUTOPILOT=1`, reverted after). Taps went in as `adb shell input swipe x y x y 150` (a bare tap often didn't register on the loaded emulator), and the rounds were caught as bursts of `adb exec-out screencap` stills (`screenrecord` failed about half the time). Composed with the app-store-prep skill's `compose.mjs`, Orbitron Bold, the same captions as the iPhone.
 

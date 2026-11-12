@@ -57,6 +57,13 @@
       "device": "ipad"
     },
     {
+      "name": "02-home",
+      "title": "Four Duel Games",
+      "sub": "Trap, Turf, Tag and Snake",
+      "device": "android",
+      "alt": "DuelTastic's Home screen listing its four games: Trap, Turf, Tag and Snake"
+    },
+    {
       "name": "03-turf",
       "title": "Claim the Most Ground",
       "sub": "Loop out, then cut their trail",
@@ -106,5 +113,5 @@
       "alt": "The stats screen: a player's record, rankings and unlocked achievements"
     }
   ],
-  "_note": "Tag and Snake skip the iPad (too small to read on the 13-inch board). Android leaves out Home (Android's wider monospace cuts three blurbs off with an ellipsis) and Snake (the heads came apart from the bodies on the loaded emulator); add them back once both are fixed or checked on a device. alt is Play's alt text (140 at most)."
+  "_note": "Tag and Snake skip the iPad (too small to read on the 13-inch board). Android leaves out Snake until it's been played on an Android phone (on the thrashing emulator its heads came apart from the bodies). alt is Play's alt text (140 at most)."
 }
