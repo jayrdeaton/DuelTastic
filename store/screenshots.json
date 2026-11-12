@@ -85,6 +85,12 @@
       "name": "04-tag",
       "title": "Tag, You're It",
       "sub": "Catch them, then run",
+      "device": "ipad"
+    },
+    {
+      "name": "04-tag",
+      "title": "Tag, You're It",
+      "sub": "Catch them, then run",
       "alt": "Tag against the CPU: the rider who is It glowing as it chases the other between pillars",
       "device": "android"
     },
@@ -99,6 +105,12 @@
       "title": "The Arcade Classic",
       "sub": "Or play alone for a high score",
       "device": "iphone-medium"
+    },
+    {
+      "name": "05-snake",
+      "title": "The Arcade Classic",
+      "sub": "Or play alone for a high score",
+      "device": "ipad"
     },
     {
       "name": "06-cpu",

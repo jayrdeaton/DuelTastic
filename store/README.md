@@ -24,7 +24,7 @@ Limits: title 30, subtitle 30, promotional text 170 (editable any time without r
 
 ## Screenshots (uploaded by hand)
 
-DuelTastic's set (2026-11-11), seven captioned shots on the iPhone, five on the iPad (Tag and Snake are too small to read on the 13" board) and six on Android (`store/google-play.md`), the same captions on every device (`store/screenshots.json`, Orbitron Bold over a dark background, LightCycles' look): 01-duel (Trap face to face), 02-home, 03-turf, 04-tag and 05-snake (each against the CPU), 06-cpu (Trap against Mainframe on Portals) and 07-stats. Play's alt text for each is in the captions file too.
+DuelTastic's set (2026-11-11), seven captioned shots on the iPhone and the iPad and six on Android (Tag and Snake joined the iPad set on 2026-11-12, captured at the Large grid: their riders and snakes are small on the 13" board, and Jay kept them) (`store/google-play.md`), the same captions on every device (`store/screenshots.json`, Orbitron Bold over a dark background, LightCycles' look): 01-duel (Trap face to face), 02-home, 03-turf, 04-tag and 05-snake (each against the CPU), 06-cpu (Trap against Mainframe on Portals) and 07-stats. Play's alt text for each is in the captions file too.
 
 `store/screenshots/iphone-medium/` (1206x2622) goes in the "iPhone 6.1" or 6.3" displays" slot, which App Store Connect requires (a 1320x2868 file there fails with "File dimensions are invalid"). `store/screenshots/iphone/` (1320x2868) is for the optional 6.9" slot, and `store/screenshots/ipad/` (2064x2752) for the 13" iPad slot, which is required because `ios.supportsTablet` is on. `store/screenshots/android/` (1440x2560) is Google Play's phone set (`store/google-play.md`). The order in the folder is the upload order; the first three are what search results show. The PNGs and the raw captures (`store/screenshots/raw/<device>/`) are build output, gitignored.
 
@@ -63,6 +63,8 @@ The Device ID is the random client ID expo-updates makes at install and sends wi
 
 > No account or sign-in is needed, and there are no in-app purchases or ads.
 >
+> DuelTastic replaces two apps submitted earlier, LightCyclesTastic and SnakeTastic, which App Review declined under guideline 4.3 as too similar to our other apps. Following that feedback, both are now games in this one app (LightCycles is now Trap), alongside two new games, Turf and Tag.
+>
 > DuelTastic is four games in one app (Trap, Turf, Tag and Snake): pick one from the Home screen. Each game opens on a setup screen, where the button beside player 1's own picks the opponent: the CPU at one of three levels, Solo in Snake to play alone, or Player for two people on one device.
 >
 > Two Player is played face to face: each player swipes in their own half of the screen to steer, so the top half's buttons and text are upside down on purpose.
@@ -73,7 +75,7 @@ The Device ID is the random client ID expo-updates makes at install and sends wi
 >
 > Each game shows its How to Play cards the first time it's opened. Tap Skip to go straight to it. The button at the end of each game's row on the Home screen shows them again.
 
-**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21). Snake's in `src/games/snake/sounds/` came over from Snake's repo with it: confirm they're his too before answering.
+**Content Rights:** the app contains third-party content, and the rights are covered: the Orbitron font (SIL Open Font License) and Material Design Icons (Apache 2.0, via @expo/vector-icons). The sound effects in `assets/sounds/` are Jay's own: he generated them himself (confirmed 2026-10-21). Snake's in `src/games/snake/sounds/` are his too: the six files are byte-identical to the retro set in `~/Developer/Sounds/soft/`, the set he generated for the Tastic games (checked 2026-11-12).
 
 **Pricing and Availability:** Free, all territories except China mainland (needs a government game approval number) and Vietnam (needs a game license from a local company), the same as SolitaireTastic. Apple Silicon Mac and Apple Vision Pro availability unticked: the app has never been run on either.
 
