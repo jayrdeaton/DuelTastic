@@ -78,7 +78,7 @@ How the screenshots were made (2026-11-11): the shared `Pixel_9` emulator (Andro
 
 - **App category:** Game, Arcade.
 - **Tags:** up to five from Play's list, picked in the console (Arcade, Local Multiplayer, Casual, Offline and Snake fit, if offered).
-- **Contact details:** the account's developer email (public), website https://games.infinitetoken.com/dueltastic, no phone.
+- **Contact details:** email support@infinitetoken.com (public, as PuckTastic's; 2026-11-12), website https://games.infinitetoken.com/dueltastic, no phone.
 
 ## App content
 
