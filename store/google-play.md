@@ -60,7 +60,7 @@ Open source on GitHub: https://github.com/jayrdeaton/DuelTastic
 **Graphics** (in `store/screenshots/google-play/`, gitignored):
 
 - **App icon:** `icon-512.png`, 512 x 512, 32-bit PNG with alpha, from `assets/images/icon-dark.png`. Google rounds its corners itself.
-- **Feature graphic:** `feature-graphic.png`, 1024 x 500, no alpha: the App Store header's real Trap round (`store/creative/build.mjs`, the app's own engine with the CPU's AI riding both seats), cropped to Play's shape around the middle, where both heads are. No words.
+- **Feature graphic:** `feature-graphic.png`, 1024 x 500, no alpha: a real Trap round on the App Store header's whole 21:9 (`store/creative/build.mjs`, the app's own engine with the CPU's AI riding both seats; the App Store header itself plays its round on a smaller board since 2026-11-12, so no device cuts it), cropped to Play's shape around the middle, where both heads are. No words.
 - **Phone screenshots:** `store/screenshots/android/`, 1440x2560, six shots, with alt text (from `store/screenshots.json`):
   1. Two Players, One Phone: "Trap played face to face: two riders' light trails filling the board, one player at each end of the phone"
   2. Four Duel Games: "DuelTastic's Home screen listing its four games: Trap, Turf, Tag and Snake"

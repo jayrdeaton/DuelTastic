@@ -30,6 +30,13 @@ const WORK = fs.mkdtempSync(path.join(HERE, '.build-'))
 
 // Header: 3840 x 1646 at CELL px a cell. The safe area (x 1097-2743, y 493-1154) is where both heads must end up.
 const HEADER = { width: 3840, height: 1646, cell: 48, safe: { x0: 1097, x1: 2743, y0: 493, y1: 1154 } }
+// The header's round is played on a board inside what every device shows of the header in App Store Connect's Device
+// Preview (about x 330-3510 on the iPhone, y 190-1290 on iPad landscape; the app-store-prep skill's references/apple.md),
+// a cell clear of each side, so no trail is cut off by any crop. The first header's round filled the whole 21:9, and its
+// trails ran off the bottom on iPad landscape and off the sides on the iPhone (2026-11-12). Google Play shows all of its
+// feature graphic, so that keeps the full-bleed round (FULL).
+const BOARD = { x: 384, y: 260, width: 3072, height: 960 }
+const FULL = { x: 0, y: 0, width: HEADER.width, height: HEADER.height }
 const SEED = Number(process.env.SEED ?? 0)
 
 const ENTRY = `
@@ -76,10 +83,12 @@ function bundle() {
 }
 
 // The frame to draw: both riders alive, both heads inside the safe area, and as much trail on the board as possible.
-function pickFrame(states, { cell, safe }) {
+// A cell's spot on the header is its spot on the board plus the board's corner (`board.x`, `board.y`). `balance` is how
+// evenly the trail covers the board's left and right halves (1 when even), for choosing between rounds.
+function pickFrame(states, { cell, safe }, board) {
   const inSafe = (c) => {
-    const x = (c.x + 0.5) * cell
-    const y = (c.y + 0.5) * cell
+    const x = board.x + (c.x + 0.5) * cell
+    const y = board.y + (c.y + 0.5) * cell
     return x > safe.x0 + cell && x < safe.x1 - cell && y > safe.y0 + cell && y < safe.y1 - cell
   }
   let best = null
@@ -90,6 +99,11 @@ function pickFrame(states, { cell, safe }) {
     if (!heads.every(inSafe)) continue
     const length = p[1].trail.length + p[2].trail.length
     if (!best || length > best.length) best = { state: s, length }
+  }
+  if (best) {
+    const cols = board.width / cell
+    const left = [1, 2].reduce((n, seat) => n + best.state.players[seat].trail.filter((c) => c.x < cols / 2).length, 0)
+    best.balance = 1 - Math.abs(2 * left - best.length) / best.length
   }
   return best
 }
@@ -112,32 +126,39 @@ function trailSvg(player, cell) {
     <circle cx="${cx}" cy="${cy}" r="${r - cell * 0.05}" fill="none" stroke="#ffffff" stroke-width="${cell * 0.18}"/>`
 }
 
-function headerPage(state) {
+function headerPage(state, board) {
   const { width, height, cell } = HEADER
+  const trails = `${trailSvg(state.players[1], cell)}
+  ${trailSvg(state.players[2], cell)}`
   return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000}</style></head><body>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <defs><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${cell * 0.6}"/></filter></defs>
   <rect width="${width}" height="${height}" fill="#000"/>
-  ${trailSvg(state.players[1], cell)}
-  ${trailSvg(state.players[2], cell)}
+  ${board.x || board.y ? `<g transform="translate(${board.x} ${board.y})">${trails}</g>` : trails}
 </svg></body></html>`
 }
 
-// Search results: the headline on the left, the duel capture in a phone on the right, both inside the safe area
-// (x 836-3004, y 765-1795). The board color behind it all is the app's own black.
+// Search results: the headline on the left, the duel capture in a phone on the right. The iPhone's search card shows
+// only the top of the image (the full width, y 0 to about 1500, in App Store Connect's Device Preview, measured for
+// SlingScan), so the words are centered in that strip and the phone is sized and placed so the whole round, from the
+// red trails at the top to the blue head (the capture's y 2250), sits above y 1440. Inside Apple's template safe area
+// (y 765-1795) the subline fell below the strip. The iPad shows all of it. The board color behind it all is the app's
+// own black.
+const STRIP = 1500
 function searchPage() {
   const capture = pathToFileURL(CAPTURE).href
-  const phoneH = 1180
+  const phoneTop = 80
+  const phoneH = Math.round(2868 * 0.6)
   const phoneW = Math.round((phoneH * 1320) / 2868)
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: Orbitron; src: url('${pathToFileURL(FONT).href}'); }
 html,body { margin:0; background:#000; }
-.page { position:relative; width:3840px; height:2560px; overflow:hidden; background: radial-gradient(ellipse at 70% 50%, #0b1a24 0%, #000 65%); }
-.copy { position:absolute; left:900px; top:765px; width:1300px; height:1030px; display:flex; flex-direction:column; justify-content:center; }
+.page { position:relative; width:3840px; height:2560px; overflow:hidden; background: radial-gradient(ellipse at 66% 37%, #0b1a24 0%, #000 65%); }
+.copy { position:absolute; left:900px; top:0; width:1300px; height:${STRIP}px; display:flex; flex-direction:column; justify-content:center; }
 .title { font-family: Orbitron; font-size:150px; line-height:1.12; color:#fff; letter-spacing:2px; }
 .title .p1 { color:#2196f3; } .title .p2 { color:#f44336; }
 .sub { margin-top:60px; font-family: Orbitron; font-size:72px; line-height:1.3; color:#9aa4ad; }
-.phone { position:absolute; left:${2540 - phoneW / 2}px; top:${1280 - phoneH / 2}px; width:${phoneW}px; height:${phoneH}px; border-radius:80px; background:#1c1c1e; padding:12px; box-sizing:border-box; box-shadow: 0 0 120px rgba(33,150,243,0.25), 0 0 120px rgba(244,67,54,0.15); }
+.phone { position:absolute; left:${2540 - phoneW / 2}px; top:${phoneTop}px; width:${phoneW}px; height:${phoneH}px; border-radius:80px; background:#1c1c1e; padding:12px; box-sizing:border-box; box-shadow: 0 0 120px rgba(33,150,243,0.25), 0 0 120px rgba(244,67,54,0.15); }
 .phone img { width:100%; height:100%; border-radius:70px; display:block; }
 </style></head><body><div class="page">
   <div class="copy">
@@ -148,14 +169,14 @@ html,body { margin:0; background:#000; }
 </div></body></html>`
 }
 
-// Google Play's feature graphic (1024 x 500, no words): the header's round, cropped to Play's shape around the middle
-// of Apple's safe area, where both heads are.
+// Google Play's feature graphic (1024 x 500, no words): the full-bleed round (FULL), cropped to Play's shape around the
+// middle of Apple's safe area, where both heads are.
 function featurePage(state) {
   const { width, height, cell, safe } = HEADER
   const cropH = height
   const cropW = Math.round((cropH * 1024) / 500)
   const x0 = Math.round((safe.x0 + safe.x1) / 2 - cropW / 2)
-  return headerPage(state).replace(`width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"`, `width="1024" height="500" viewBox="${x0} 0 ${cropW} ${cropH}"`).replace('<rect width=', `<rect x="${x0}" width=`)
+  return headerPage(state, FULL).replace(`width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"`, `width="1024" height="500" viewBox="${x0} 0 ${cropW} ${cropH}"`).replace('<rect width=', `<rect x="${x0}" width=`)
 }
 
 function render(page, kind, out) {
@@ -167,16 +188,26 @@ function render(page, kind, out) {
 try {
   fs.mkdirSync(OUT_DIR, { recursive: true })
   const { playRound } = await bundle()
-  let pick = null
-  for (let seed = SEED; seed < SEED + 200 && !pick; seed++) {
-    const found = pickFrame(playRound(HEADER.width, HEADER.height, HEADER.cell, seed), HEADER)
-    if (found && found.length > 140) pick = { ...found, seed }
+  // The feature graphic's round is the first seed with enough trail (the 2026-11-11 pick). The header's is the best of
+  // 200 seeds by trail times balance, so the round fills the board rather than one end of it.
+  const pickRound = (name, board, { best = false } = {}) => {
+    let pick = null
+    for (let seed = SEED; seed < SEED + 200; seed++) {
+      const found = pickFrame(playRound(board.width, board.height, HEADER.cell, seed), HEADER, board)
+      if (!found || found.length <= 140) continue
+      if (!best) {
+        pick = { ...found, seed }
+        break
+      }
+      if (!pick || found.length * found.balance > pick.length * pick.balance) pick = { ...found, seed }
+    }
+    if (!pick) throw new Error(`No ${name} round put both heads in the safe area with enough trail`)
+    console.log(`${name}: seed ${pick.seed}, tick ${pick.state.tick}, ${pick.length} trail cells, balance ${pick.balance.toFixed(2)}`)
+    return pick
   }
-  if (!pick) throw new Error('No round put both heads in the safe area with enough trail')
-  console.log(`header: seed ${pick.seed}, tick ${pick.state.tick}, ${pick.length} trail cells`)
-  render(headerPage(pick.state), 'header', path.join(OUT_DIR, 'header.png'))
+  render(headerPage(pickRound('header', BOARD, { best: true }).state, BOARD), 'header', path.join(OUT_DIR, 'header.png'))
   fs.mkdirSync(path.join(OUT_DIR, 'google-play'), { recursive: true })
-  render(featurePage(pick.state), 'feature', path.join(OUT_DIR, 'google-play', 'feature-graphic.png'))
+  render(featurePage(pickRound('feature', FULL).state), 'feature', path.join(OUT_DIR, 'google-play', 'feature-graphic.png'))
   if (fs.existsSync(CAPTURE)) render(searchPage(), 'search', path.join(OUT_DIR, 'search.png'))
   else console.log(`search: skipped, no capture at ${path.relative(ROOT, CAPTURE)} yet`)
 } finally {
