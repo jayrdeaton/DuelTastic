@@ -2,20 +2,46 @@ import { cellToPixel, type GridCell } from '@tastic/grid'
 import { useCallback, useEffect, useRef } from 'react'
 import { type FrameInfo, useFrameCallback, useSharedValue } from 'react-native-reanimated'
 
-// How far behind its steps a rider's head is drawn, in ms of its own riding: a little more than a
-// frame at 60Hz, so a step that lands a frame late (the round loops step on frames) finds the head
-// still on its way rather than standing on its last cell.
+// How far behind its steps a rider's head is drawn, in ms of its own riding, at the least: a little
+// more than a frame at 60Hz, so a step that lands a frame late (the round loops step on frames) finds
+// the head still on its way rather than standing on its last cell.
 export const GLIDE_LAG_MS = 24
 
-// How much further behind than that a head may fall (a stalled frame, a burst of steps after one)
-// before it skips ahead along its way to GLIDE_LAG_MS behind, rather than racing to catch up.
+// The most a head is drawn behind its steps. Steps land later than a frame when the JS thread is busy
+// (a slower phone: the round's own work, React's render and a garbage collection can hold a step two
+// or three frames), so the head measures how late its steps land (Glide.jitterMs) and stays that much
+// further behind, up to this, rather than reaching its last cell and standing there until the next
+// one lands. An iPhone's steps land within a frame, so it stays at GLIDE_LAG_MS.
+export const GLIDE_MAX_LAG_MS = 80
+
+// Added to the lateness measured, so a step landing as late as the latest late one still finds the
+// head moving.
+const GLIDE_JITTER_MARGIN_MS = 8
+
+// A step later than this isn't counted as lateness: the rider stood still on purpose (frozen, dazed,
+// the match paused), or the JS thread stalled for longer than any lag would cover.
+const GLIDE_MAX_JITTER_SAMPLE_MS = 120
+
+// How quickly the lateness measured wears off once steps land on time again, so one slow moment (a
+// garbage collection) doesn't hold the head further back for the rest of the round.
+const GLIDE_JITTER_HALF_LIFE_MS = 3000
+
+// How much further behind than its lag a head may fall (a stalled frame, a burst of steps after one)
+// before it skips ahead along its way to its lag behind, rather than racing to catch up.
 const GLIDE_MAX_BEHIND_MS = 100
 
 // The most whole cells a head can be drawn behind the cell its rider last stood on before its latest
 // step, at `msPerCell`: for a board that draws the trail's front live up to the head (Trap's),
 // which has to start at least that far back or the settled trail would run ahead of the head.
 export function glideCellsBehind(msPerCell: number): number {
-  return Math.ceil((GLIDE_LAG_MS + GLIDE_MAX_BEHIND_MS) / msPerCell) + 1
+  return Math.ceil((GLIDE_MAX_LAG_MS + GLIDE_MAX_BEHIND_MS) / msPerCell) + 1
+}
+
+// How far behind its latest step the head aims to be: GLIDE_LAG_MS, or more while its steps have
+// been landing late.
+export function glideLagMs(jitterMs: number): number {
+  'worklet'
+  return Math.min(GLIDE_MAX_LAG_MS, Math.max(GLIDE_LAG_MS, jitterMs + GLIDE_JITTER_MARGIN_MS))
 }
 
 // How quickly a head's pace corrects toward GLIDE_LAG_MS behind its steps: this many ms off changes
@@ -53,6 +79,9 @@ export interface Glide {
   // How long the latest step's riding takes at that pace, and how long ago it was queued.
   stepMs: number
   sinceStep: number
+  // How late its steps have landed lately, in ms past the time the step before took to ride (see
+  // GLIDE_MAX_LAG_MS), wearing off over GLIDE_JITTER_HALF_LIFE_MS.
+  jitterMs: number
   // A flight under way: where it took off and how far through it is, -1 when there's none.
   flyFromX: number
   flyFromY: number
@@ -67,7 +96,7 @@ function cellCenter(cell: GridCell, cellPx: number) {
 // A head standing at (x, y), going nowhere.
 export function restingGlide(x: number, y: number, pxPerMs: number): Glide {
   'worklet'
-  return { x, y, stops: [], pxPerMs, stepMs: 0, sinceStep: 0, flyFromX: x, flyFromY: y, flyMs: -1 }
+  return { x, y, stops: [], pxPerMs, stepMs: 0, sinceStep: 0, jitterMs: 0, flyFromX: x, flyFromY: y, flyMs: -1 }
 }
 
 // The stops for a rider's latest step: each cell it rode through since its last head, from the last
@@ -95,14 +124,19 @@ export function glideStops(lastHead: GridCell, path: readonly GridCell[], cellPx
   return { stops, stepMs: ridden * msPerCell }
 }
 
-// The head with a step's stops queued after the ones it's still on its way to.
+// The head with a step's stops queued after the ones it's still on its way to. A step landing later
+// than the one before took to ride, at the same pace, is counted toward its lateness (jitterMs); one
+// at a new pace (a Dash, Mud) or after a long wait (a freeze, a pause, a new round) isn't.
 export function queueGlide(glide: Glide, stops: readonly GlideStop[], stepMs: number, pxPerMs: number): Glide {
   'worklet'
-  return { ...glide, stops: [...glide.stops, ...stops], pxPerMs, stepMs, sinceStep: 0 }
+  const lateMs = glide.sinceStep - glide.stepMs
+  const counts = glide.stepMs > 0 && pxPerMs === glide.pxPerMs && lateMs > 0 && lateMs <= GLIDE_MAX_JITTER_SAMPLE_MS
+  const jitterMs = counts ? Math.max(glide.jitterMs, lateMs) : glide.jitterMs
+  return { ...glide, stops: [...glide.stops, ...stops], pxPerMs, stepMs, sinceStep: 0, jitterMs }
 }
 
-// The head `dt` ms on. It rides its stops at the rider's own pace, corrected a little toward
-// GLIDE_LAG_MS behind the latest step, so it moves the same distance every ms of every frame whenever
+// The head `dt` ms on. It rides its stops at the rider's own pace, corrected a little toward its lag
+// (glideLagMs) behind the latest step, so it moves the same distance every ms of every frame whenever
 // its steps land: an animation restarted each step started from where the head was drawn the frame
 // before, so the first frame of every step lost the time since that frame and moved short. A jump is
 // taken at once; a flight runs on its own clock, easing out and back in. A head that has fallen more
@@ -112,7 +146,8 @@ export function advanceGlide(glide: Glide, dt: number): Glide {
   const stops = glide.stops.slice()
   let { x, y, flyFromX, flyFromY, flyMs } = glide
   const sinceStep = glide.sinceStep + dt
-  const done = () => ({ ...glide, x, y, stops, sinceStep, flyFromX, flyFromY, flyMs })
+  const jitterMs = glide.jitterMs * Math.pow(0.5, dt / GLIDE_JITTER_HALF_LIFE_MS)
+  const done = () => ({ ...glide, x, y, stops, sinceStep, jitterMs, flyFromX, flyFromY, flyMs })
 
   while (stops.length > 0 && stops[0].kind !== 'ride') {
     const stop = stops[0]
@@ -152,7 +187,7 @@ export function advanceGlide(glide: Glide, dt: number): Glide {
   }
   // Both as of the start of the frame: the head moves this frame's ms below.
   const leftMs = left / glide.pxPerMs
-  const behind = leftMs - Math.max(0, GLIDE_LAG_MS + glide.stepMs - glide.sinceStep)
+  const behind = leftMs - Math.max(0, glideLagMs(glide.jitterMs) + glide.stepMs - glide.sinceStep)
   const skipMs = behind > GLIDE_MAX_BEHIND_MS ? behind : 0
   const pace = skipMs > 0 ? 1 : Math.min(MAX_PACE, Math.max(MIN_PACE, 1 + behind / GLIDE_CORRECTION_MS))
   let travel = (skipMs + pace * dt) * glide.pxPerMs

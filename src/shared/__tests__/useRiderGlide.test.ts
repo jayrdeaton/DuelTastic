@@ -1,6 +1,6 @@
 import type { GridCell } from '@tastic/grid'
 
-import { advanceGlide, type Glide, GLIDE_LAG_MS, glideCellsBehind, glideStops, queueGlide, restingGlide } from '@/shared/match/useRiderGlide'
+import { advanceGlide, type Glide, GLIDE_LAG_MS, GLIDE_MAX_LAG_MS, glideCellsBehind, glideLagMs, glideStops, queueGlide, restingGlide } from '@/shared/match/useRiderGlide'
 
 // 10px cells, so cell (x, y)'s center is (10x + 5, 10y + 5), and 100ms a cell.
 const CELL = 10
@@ -88,6 +88,39 @@ function rideStraight(msPerCell: number, frameMs: number, frames: number) {
   return { moved, behindMs }
 }
 
+// The same ride with the JS thread busy, as on a slower phone: each step lands up to
+// `maxDelayFrames` frames after the frame it's due on (never before the step ahead of it, so steps
+// held back land together), from a seeded random so a run is the same every time.
+function rideLate(msPerCell: number, frameMs: number, maxDelayFrames: number, frames: number) {
+  let seed = 3
+  const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  let last = { x: 0, y: 2000 }
+  let glide = at(last)
+  let due = 0
+  let lastArrival = 0
+  let queued = last
+  const pending: { frame: number; cell: GridCell }[] = []
+  const moved: number[] = []
+  for (let f = 0; f < frames; f++) {
+    const before = glide
+    glide = advanceGlide(glide, frameMs)
+    moved.push(Math.hypot(glide.x - before.x, glide.y - before.y))
+    due += frameMs
+    while (due >= msPerCell) {
+      due -= msPerCell
+      lastArrival = Math.max(lastArrival, f + Math.floor(random() * (maxDelayFrames + 1)))
+      queued = { x: 0, y: queued.y - 1 }
+      pending.push({ frame: lastArrival, cell: queued })
+    }
+    while (pending.length > 0 && pending[0].frame <= f) {
+      const { cell } = pending.shift()!
+      glide = step(glide, last, [last, cell], msPerCell)
+      last = cell
+    }
+  }
+  return { moved, glide }
+}
+
 describe('advanceGlide', () => {
   // Trap at 8px cells on a desktop, on a phone, Turf, and Tag's It, at 60Hz and 120Hz.
   describe.each([
@@ -117,6 +150,59 @@ describe('advanceGlide', () => {
         expect(ms).toBeLessThan(msPerCell + GLIDE_LAG_MS + frameMs + 5)
       }
     })
+  })
+
+  describe.each([
+    [67, 1],
+    [67, 2],
+    [67, 3],
+    [90, 3]
+  ])('a rider at %dms a cell whose steps land up to %d frames late', (msPerCell, maxDelayFrames) => {
+    const frameMs = 1000 / 60
+    const { moved, glide } = rideLate(msPerCell, frameMs, maxDelayFrames, Math.round(10000 / frameMs))
+    const settled = moved.slice(Math.round(1500 / frameMs))
+    const even = (CELL * frameMs) / msPerCell
+
+    it('never stands still, and seldom slows', () => {
+      // With a fixed GLIDE_LAG_MS it stood still on frames from 3 frames late, and dropped below a
+      // half of its speed from 2.
+      for (const d of settled) {
+        expect(d).toBeGreaterThan(even * 0.5)
+        expect(d).toBeLessThan(even * 1.15)
+      }
+      expect(settled.filter((d) => d < even * 0.9).length / settled.length).toBeLessThan(0.05)
+    })
+
+    it('stays further behind its steps to cover them, within GLIDE_MAX_LAG_MS', () => {
+      expect(glide.jitterMs).toBeGreaterThan(0)
+      expect(glideLagMs(glide.jitterMs)).toBeLessThanOrEqual(GLIDE_MAX_LAG_MS)
+    })
+  })
+
+  it('stays GLIDE_LAG_MS behind while its steps land on time', () => {
+    const { glide } = rideLate(67, 1000 / 60, 0, 600)
+    expect(glideLagMs(glide.jitterMs)).toBe(GLIDE_LAG_MS)
+  })
+
+  it('doesn’t count a long wait, or a step at a new pace, as lateness', () => {
+    // A rider frozen for a second and a half, then riding on.
+    let glide = step(at({ x: 0, y: 10 }), { x: 0, y: 10 }, [{ x: 0, y: 9 }])
+    for (let f = 0; f < 90; f++) glide = advanceGlide(glide, 1000 / 60)
+    glide = step(glide, { x: 0, y: 9 }, [{ x: 0, y: 8 }])
+    expect(glide.jitterMs).toBe(0)
+    // Mud halves its pace: its next step lands twice as long after the one before.
+    for (let f = 0; f < 12; f++) glide = advanceGlide(glide, 1000 / 60)
+    glide = step(glide, { x: 0, y: 8 }, [{ x: 0, y: 7 }], 2 * MS)
+    expect(glide.jitterMs).toBe(0)
+  })
+
+  it('lets the lateness wear off once its steps land on time again', () => {
+    let glide = step(at({ x: 0, y: 10 }), { x: 0, y: 10 }, [{ x: 0, y: 9 }])
+    glide = advanceGlide(glide, MS + 40)
+    glide = step(glide, { x: 0, y: 9 }, [{ x: 0, y: 8 }])
+    expect(glide.jitterMs).toBeCloseTo(40)
+    for (let f = 0; f < 360; f++) glide = advanceGlide(glide, 1000 / 60)
+    expect(glide.jitterMs).toBeLessThan(10)
   })
 
   it('goes round a corner rather than across it', () => {
@@ -166,7 +252,7 @@ describe('advanceGlide', () => {
     }
     glide = advanceGlide(glide, 16)
     const behind = (glide.y - center(last.x, last.y).y) / (CELL / MS)
-    expect(behind).toBeLessThanOrEqual(MS + GLIDE_LAG_MS)
+    expect(behind).toBeLessThanOrEqual(MS + GLIDE_MAX_LAG_MS)
     // Never further back than a board drawing its trail's front live allows for.
     expect(behind / MS).toBeLessThan(glideCellsBehind(MS))
   })

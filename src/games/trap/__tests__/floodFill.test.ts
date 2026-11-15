@@ -1,4 +1,8 @@
+import { ALL_DIRECTIONS, cellKey, type GridCell, type GridSize, isInBounds, stepCell, wrapCell } from '@tastic/grid'
+
+import type { Axis, Direction, Overpass } from '@/games/trap/types'
 import { countReachableCells, distanceToNearestTarget } from '@/games/trap/utils/floodFill'
+import { axisOf, isOnOverpass, stepKey } from '@/games/trap/utils/overpass'
 
 describe('countReachableCells', () => {
   it('counts every cell in a fully open grid', () => {
@@ -133,5 +137,84 @@ describe('distanceToNearestTarget', () => {
     const occupied = new Set(['2,0'])
     expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']))).toBeNull()
     expect(distanceToNearestTarget({ x: 0, y: 0 }, grid, occupied, new Set(['4,0']), Infinity, new Map(), true)).toBe(1)
+  })
+})
+
+// The string-keyed searches both used to be, kept as the reference the index-walked ones have to
+// agree with: a key, a Set lookup and a queue entry for every neighbor.
+const ALONG: Record<Axis, Direction[]> = { h: ['left', 'right'], v: ['up', 'down'] }
+function referenceSearch(start: GridCell, grid: GridSize, occupied: ReadonlySet<string>, targets: ReadonlySet<string> | null, maxCount: number, portals: ReadonlyMap<string, GridCell>, wrapEdges: boolean, overpass: Overpass | null, startAxis: Axis): { count: number; distance: number | null } {
+  const startKey = stepKey(start, startAxis, overpass)
+  if (!isInBounds(start, grid) || occupied.has(startKey)) return { count: 0, distance: null }
+  if (targets?.has(cellKey(start))) return { count: 1, distance: 0 }
+  const visited = new Set<string>([startKey])
+  const queue: { cell: GridCell; axis: Axis; dist: number }[] = [{ cell: start, axis: startAxis, dist: 0 }]
+  let head = 0
+  while (head < queue.length && queue.length < maxCount) {
+    const { cell, axis, dist } = queue[head]
+    head++
+    for (const direction of isOnOverpass(cell, overpass) ? ALONG[axis] : ALL_DIRECTIONS) {
+      let next = stepCell(cell, direction)
+      if (wrapEdges && !isInBounds(next, grid)) next = wrapCell(next, grid)
+      if (portals.has(cellKey(next))) next = portals.get(cellKey(next))!
+      const nextAxis = axisOf(direction)
+      const key = stepKey(next, nextAxis, overpass)
+      if (visited.has(key) || !isInBounds(next, grid) || occupied.has(key)) continue
+      if (targets?.has(cellKey(next))) return { count: queue.length, distance: dist + 1 }
+      visited.add(key)
+      queue.push({ cell: next, axis: nextAxis, dist: dist + 1 })
+    }
+  }
+  return { count: queue.length, distance: null }
+}
+
+// Small deterministic PRNG so a failure reproduces.
+function seededRandom(seed: number): () => number {
+  let state = seed
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296
+    return state / 4294967296
+  }
+}
+
+describe('the index-walked searches', () => {
+  it('agree with the string-keyed reference on random boards', () => {
+    const random = seededRandom(7)
+    const pick = (n: number) => Math.floor(random() * n)
+    for (let trial = 0; trial < 600; trial++) {
+      const grid = { cols: 3 + pick(24), rows: 3 + pick(24) }
+      const cell = (): GridCell => ({ x: pick(grid.cols), y: pick(grid.rows) })
+      // An Overpass on some boards: a crossing a few cells across, keyed by level like a trail on it.
+      let overpass: Overpass | null = null
+      if (random() < 0.4 && grid.cols > 5 && grid.rows > 5) {
+        const left = 1 + pick(grid.cols - 4)
+        const top = 1 + pick(grid.rows - 4)
+        overpass = { left, top, right: left + 1 + pick(2), bottom: top + 1 + pick(2), over: random() < 0.5 ? 'h' : 'v' }
+      }
+      const keyFor = (c: GridCell) => stepKey(c, random() < 0.5 ? 'h' : 'v', overpass)
+      const occupied = new Set<string>()
+      const density = random() * 0.45
+      for (let i = 0; i < grid.cols * grid.rows * density; i++) occupied.add(keyFor(cell()))
+      // A plain key on the crossing, and one off the board: neither is ever looked up.
+      if (overpass) occupied.add(cellKey({ x: overpass.left, y: overpass.top }))
+      occupied.add('-1,0')
+      const portals = new Map<string, GridCell>()
+      if (random() < 0.5) {
+        const a = { x: 1 + pick(grid.cols - 2), y: 1 + pick(grid.rows - 2) }
+        const b = { x: 1 + pick(grid.cols - 2), y: 1 + pick(grid.rows - 2) }
+        if (cellKey(a) !== cellKey(b) && !isOnOverpass(a, overpass) && !isOnOverpass(b, overpass)) {
+          portals.set(cellKey(a), b)
+          portals.set(cellKey(b), a)
+        }
+      }
+      const targets = new Set<string>()
+      for (let i = 0; i < 1 + pick(3); i++) targets.add(cellKey(cell()))
+      const start = random() < 0.05 ? { x: -1, y: pick(grid.rows) } : cell()
+      const maxCount = random() < 0.4 ? 1 + pick(grid.cols * grid.rows) : Infinity
+      const wrapEdges = random() < 0.4
+      const startAxis: Axis = random() < 0.5 ? 'h' : 'v'
+      expect(countReachableCells(start, grid, occupied, maxCount, portals, wrapEdges, overpass, startAxis)).toBe(referenceSearch(start, grid, occupied, null, maxCount, portals, wrapEdges, overpass, startAxis).count)
+      expect(distanceToNearestTarget(start, grid, occupied, targets, maxCount, portals, wrapEdges, overpass, startAxis)).toBe(referenceSearch(start, grid, occupied, targets, maxCount, portals, wrapEdges, overpass, startAxis).distance)
+    }
   })
 })
