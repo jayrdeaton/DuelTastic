@@ -1,9 +1,9 @@
 // The App Store's product page header and search results art (iOS 27's creative assets, see store/README.md). The
 // header is a real round, never a lookalike: the app's own engine (createInitialGameState, tickGame) on a 21:9 board,
 // with the CPU's own AI (chooseCpuDirection, at Bot) riding both cycles, drawn the way GameBoard.tsx draws a trail (0.85-cell
-// stroke, round caps and joins, a 0.95-cell head with a white ring) in the default player colors. The search art puts
-// the 01-duel screenshot capture (store/screenshots/raw/iphone/01-duel.png) in a phone beside a headline in the app's
-// display font (Orbitron Bold).
+// stroke, round caps and joins, a 0.95-cell head with a white ring) in the default player colors. The search art fans
+// the four games' screenshot captures (store/screenshots/raw/iphone/01-duel, 03-turf, 04-tag, 05-snake) out in phones
+// under a headline in the app's display font (Orbitron Bold).
 //
 //   node store/creative/build.mjs
 //
@@ -24,7 +24,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(HERE, '../..')
 const OUT_DIR = path.join(ROOT, 'store', 'screenshots')
 const CREATIVE = process.env.CREATIVE ?? path.join(os.homedir(), '.claude/skills/app-store-prep/scripts/creative.mjs')
-const CAPTURE = path.join(OUT_DIR, 'raw', 'iphone', '01-duel.png')
 const FONT = path.join(ROOT, 'node_modules/@expo-google-fonts/orbitron/700Bold/Orbitron_700Bold.ttf')
 const WORK = fs.mkdtempSync(path.join(HERE, '.build-'))
 
@@ -138,34 +137,30 @@ function headerPage(state, board) {
 </svg></body></html>`
 }
 
-// Search results: the headline on the left, the duel capture in a phone on the right. The iPhone's search card shows
-// only the top of the image (the full width, y 0 to about 1500, in App Store Connect's Device Preview, measured for
-// SlingScan), so the words are centered in that strip and the phone is sized and placed so the whole round, from the
-// red trails at the top to the blue head (the capture's y 2250), sits above y 1440. Inside Apple's template safe area
-// (y 765-1795) the subline fell below the strip. The iPad shows all of it. The board color behind it all is the app's
-// own black.
-const STRIP = 1500
+// Search results, 3840 x 2560: state the obvious, and fill the card. iOS 27's search card shows the whole 3:2 on iPhone
+// as on iPad, about 390pt wide on a phone (Jay's App Store screenshots, 2026-11-13; App Store Connect's preview cropping
+// it to the top 1500 was the preview's bug), so ten pixels here are about a point there. The first version, kept to
+// that strip and the template's middle (x 836-3004), read as mostly empty with a 15pt headline and one game. Now the
+// headline runs across the top at 250px, and under it the four games fan out in phones running off the bottom, in the
+// order Home lists them: Trap, Turf, Tag and Snake. The board color behind it all is the app's black, lit by the two
+// riders' colors. Phones from the app-store-prep skill's phone.mjs.
+const { fan } = await import(pathToFileURL(path.join(path.dirname(CREATIVE), 'phone.mjs')).href)
+const SHOTS = ['01-duel', '03-turf', '04-tag', '05-snake'].map((name) => path.join(OUT_DIR, 'raw', 'iphone', `${name}.png`))
 function searchPage() {
-  const capture = pathToFileURL(CAPTURE).href
-  const phoneTop = 80
-  const phoneH = Math.round(2868 * 0.6)
-  const phoneW = Math.round((phoneH * 1320) / 2868)
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: Orbitron; src: url('${pathToFileURL(FONT).href}'); }
 html,body { margin:0; background:#000; }
-.page { position:relative; width:3840px; height:2560px; overflow:hidden; background: radial-gradient(ellipse at 66% 37%, #0b1a24 0%, #000 65%); }
-.copy { position:absolute; left:900px; top:0; width:1300px; height:${STRIP}px; display:flex; flex-direction:column; justify-content:center; }
-.title { font-family: Orbitron; font-size:150px; line-height:1.12; color:#fff; letter-spacing:2px; }
+.page { position:relative; width:3840px; height:2560px; overflow:hidden; background: radial-gradient(ellipse 1500px 1300px at 1100px 1700px, rgba(33,150,243,0.22) 0%, rgba(33,150,243,0) 100%), radial-gradient(ellipse 1500px 1300px at 2740px 1700px, rgba(244,67,54,0.2) 0%, rgba(244,67,54,0) 100%), radial-gradient(ellipse at 50% 30%, #0b1a24 0%, #000 70%); }
+.copy { position:absolute; left:0; right:0; top:170px; display:flex; flex-direction:column; align-items:center; text-align:center; }
+.title { font-family: Orbitron; font-size:250px; line-height:1.08; color:#fff; letter-spacing:2px; white-space:nowrap; }
 .title .p1 { color:#2196f3; } .title .p2 { color:#f44336; }
-.sub { margin-top:60px; font-family: Orbitron; font-size:72px; line-height:1.3; color:#9aa4ad; }
-.phone { position:absolute; left:${2540 - phoneW / 2}px; top:${phoneTop}px; width:${phoneW}px; height:${phoneH}px; border-radius:80px; background:#1c1c1e; padding:12px; box-sizing:border-box; box-shadow: 0 0 120px rgba(33,150,243,0.25), 0 0 120px rgba(244,67,54,0.15); }
-.phone img { width:100%; height:100%; border-radius:70px; display:block; }
+.sub { margin-top:50px; font-family: Orbitron; font-size:96px; line-height:1.3; color:#aab4bd; white-space:nowrap; }
 </style></head><body><div class="page">
   <div class="copy">
-    <div class="title"><span class="p1">Four</span> <span class="p2">Duel</span><br>Games</div>
+    <div class="title"><span class="p1">Four</span> <span class="p2">Duel</span> Games</div>
     <div class="sub">Trap, Turf, Tag and Snake.<br>Two players, one phone.</div>
   </div>
-  <div class="phone"><img src="${capture}"></div>
+  ${fan(SHOTS, { top: 980, scale: 0.66, gap: -80, turn: 3, drop: 90, ring: 'rgba(255,255,255,0.18)', shadow: '0 40px 140px rgba(0,0,0,0.8)' })}
 </div></body></html>`
 }
 
@@ -208,8 +203,9 @@ try {
   render(headerPage(pickRound('header', BOARD, { best: true }).state, BOARD), 'header', path.join(OUT_DIR, 'header.png'))
   fs.mkdirSync(path.join(OUT_DIR, 'google-play'), { recursive: true })
   render(featurePage(pickRound('feature', FULL).state), 'feature', path.join(OUT_DIR, 'google-play', 'feature-graphic.png'))
-  if (fs.existsSync(CAPTURE)) render(searchPage(), 'search', path.join(OUT_DIR, 'search.png'))
-  else console.log(`search: skipped, no capture at ${path.relative(ROOT, CAPTURE)} yet`)
+  const missing = SHOTS.find((shot) => !fs.existsSync(shot))
+  if (!missing) render(searchPage(), 'search', path.join(OUT_DIR, 'search.png'))
+  else console.log(`search: skipped, no capture at ${path.relative(ROOT, missing)} yet`)
 } finally {
   fs.rmSync(WORK, { recursive: true, force: true })
 }
