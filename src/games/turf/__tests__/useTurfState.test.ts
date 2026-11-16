@@ -37,6 +37,36 @@ describe('useTurfState', () => {
     expect(result.current.state.players[1].head).toEqual(start)
   })
 
+  it('takes a quick double swipe on the next two ticks without rendering for either', async () => {
+    let renders = 0
+    const { result } = await renderHook(() => {
+      renders += 1
+      return useTurfState(PARAMS)
+    })
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    const start = result.current.state.players[1]
+    const across = start.direction === 'up' || start.direction === 'down' ? 'left' : 'up'
+    const back = ({ up: 'down', down: 'up', left: 'right', right: 'left' } as const)[start.direction]
+    const rendersBefore = renders
+    await act(async () => {
+      result.current.turn(1, across)
+      result.current.turn(1, back)
+    })
+    expect(renders).toBe(rendersBefore)
+    await act(async () => {
+      jest.advanceTimersByTime(300)
+    })
+    // A U-turn: across one cell, then back the way it came. Without the second slot it would still be
+    // riding across.
+    const p1 = result.current.state.players[1]
+    expect(p1.alive).toBe(true)
+    expect(p1.direction).toBe(back)
+    if (across === 'left') expect(p1.head.x).toBe(start.head.x - 1)
+    else expect(p1.head.y).toBe(start.head.y - 1)
+  })
+
   it('steps at its interval once playing', async () => {
     const { result } = await renderHook(() => useTurfState(PARAMS))
     const startY = result.current.state.players[1].head.y

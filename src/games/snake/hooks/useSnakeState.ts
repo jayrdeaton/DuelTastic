@@ -81,8 +81,16 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
   // In short: `turn` is a dumb, always-available choke point; *wiring* is what makes a given seat
   // human-controlled, CPU-controlled, or unreachable in a given mode, and that wiring lives in the
   // screen/TouchInputLayer layer, not here. `activate` below shares this exact same shape.
+  //
+  // A swipe waits in turnsRef for the next tick, which queues it (applySnakeTurnIntent) before
+  // stepping, rather than going through setState itself: nothing on screen shows a queued turn, and
+  // rendering the game for each swipe kept a slower phone's JS thread busy right when the next tick
+  // was due (Trap's useGameState does the same). Emptied when the tick loop starts: the input layers
+  // are off during the countdown and a pause, so anything still here then landed as a game ended or
+  // a pause began.
+  const turnsRef = useRef<{ snakeId: SnakeId; direction: Direction }[]>([])
   const turn = useCallback((snakeId: SnakeId, direction: Direction) => {
-    setState((s) => applySnakeTurnIntent(s, snakeId, direction))
+    turnsRef.current.push({ snakeId, direction })
   }, [])
 
   // Human powerup activation (tap/activate-key - see TouchInputLayer.tsx/KeyboardInputLayer.tsx) -
@@ -123,6 +131,7 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
     let active = true
     lastTickRef.current = null
     accumulatorRef.current = 0
+    turnsRef.current = []
 
     const loop = (timestamp: number) => {
       if (!active) return
@@ -135,7 +144,12 @@ export function useSnakeState(grid: GridSize, mode: SnakeMode, settings: SnakeRo
       let catchUpTicks = 0
       while (accumulatorRef.current >= tickIntervalMs && catchUpTicks < MAX_CATCH_UP_TICKS) {
         accumulatorRef.current -= tickIntervalMs
-        setState((s) => {
+        // Taken out here, not inside the updater (which React may run twice): a catch-up frame's
+        // first tick gets every swipe since the last one, in the order they were made.
+        const turns = turnsRef.current
+        turnsRef.current = []
+        setState((before) => {
+          const s = turns.reduce((acc, t) => applySnakeTurnIntent(acc, t.snakeId, t.direction), before)
           // Mirrors Trap's useGameState.ts inline CPU-turn-injection splice exactly: for
           // vsCpu, the CPU's activation decision (if any powerups are even enabled) is made and
           // applied FIRST, immediately before its move for THIS tick is decided and queued - same

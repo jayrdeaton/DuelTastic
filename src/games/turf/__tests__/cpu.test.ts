@@ -206,11 +206,14 @@ function playWithPowerups(levels: Record<TurfSeat, TurfCpuDifficulty>, rules: Tu
   const plans: Record<TurfSeat, TurfCpuPlan | null> = { 1: null, 2: null }
   let selfCrashes = 0
   let used = 0
+  // Turns the CPU left waiting behind another: its decision should always replace what it queued.
+  let queuedBehind = 0
   for (let i = 0; i < ticks && s.phase === 'playing'; i++) {
     for (const seat of [1, 2] as const) {
       const held = s.players[seat].held
       const cpu = applyTurfCpu(s, seat, levels[seat], plans[seat], rules, random)
       if (held && !cpu.state.players[seat].held) used++
+      if (cpu.state.players[seat].queuedDirection !== null) queuedBehind++
       plans[seat] = cpu.plan
       s = cpu.state
     }
@@ -224,7 +227,7 @@ function playWithPowerups(levels: Record<TurfSeat, TurfCpuDifficulty>, rules: Tu
       if (p.effects.reverse === null && (!isInBounds(at, s.grid) || own)) selfCrashes++
     }
   }
-  return { selfCrashes, used }
+  return { selfCrashes, used, queuedBehind }
 }
 
 describe('the CPU with every powerup on', () => {
@@ -239,6 +242,7 @@ describe('the CPU with every powerup on', () => {
         ] as Record<TurfSeat, TurfCpuDifficulty>[]) {
           const result = playWithPowerups(levels, rules, seed, 800)
           expect(result.selfCrashes).toBe(0)
+          expect(result.queuedBehind).toBe(0)
           used += result.used
         }
       }

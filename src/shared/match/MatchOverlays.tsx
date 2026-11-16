@@ -1,6 +1,7 @@
 import { ConfirmDialog } from '@tastic/hud'
 import { MatchChips, SettingsDialog, useAtComputer } from '@tastic/shell'
 import { needsSharedNeutralZone } from '@tastic/split-screen'
+import { memo } from 'react'
 
 import MatchOverDialog from '@/shared/match/MatchOverDialog'
 import OnboardingOverlay from '@/shared/match/OnboardingOverlay'
@@ -57,7 +58,11 @@ export interface MatchOverlaysProps {
 //
 // Nothing here is turned for the device's hold any more: the OS turns the interface (a phone stays
 // portrait), so the only turn left is the far seat's 180 in 2 Player face to face (seatToastSpots).
-export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume, onConfirmQuit }: MatchOverlaysProps) {
+//
+// Memoized: none of its props change while a round is ridden (each round screen hands it callbacks
+// that never change, useMatchControls' openSettings and closeSettings among them), so a tick, which
+// re-renders the round screen, skips everything here (the hidden dialogs' hooks included).
+export const MatchOverlays = memo(function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen, onSettingsDismiss, onSettingsOpen, confirmVisible, cancelBack, humanPlayers, colors, profileNames, roundHistory, onOnboardingComplete, showResultDialog, matchOver, controlsVisible, outcome, gameMode, rematchReady, onRequestRematch, onQuit, onExit, onBackPress, backgroundPaused, onResume, onConfirmQuit }: MatchOverlaysProps) {
   // The one live read here: only a computer seats 2 Player side by side (the shell's useAtComputer);
   // on a phone or tablet, natively or in its browser, the board's own face-to-face split decides.
   const sideBySide = useAtComputer()
@@ -119,4 +124,4 @@ export function MatchOverlays({ phase, orientationMode, p1OnRight, settingsOpen,
       {seatSpots && <SeatToasters spots={seatSpots} />}
     </>
   )
-}
+})

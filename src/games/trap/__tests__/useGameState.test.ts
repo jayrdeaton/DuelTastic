@@ -64,6 +64,34 @@ describe('useGameState', () => {
     expect(result.current.state.players[2].trail.length).toBeGreaterThan(1)
   })
 
+  it('takes a quick double swipe on the next two ticks without rendering the round for either', async () => {
+    let renders = 0
+    const { result } = await renderHook(() => {
+      renders += 1
+      return useGameState(2000, 2000, SETTINGS, COLORS, ORIENTATION, P1_ON_RIGHT)
+    })
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    const start = result.current.state.players[1].direction
+    const across = start === 'up' || start === 'down' ? 'left' : 'up'
+    const back = ({ up: 'down', down: 'up', left: 'right', right: 'left' } as const)[start]
+
+    const rendersBefore = renders
+    await act(async () => {
+      result.current.turn(1, across)
+      result.current.turn(1, back)
+    })
+    expect(renders).toBe(rendersBefore)
+
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    // A U-turn: only both swipes, one a tick, can leave it heading back the way it came.
+    expect(result.current.state.players[1].alive).toBe(true)
+    expect(result.current.state.players[1].direction).toBe(back)
+  })
+
   it('keeps a laggy trailSpeedTier shorter than the classic tier over the same run', async () => {
     // A much bigger board than the other tests here use - this one needs enough runway that
     // neither player reaches a wall (ending the round) before there's been time to both clear

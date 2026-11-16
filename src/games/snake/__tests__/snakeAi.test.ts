@@ -7,7 +7,7 @@ import { buildSnakeOccupiedSet } from '@/games/snake/utils/snakeEngine'
 // Fills in the fields every fixture needs regardless of what it's actually testing, so each call
 // site only has to spell out what's relevant to it - same pattern as snakeEngine.test.ts.
 function snake(overrides: Partial<SnakeEntity> & Pick<SnakeEntity, 'id' | 'body' | 'direction'>): SnakeEntity {
-  return { pendingDirection: null, alive: true, score: 0, color: '#000', crashCell: null, heldPowerup: null, effects: { speed: null, control: null, shield: null }, peakLength: overrides.body.length, ...overrides }
+  return { pendingDirection: null, queuedDirection: null, alive: true, score: 0, color: '#000', crashCell: null, heldPowerup: null, effects: { speed: null, control: null, shield: null }, peakLength: overrides.body.length, ...overrides }
 }
 
 const OPEN_GRID = { cols: 20, rows: 20 }
@@ -110,6 +110,25 @@ describe('chooseCpuSnakeDirection - Scales', () => {
     const occupied = new Set(['3,0', '4,0'])
     expect(chooseCpuSnakeDirection({ snake: cpu(null), grid, occupied, difficulty: 'hard', food })).toBe('left')
     expect(chooseCpuSnakeDirection({ snake: cpu(null), grid, occupied, difficulty: 'hard', food, shielded: true })).toBe('right')
+  })
+
+  it("replaces a turn it queued on an earlier frozen tick with this tick's decision, rather than queuing behind it", () => {
+    // Frozen heading left on a 1-row strip with 'up' (off the board) left over: straight on is the
+    // only way with room, and that decision replaces the old 'up' rather than queuing behind it.
+    const frozen = snake({
+      id: 2,
+      direction: 'left',
+      body: [
+        { x: 7, y: 0 },
+        { x: 6, y: 0 },
+        { x: 5, y: 0 }
+      ],
+      pendingDirection: 'up',
+      effects: { speed: { type: 'coldblood', multiplier: 0, expiresAtTick: 50 }, control: null, shield: null }
+    })
+    const next = applyCpuSnakeTurn(makeState({ grid: { cols: 10, rows: 1 }, food: { x: 0, y: 0 }, snakes: [frozen] }), 2, 'hard')
+    expect(next.snakes[0].pendingDirection).toBeNull()
+    expect(next.snakes[0].queuedDirection).toBeNull()
   })
 
   it('applyCpuSnakeTurn steers through only while Scales covers the next tick', () => {

@@ -65,7 +65,14 @@ export function useTagState({ width, height, cellPx, intervalMs, layout, p1OnRig
     [commit]
   )
 
-  const turn = useCallback((seat: TagSeat, direction: Direction) => update((round) => applyTagTurn(round, seat, direction)), [update])
+  // A swipe goes into the round as played without a render: nothing on screen shows a queued turn,
+  // the frame loop reads liveRef, and the next step it takes commits it along with everything else.
+  // Rendering the round for each swipe kept a slower phone's JS thread busy right when a step was due.
+  const turn = useCallback((seat: TagSeat, direction: Direction) => {
+    const live = liveRef.current
+    const round = applyTagTurn(live.round, seat, direction)
+    if (round !== live.round) liveRef.current = { ...live, round }
+  }, [])
 
   // A person using their powerup (a tap or their powerup key).
   const activate = useCallback((seat: TagSeat) => update((round) => applyTagActivation(round, seat)), [update])

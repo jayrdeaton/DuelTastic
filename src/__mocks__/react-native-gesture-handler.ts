@@ -10,6 +10,7 @@ const makeGesture = () => {
   g.minDistance = () => g
   g.hitSlop = () => g
   g.enabled = () => g
+  g.maxDistance = () => g
   return g
 }
 
@@ -20,6 +21,7 @@ module.exports = {
   Gesture: {
     Pinch: () => makeGesture(),
     Pan: () => makeGesture(),
+    Tap: () => makeGesture(),
     Simultaneous: (..._gs: any[]) => makeGesture(),
     Race: (..._gs: any[]) => makeGesture(),
     Sequence: (..._gs: any[]) => makeGesture()

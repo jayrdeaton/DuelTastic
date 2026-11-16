@@ -64,3 +64,39 @@ describe('useSnakeState paused', () => {
     expect(result.current.state.tick).toBe(tickAtPause)
   })
 })
+
+describe('useSnakeState turns', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('takes a quick double swipe on the next two ticks without rendering for either', async () => {
+    let renders = 0
+    const { result } = await renderHook(() => {
+      renders += 1
+      return useSnakeState(GRID, 'solo', SETTINGS, 'normal', undefined, 1, undefined, false)
+    })
+    await act(async () => {
+      result.current.beginPlaying()
+    })
+    const start = result.current.state.snakes[0].direction
+    const across = start === 'up' || start === 'down' ? 'left' : 'up'
+    const back = ({ up: 'down', down: 'up', left: 'right', right: 'left' } as const)[start]
+    const rendersBefore = renders
+    await act(async () => {
+      result.current.turn(1, across)
+      result.current.turn(1, back)
+    })
+    expect(renders).toBe(rendersBefore)
+    await act(async () => {
+      jest.advanceTimersByTime(INTERVAL * 4)
+    })
+    // A U-turn: only both swipes, one a tick, can leave it heading back the way it came.
+    expect(result.current.state.snakes[0].alive).toBe(true)
+    expect(result.current.state.snakes[0].direction).toBe(back)
+  })
+})

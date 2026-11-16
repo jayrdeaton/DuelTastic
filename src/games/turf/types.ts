@@ -61,7 +61,10 @@ export type TurfOutcome = { type: 'win'; winner: TurfSeat; reason: TurfEndReason
 export interface TurfPlayer {
   head: GridCell
   direction: Direction
+  // Its queued turns, two deep (the shared turnQueue): the one the next tick takes and one swiped
+  // after it, taken the tick after.
   pendingDirection: Direction | null
+  queuedDirection: Direction | null
   // The cells laid since leaving their own ground, oldest first, the head's cell last. Empty while the
   // rider is on their own ground.
   trail: GridCell[]

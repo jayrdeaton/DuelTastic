@@ -169,13 +169,12 @@ export default function PlayScreen() {
   // lives in the input layers there too, not here. 'up' is an arbitrary placeholder for a seat that
   // doesn't exist yet (solo's snake 2); neither input layer ever actually looks it up for a seat no
   // zone/key scheme is wired to.
-  const currentDirections: Record<SnakeId, Direction> = useMemo(
-    () => ({
-      1: state.snakes.find((s) => s.id === 1)?.direction ?? 'up',
-      2: state.snakes.find((s) => s.id === 2)?.direction ?? 'up'
-    }),
-    [state.snakes]
-  )
+  //
+  // Keyed on the two headings, not on state.snakes (a new array every tick), so the memoized input
+  // layers only re-render on a turn (see Trap's TouchInputLayer for what a re-render costs there).
+  const direction1 = state.snakes.find((s) => s.id === 1)?.direction ?? 'up'
+  const direction2 = state.snakes.find((s) => s.id === 2)?.direction ?? 'up'
+  const currentDirections: Record<SnakeId, Direction> = useMemo(() => ({ 1: direction1, 2: direction2 }), [direction1, direction2])
 
   // Vs CPU: snake 2 is never human-steered. Solo and Vs CPU both run TouchInputLayer's 'solo'
   // mode (one full-board zone that only ever reports snakeId 1, see touchMode below), and
@@ -203,16 +202,24 @@ export default function PlayScreen() {
   // activate sound and haptic for a MEANINGFUL activation (the seat actually had something held): a
   // bare tap with nothing to use is silent, matching how a no-op activation already produces no
   // visible effect.
+  //
+  // The snakes, sound and haptic are read through a ref, so handleActivate never changes during a
+  // game and the memoized input layers don't re-render every tick for it.
+  const activateRef = useRef({ snakes: state.snakes, playActivate, selection })
+  useEffect(() => {
+    activateRef.current = { snakes: state.snakes, playActivate, selection }
+  })
   const handleActivate = useCallback(
     (snakeId: SnakeId) => {
       if (mode === 'vsCpu' && snakeId !== 1) return
-      if (state.snakes.find((s) => s.id === snakeId)?.heldPowerup) {
+      const { snakes, playActivate, selection } = activateRef.current
+      if (snakes.find((s) => s.id === snakeId)?.heldPowerup) {
         playActivate()
         selection()
       }
       activate(snakeId)
     },
-    [mode, activate, state.snakes, playActivate, selection]
+    [mode, activate]
   )
 
   // Fires once per snake the instant its heldPowerup transitions from empty to held - a board-wide
@@ -233,13 +240,9 @@ export default function PlayScreen() {
   // SnakeControlEffect) - both input layers invert a mesmerized seat's resolved direction before
   // calling onTurn. `false` for a seat that doesn't exist yet (e.g. seat 2 in Solo) rather than
   // throwing on a missing lookup.
-  const controlInverted: Record<SnakeId, boolean> = useMemo(
-    () => ({
-      1: state.snakes.find((s) => s.id === 1)?.effects.control?.type === 'mesmerize',
-      2: state.snakes.find((s) => s.id === 2)?.effects.control?.type === 'mesmerize'
-    }),
-    [state.snakes]
-  )
+  const mesmerized1 = state.snakes.find((s) => s.id === 1)?.effects.control?.type === 'mesmerize'
+  const mesmerized2 = state.snakes.find((s) => s.id === 2)?.effects.control?.type === 'mesmerize'
+  const controlInverted: Record<SnakeId, boolean> = useMemo(() => ({ 1: mesmerized1, 2: mesmerized2 }), [mesmerized1, mesmerized2])
 
   // Solo/Vs CPU: only seat 1 is human (Vs CPU's seat 2 is the CPU, driven by the splice inside
   // useSnakeState). 2 Player: both. KeyboardInputLayer's own web-only listener uses this to know

@@ -6,7 +6,7 @@ import { applySnakePowerupActivation, applySnakeTurnIntent, buildSnakeOccupiedSe
 // Fills in the fields every fixture needs regardless of what it's actually testing, so each call
 // site only has to spell out what's relevant to it - same pattern as Trap's gameEngine.test.ts.
 function snake(overrides: Partial<SnakeEntity> & Pick<SnakeEntity, 'id' | 'body' | 'direction'>): SnakeEntity {
-  return { pendingDirection: null, alive: true, score: 0, color: '#000', crashCell: null, heldPowerup: null, effects: { speed: null, control: null, shield: null }, peakLength: overrides.body.length, ...overrides }
+  return { pendingDirection: null, queuedDirection: null, alive: true, score: 0, color: '#000', crashCell: null, heldPowerup: null, effects: { speed: null, control: null, shield: null }, peakLength: overrides.body.length, ...overrides }
 }
 
 function makeState(overrides: Partial<SnakeGameState> = {}): SnakeGameState {
@@ -177,6 +177,43 @@ describe('applySnakeTurnIntent', () => {
   it('ignores a turn matching the current heading (no-op)', () => {
     const state = makeState()
     expect(applySnakeTurnIntent(state, 1, 'right')).toBe(state)
+  })
+
+  it('takes a quick U-turn, two swipes inside one tick, as both turns, one a tick', () => {
+    let state = applySnakeTurnIntent(applySnakeTurnIntent(makeState(), 1, 'up'), 1, 'left')
+    expect(state.snakes[0].pendingDirection).toBe('up')
+    expect(state.snakes[0].queuedDirection).toBe('left')
+    state = tickSnake(state)
+    expect(state.snakes[0].body.at(-1)).toEqual({ x: 4, y: 4 })
+    expect(state.snakes[0].pendingDirection).toBe('left')
+    state = tickSnake(state)
+    expect(state.snakes[0].alive).toBe(true)
+    expect(state.snakes[0].body.at(-1)).toEqual({ x: 3, y: 4 })
+    expect(state.snakes[0].direction).toBe('left')
+    expect(state.snakes[0].pendingDirection).toBeNull()
+  })
+
+  it('keeps both turns while frozen, then takes them in order', () => {
+    let state = makeState({
+      snakes: [
+        snake({
+          id: 1,
+          body: [
+            { x: 2, y: 5 },
+            { x: 3, y: 5 },
+            { x: 4, y: 5 }
+          ],
+          direction: 'right',
+          effects: { speed: { type: 'coldblood', multiplier: 0, expiresAtTick: 1 }, control: null, shield: null }
+        })
+      ]
+    })
+    state = applySnakeTurnIntent(applySnakeTurnIntent(state, 1, 'up'), 1, 'left')
+    state = tickSnake(state)
+    expect(state.snakes[0].body.at(-1)).toEqual({ x: 4, y: 5 })
+    expect(state.snakes[0]).toMatchObject({ direction: 'right', pendingDirection: 'up', queuedDirection: 'left' })
+    state = tickSnake(tickSnake(state))
+    expect(state.snakes[0].body.at(-1)).toEqual({ x: 3, y: 4 })
   })
 
   it('ignores turns outside the playing phase', () => {

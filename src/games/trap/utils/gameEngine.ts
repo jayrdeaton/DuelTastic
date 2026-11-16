@@ -1,14 +1,15 @@
-import { cellKey, computeGridSize, isInBounds, isOppositeDirection, stepCell, wrapCell } from '@tastic/grid'
+import { cellKey, computeGridSize, isInBounds, stepCell, wrapCell } from '@tastic/grid'
 
 import { MIN_TRAIL_LENGTH_BEFORE_TRIM, POWERUP_COLLECT_RADIUS_CELLS, POWERUP_EDGE_MARGIN_CELLS, POWERUP_EFFECT_DURATION_TICKS, POWERUP_PRUNE_FRACTION, SPEED_RAMP_DECREMENT_MS, SPEED_RAMP_INTERVAL_MS, SPEED_RAMP_MIN_INTERVAL_MS } from '@/games/trap/constants/game'
 import { ArenaVariant, ControlEffect, Direction, GameState, GridCell, GridSize, OrientationMode, Overpass, Player, PlayerEffects, PlayerState, Portal, PowerupPickup, PowerupType, RoundOutcome, ShieldEffect, SpeedEffect } from '@/games/trap/types'
 import { axisOf, isOnOverpass, overpassFootprint, stepKey, trailKeys } from '@/games/trap/utils/overpass'
 import { buildArenaObstacles, buildArenaOverpass, buildArenaPortals } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
+import { NO_TURNS, queueTurn, takeTurn, type TurnQueue } from '@/shared/match/turnQueue'
 
 function createPlayerState(grid: GridSize, player: Player, mode: OrientationMode, color: string, p1OnRight: boolean): PlayerState {
   const { head, direction } = startingStateFor(player, grid, mode, p1OnRight)
-  return { trail: [head], direction, pendingDirection: null, alive: true, color, heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null }
+  return { trail: [head], direction, ...NO_TURNS, alive: true, color, heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null }
 }
 
 // The grid-cell margin along each edge that falls inside the device's own safe-area inset -
@@ -90,26 +91,17 @@ export function buildPortalLookup(portals: Portal[]): Map<string, GridCell> {
   return lookup
 }
 
-// Queues a turn for the next tick. Ignored outside 'playing', for an eliminated player, or when
-// the requested direction is a no-op (already heading that way) or a 180° reversal into the
-// player's own trail - enforced here, once, rather than by every input source that could dispatch
-// a turn. A frozen (Stasis'd) player can still queue a turn here - it just won't move this tick;
-// see tickGame's own handling of a 0-step player, which leaves `direction` pinned to whichever way
-// the player was actually last moving (only `pendingDirection` changes) until they unfreeze. That
-// pin is what makes the opposite-direction check above safe across multiple frozen ticks: if
-// `direction` resolved every tick the way a moving player's does, two individually-legal 90° turns
-// queued back to back while frozen (e.g. left→up, then up→right) would compound into a net 180°
-// that this check never sees coming - the player then unfreezes still facing "left" on the trail
-// but instantly steps right into the cell they just came from.
+// Queues a turn for the next tick, two deep (the shared queueTurn: a quick second swipe inside one
+// tick is taken on the tick after it). Ignored outside 'playing' and for an eliminated player. A
+// frozen (Stasis'd) player can still queue turns - it just won't move this tick; tickGame leaves a
+// 0-step player's `direction` and queue as they are until they unfreeze, so turns queued across
+// several frozen ticks still chain from the real heading and can't compound into an unnoticed 180.
 export function applyTurnIntent(state: GameState, player: Player, direction: Direction): GameState {
   if (state.phase !== 'playing') return state
   const p = state.players[player]
   if (!p.alive) return state
-  if (direction === p.direction) return state
-  if (isOppositeDirection(direction, p.direction)) return state
-  if (p.pendingDirection === direction) return state
-
-  return { ...state, players: { ...state.players, [player]: { ...p, pendingDirection: direction } } }
+  const turns = queueTurn(p.direction, p, direction)
+  return turns ? { ...state, players: { ...state.players, [player]: { ...p, ...turns } } } : state
 }
 
 // True on ticks that should trim one cell off the trail's tail, to hold its long-run average
@@ -280,6 +272,12 @@ export function stepsFor(effects: PlayerEffects): number {
   if (effects.speed?.multiplier === 0) return 0
   if (effects.speed?.multiplier === 2) return 2
   return 1
+}
+
+// A rider's turn queue after a tick: moved up (takeTurn) when it stepped and took its turn; as it
+// was otherwise (frozen, or held straight on the Overpass).
+function nextTurns(p: PlayerState, tookTurn: boolean): TurnQueue {
+  return tookTurn ? takeTurn(p) : { pendingDirection: p.pendingDirection, queuedDirection: p.queuedDirection }
 }
 
 // Advances the round exactly one tick, in 1 or 2 sub-steps per player depending on any active
@@ -476,8 +474,8 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
         // when that player wasn't even part of the sub-step the crash happened on (already used up
         // their own step(s) earlier this same tick), in which case their trail is simply whatever
         // it already progressed to.
-        1: { ...p1, trail: crashOob1 || !crashNext1 ? trail1 : [...trail1, crashNext1], alive: !crash1, pendingDirection: null, heldPowerup: heldPowerup1, effects: effects1, crashCell: crash1 ? crashNext1 : null },
-        2: { ...p2, trail: crashOob2 || !crashNext2 ? trail2 : [...trail2, crashNext2], alive: !crash2, pendingDirection: null, heldPowerup: heldPowerup2, effects: effects2, crashCell: crash2 ? crashNext2 : null }
+        1: { ...p1, trail: crashOob1 || !crashNext1 ? trail1 : [...trail1, crashNext1], alive: !crash1, ...NO_TURNS, heldPowerup: heldPowerup1, effects: effects1, crashCell: crash1 ? crashNext1 : null },
+        2: { ...p2, trail: crashOob2 || !crashNext2 ? trail2 : [...trail2, crashNext2], alive: !crash2, ...NO_TURNS, heldPowerup: heldPowerup2, effects: effects2, crashCell: crash2 ? crashNext2 : null }
       }
     }
   }
@@ -499,19 +497,19 @@ export function tickGame(state: GameState, occupied: ReadonlySet<string> = build
     shield: effects.shield && tick >= effects.shield.expiresAtTick ? null : effects.shield
   })
 
-  // `direction` only resolves from `dir1`/`dir2` (and `pendingDirection` only clears) on a tick
-  // where that player actually stepped. A 0-step (Stasis'd) player keeps their pre-freeze
-  // `direction` and their still-unresolved `pendingDirection` untouched - see applyTurnIntent's own
-  // comment for why that pin matters (it's what stops turns queued across separate frozen ticks
-  // from compounding into an unnoticed 180°). A rider held straight on the Overpass keeps its
-  // queued turn too.
+  // `direction` only resolves from `dir1`/`dir2` (and the turn queue only moves up, see nextTurns)
+  // on a tick where that player actually stepped. A 0-step (Stasis'd) player keeps their pre-freeze
+  // `direction` and their still-unresolved turns untouched - see applyTurnIntent's own comment for
+  // why that pin matters (it's what stops turns queued across separate frozen ticks from
+  // compounding into an unnoticed 180°). A rider held straight on the Overpass keeps its queued
+  // turns too.
   return {
     ...state,
     tick,
     pickups: spawnedPickups,
     players: {
-      1: { ...p1, trail: trail1, direction: steps1 > 0 ? dir1 : p1.direction, pendingDirection: steps1 > 0 && !held1 ? null : p1.pendingDirection, heldPowerup: heldPowerup1, effects: expire(effects1) },
-      2: { ...p2, trail: trail2, direction: steps2 > 0 ? dir2 : p2.direction, pendingDirection: steps2 > 0 && !held2 ? null : p2.pendingDirection, heldPowerup: heldPowerup2, effects: expire(effects2) }
+      1: { ...p1, trail: trail1, direction: steps1 > 0 ? dir1 : p1.direction, ...nextTurns(p1, steps1 > 0 && !held1), heldPowerup: heldPowerup1, effects: expire(effects1) },
+      2: { ...p2, trail: trail2, direction: steps2 > 0 ? dir2 : p2.direction, ...nextTurns(p2, steps2 > 0 && !held2), heldPowerup: heldPowerup2, effects: expire(effects2) }
     }
   }
 }

@@ -1,6 +1,6 @@
 import { useVibration } from '@rific/feedback-press'
 import { applyControlInversion, isEffectiveTurn, isTap } from '@tastic/input'
-import { useEffect } from 'react'
+import { memo, useEffect, useRef } from 'react'
 
 import { resolveKeyAction } from '@/shared/match/keyControls'
 import { resolveTurnIntent, TAP_MAX_DISTANCE } from '@/shared/match/turnIntent'
@@ -46,10 +46,19 @@ interface TrackedPointer {
   lastDirection: Direction | null
 }
 
-export default function TouchInputLayer({ orientationMode, humanPlayers, enabled, onTurn, onActivate, controlInverted, keyScheme, currentDirections }: TouchInputLayerProps) {
+function TouchInputLayer({ orientationMode, humanPlayers, enabled, onTurn, onActivate, controlInverted, keyScheme, currentDirections }: TouchInputLayerProps) {
   const playTurn = useGameSound(require('../../../assets/sounds/turn.wav'), { poolSize: 8 })
   const playActivate = useGameSound(require('../../../assets/sounds/select.wav'), { poolSize: 4 })
   const { selection } = useVibration()
+
+  // What the listeners below call and read, kept in a ref (as the native layer does) so they can
+  // stay registered across renders: currentDirections changes with every turn, and listeners that
+  // re-registered with it threw away the drag being tracked (the pointers map) mid-swipe, so a drag
+  // in a phone's browser gave one turn and then nothing until the finger was lifted.
+  const latestRef = useRef({ onTurn, onActivate, controlInverted, currentDirections, playTurn, playActivate, selection })
+  useEffect(() => {
+    latestRef.current = { onTurn, onActivate, controlInverted, currentDirections, playTurn, playActivate, selection }
+  })
 
   useEffect(() => {
     if (!enabled) return
@@ -58,6 +67,7 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
       const action = resolveKeyAction(e, keyScheme, humanPlayers)
       if (!action) return
       e.preventDefault()
+      const { onTurn, onActivate, controlInverted, currentDirections, playTurn, playActivate, selection } = latestRef.current
       if (action.kind === 'activate') {
         onActivate(action.player)
         playActivate()
@@ -74,7 +84,7 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [enabled, humanPlayers, onTurn, onActivate, controlInverted, currentDirections, keyScheme, playTurn, playActivate, selection])
+  }, [enabled, humanPlayers, keyScheme])
 
   // Swipe input, mirroring TouchInputLayer.tsx's Pan gestures but via raw window pointer events -
   // react-native-gesture-handler has no bearing here (RNGH ships no web target this app pulls in),
@@ -132,6 +142,7 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
       tracked.baseY = e.clientY
       if (direction !== tracked.lastDirection) {
         tracked.lastDirection = direction
+        const { onTurn, controlInverted, currentDirections, playTurn, selection } = latestRef.current
         const invertedDirection = applyControlInversion(direction, controlInverted[tracked.player])
         onTurn(tracked.player, invertedDirection)
         if (isEffectiveTurn(invertedDirection, currentDirections[tracked.player])) {
@@ -149,6 +160,7 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
     const handlePointerUp = (e: PointerEvent) => {
       const tracked = pointers.get(e.pointerId)
       if (tracked && isTap(Math.hypot(e.clientX - tracked.downX, e.clientY - tracked.downY), TAP_MAX_DISTANCE)) {
+        const { onActivate, playActivate, selection } = latestRef.current
         onActivate(tracked.player)
         playActivate()
         selection()
@@ -183,7 +195,10 @@ export default function TouchInputLayer({ orientationMode, humanPlayers, enabled
       document.body.style.touchAction = previousTouchAction
       document.body.style.overscrollBehaviorX = previousOverscrollBehaviorX
     }
-  }, [enabled, humanPlayers, onTurn, onActivate, controlInverted, currentDirections, orientationMode, playTurn, playActivate, selection])
+  }, [enabled, humanPlayers, orientationMode])
 
   return null
 }
+
+// Memoized like the native layer (TouchInputLayer.tsx), so a tick doesn't re-render it.
+export default memo(TouchInputLayer)

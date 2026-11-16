@@ -1,7 +1,7 @@
 import { callWorkletCallback, useWorkletCallback } from '@rific/core'
 import { useVibration } from '@rific/feedback-press'
 import { applyControlInversion, isEffectiveTurn } from '@tastic/input'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { SharedValue, useSharedValue } from 'react-native-reanimated'
@@ -43,7 +43,7 @@ export interface TouchInputLayerProps {
 // single shared recognizer claims which pointer and lose one or both turns; two separate native
 // views/recognizers have nothing left to race, since each only ever sees the pointer that landed on
 // it. The board underneath still stays one undivided render - only touch handling is zoned.
-export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, controlInverted, currentDirections }: TouchInputLayerProps) {
+function TouchInputLayer({ mode, enabled, onTurn, onActivate, controlInverted, currentDirections }: TouchInputLayerProps) {
   const solo = mode === 'solo'
   const { orientationMode, p1OnRight } = useSeatSplit()
 
@@ -206,6 +206,11 @@ export default function TouchInputLayer({ mode, enabled, onTurn, onActivate, con
     </View>
   )
 }
+
+// Memoized, and the play screen keys currentDirections and controlInverted on the values in them,
+// so a tick doesn't re-render it: each re-render made every GestureDetector send its live gestures'
+// config to native again (see Trap's shared TouchInputLayer for what that costs on Android).
+export default memo(TouchInputLayer)
 
 const styles = StyleSheet.create({
   zone: { position: 'absolute' },

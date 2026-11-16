@@ -219,7 +219,10 @@ export function applyCpuTurn(state: GameState, difficulty: CpuDifficulty, occupi
   const hacked = player.effects.control?.type === 'hack'
   const compensates = hacked && shouldCompensateForHack(difficulty, random ?? Math.random)
   const direction = hacked && !compensates ? applyControlInversion(rawDirection, true) : rawDirection
-  return applyTurnIntent(state, CPU_PLAYER, direction)
+  // It decides afresh every tick from its real heading, so its decision replaces a turn it queued
+  // on an earlier tick (only left over while it's frozen) rather than queuing behind it.
+  const fresh = player.pendingDirection === null ? state : { ...state, players: { ...state.players, [CPU_PLAYER]: { ...player, pendingDirection: null, queuedDirection: null } } }
+  return applyTurnIntent(fresh, CPU_PLAYER, direction)
 }
 
 // Decides whether the CPU should activate its held powerup this tick - a difficulty-gated

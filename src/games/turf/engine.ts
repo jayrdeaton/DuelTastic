@@ -1,9 +1,10 @@
-import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, isOppositeDirection, stepCell } from '@tastic/grid'
+import { cellKey, type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
 
 // Shared with Trap: each rider starts at the middle of their own half, facing the other. Moves
 // to shared/ when this repo takes the pack layout.
 import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { startingStateFor } from '@/shared/match/grid'
+import { NO_TURNS, queueTurn, takeTurn, type TurnQueue } from '@/shared/match/turnQueue'
 import { activateEffect, cellsOnTick, expireEffects, isShielded, newPickup, NO_EFFECTS, pickupCell, takePickup } from '@/shared/powerups'
 
 import { claimedCells } from './capture'
@@ -64,7 +65,7 @@ export function createTurfState({ grid, layout, p1OnRight = false, arena = 'open
         if (!blocked[i]) owner[i] = seat
       }
     }
-    return { head, direction, pendingDirection: null, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS(), flight: null }
+    return { head, direction, ...NO_TURNS, trail: [], leftFrom: null, alive: true, crashCell: null, held: null, effects: NO_EFFECTS(), flight: null }
   }
   const players = { 1: player(1), 2: player(2) }
   return { phase: 'onboarding', grid, obstacles, portals, blocked, unsafe, owner, ground: countGround(owner), players, pickups: [], outcome: null, tick: 0, events: NO_EVENTS() }
@@ -74,14 +75,15 @@ export function startTurf(state: TurfState): TurfState {
   return state.phase === 'onboarding' ? { ...state, phase: 'playing' } : state
 }
 
-// Queues a turn for the next tick. A rider can't turn straight back on itself, the same as in
-// Trap, and the check is against the way it's actually moving, so two quick turns between ticks
-// can't add up to a reversal.
+// Queues a turn for the next tick, two deep, by Trap's rule (the shared queueTurn): a rider can't
+// turn straight back on itself, each turn is checked against the one before it, and a quick second
+// swipe inside one tick is taken on the tick after it.
 export function applyTurfTurn(state: TurfState, seat: TurfSeat, direction: Direction): TurfState {
   if (state.phase !== 'playing') return state
   const p = state.players[seat]
-  if (!p.alive || direction === p.direction || isOppositeDirection(direction, p.direction) || p.pendingDirection === direction) return state
-  return { ...state, players: { ...state.players, [seat]: { ...p, pendingDirection: direction } } }
+  if (!p.alive) return state
+  const turns = queueTurn(p.direction, p, direction)
+  return turns ? { ...state, players: { ...state.players, [seat]: { ...p, ...turns } } } : state
 }
 
 // Whether a rider flying home stands still on tick `tick` (see TurfFlight).
@@ -272,6 +274,9 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   // One turn a tick: a rider covers its steps in the direction it starts the tick with. A frozen
   // rider keeps its queued turn for when it thaws.
   const directions: Record<TurfSeat, Direction> = { 1: state.players[1].pendingDirection ?? state.players[1].direction, 2: state.players[2].pendingDirection ?? state.players[2].direction }
+  // Each rider's queue once it's moved this tick: from the tick's start, so a rider covering two
+  // cells moves it up once.
+  const turnsAfter: Record<TurfSeat, TurnQueue> = { 1: takeTurn(state.players[1]), 2: takeTurn(state.players[2]) }
   const players: Record<TurfSeat, TurfPlayer> = { 1: { ...state.players[1], crashCell: null }, 2: { ...state.players[2], crashCell: null } }
 
   // Copied on the first change, so a tick that claims nothing keeps the same board (and the screen
@@ -297,7 +302,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
   const done = new Set<TurfSeat>()
   const end = (outcome: TurfOutcome, out: Set<TurfSeat> | TurfSeat[], crashCells: Partial<Record<TurfSeat, GridCell>> = {}): TurfState => {
     const lost = new Set(out)
-    const finish = (seat: TurfSeat): TurfPlayer => (lost.has(seat) ? { ...players[seat], alive: false, pendingDirection: null, crashCell: crashCells[seat] ?? players[seat].crashCell } : { ...players[seat], pendingDirection: null })
+    const finish = (seat: TurfSeat): TurfPlayer => (lost.has(seat) ? { ...players[seat], alive: false, ...NO_TURNS, crashCell: crashCells[seat] ?? players[seat].crashCell } : { ...players[seat], ...NO_TURNS })
     return { ...state, phase: 'roundOver', outcome, tick, owner, ground, pickups, players: { 1: finish(1), 2: finish(2) }, events }
   }
 
@@ -378,10 +383,10 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
           claims.push({ seat, cells: claimedCells(owner, grid, seat, p.trail) })
           clearTrail(seat)
         }
-        players[seat] = { ...p, head: cell, direction: directions[seat], pendingDirection: null, trail: [], leftFrom: null }
+        players[seat] = { ...p, head: cell, direction: directions[seat], ...turnsAfter[seat], trail: [], leftFrom: null }
       } else {
         trails[cellIndex(cell, grid)] |= seat
-        players[seat] = { ...p, head: cell, direction: directions[seat], pendingDirection: null, trail: [...p.trail, cell], leftFrom: p.trail.length === 0 ? p.head : p.leftFrom }
+        players[seat] = { ...p, head: cell, direction: directions[seat], ...turnsAfter[seat], trail: [...p.trail, cell], leftFrom: p.trail.length === 0 ? p.head : p.leftFrom }
       }
     }
     if (claims.length > 0) applyClaims(writableOwner(), state.blocked, ground, events.captured, claims)
@@ -398,7 +403,7 @@ export function tickTurf(state: TurfState, rules: TurfRules = DEFAULT_TURF_RULES
       if (!cell) continue
       clearTrail(seat)
       const from = crashCell(seat)
-      players[seat] = { ...p, head: cell, direction: homeDirection(owner, grid, seat, cell, p.direction), pendingDirection: null, trail: [], leftFrom: null, crashCell: from, flight: { from, startTick: tick, landsAtTick: tick + TURF_FLIGHT_TICKS } }
+      players[seat] = { ...p, head: cell, direction: homeDirection(owner, grid, seat, cell, p.direction), ...NO_TURNS, trail: [], leftFrom: null, crashCell: from, flight: { from, startTick: tick, landsAtTick: tick + TURF_FLIGHT_TICKS } }
       events.sentHome.push(seat)
     }
 
@@ -459,7 +464,7 @@ function plantSod(state: TurfState, seat: TurfSeat): TurfState {
   const events = { ...NO_EVENTS(), captured }
   if (ground[them] === 0) {
     const outcome: TurfOutcome = { type: 'win', winner: seat, reason: 'suffocation' }
-    return { ...state, phase: 'roundOver', outcome, owner, ground, players: { ...state.players, [seat]: player, [them]: { ...state.players[them], alive: false, pendingDirection: null } }, events }
+    return { ...state, phase: 'roundOver', outcome, owner, ground, players: { ...state.players, [seat]: player, [them]: { ...state.players[them], alive: false, ...NO_TURNS } }, events }
   }
   return { ...state, owner, ground, players: { ...state.players, [seat]: player }, events }
 }

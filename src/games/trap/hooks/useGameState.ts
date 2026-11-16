@@ -23,8 +23,14 @@ export function useGameState(width: number, height: number, settings: RoundSetti
   // first tick has a sane duration to animate against before any real tick has happened yet.
   const [tickIntervalMs, setTickIntervalMs] = useState(() => scaleMsForCellPx(SPEED_TIER_INTERVAL_MS[settings.speedTier], cellPx))
 
+  // A swipe waits here for the next tick, which queues it (applyTurnIntent) before stepping, rather
+  // than going through setState itself: nothing on screen shows a queued turn, and rendering the
+  // whole round for each swipe kept a slower phone's JS thread busy right when the next tick was
+  // due, landing that step late. Emptied when the tick loop starts: the input layers are off during
+  // the countdown and a pause, so anything still here then landed as a round ended or a pause began.
+  const turnsRef = useRef<{ player: Player; direction: Direction }[]>([])
   const turn = useCallback((player: Player, direction: Direction) => {
-    setState((s) => applyTurnIntent(s, player, direction))
+    turnsRef.current.push({ player, direction })
   }, [])
 
   const activate = useCallback((player: Player) => {
@@ -64,6 +70,7 @@ export function useGameState(width: number, height: number, settings: RoundSetti
 
     let active = true
     lastTickRef.current = null
+    turnsRef.current = []
     accumulatorRef.current = 0
     const baseIntervalMs = scaleMsForCellPx(SPEED_TIER_INTERVAL_MS[settings.speedTier], cellPx)
     const decrementMs = scaleMsForCellPx(SPEED_RAMP_DECREMENT_MS, cellPx)
@@ -87,7 +94,12 @@ export function useGameState(width: number, height: number, settings: RoundSetti
         setTickIntervalMs(intervalMs)
         const trailSpeedRate = TRAIL_SPEED_RATE[settings.trailSpeedTier]
         const enabledPowerups = settings.enabledPowerups
-        setState((s) => {
+        // Taken out here, not inside the updater (which React may run twice): a catch-up frame's
+        // first tick gets every swipe since the last one, in the order they were made.
+        const turns = turnsRef.current
+        turnsRef.current = []
+        setState((before) => {
+          const s = turns.reduce((acc, t) => applyTurnIntent(acc, t.player, t.direction), before)
           if (settings.gameMode !== 'vsCpu') return tickGame(s, undefined, trailSpeedRate, enabledPowerups, undefined, undefined, settings.wrapEdges)
           // Built once and reused for both - see buildOccupiedSet's own comment on why this is
           // always safe, not just an optimization that happens to hold today. The CPU decides its

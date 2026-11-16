@@ -49,10 +49,16 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const boardScale = Math.min(liveWidth / width, liveHeight / height)
 
   const humanPlayers = useMemo(() => humanPlayersFor(gameMode), [gameMode])
-  const controlInverted = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.control !== null, 2: state.players[2].effects.control !== null }), [state.players])
+  // Both keyed on the values in them, not on state.players (a new object every tick), so the
+  // memoized TouchInputLayer only re-renders when one of them changes (see its own comment).
+  const inverted1 = state.players[1].effects.control !== null
+  const inverted2 = state.players[2].effects.control !== null
+  const controlInverted = useMemo<Record<Player, boolean>>(() => ({ 1: inverted1, 2: inverted2 }), [inverted1, inverted2])
   // Fed to TouchInputLayer so it can gate turn feedback (sound/haptic) on a swipe that would
   // actually turn the player - see isEffectiveTurn.
-  const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: state.players[1].direction, 2: state.players[2].direction }), [state.players])
+  const direction1 = state.players[1].direction
+  const direction2 = state.players[2].direction
+  const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: direction1, 2: direction2 }), [direction1, direction2])
 
   // The board reacts to the round's end at once - each crashed player's own PlayerTrail (see
   // GameBoard.tsx) starts its explosion-then-wipe death sequence the instant its `alive` flips false -
@@ -91,7 +97,7 @@ function GameRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
       sibling, so their live rotation tracking can never re-render the board/touch subtree above (see
       that component's own doc). Also outside the scaled View, same reason as PowerupHud: a dialog
       shouldn't shrink just because the board did. */}
-      <MatchOverlays phase={state.phase} orientationMode={orientationMode} p1OnRight={p1OnRight} settingsOpen={controls.settingsOpen} onSettingsDismiss={() => controls.setSettingsOpen(false)} onSettingsOpen={() => controls.setSettingsOpen(true)} confirmVisible={controls.confirmVisible} cancelBack={controls.cancelBack} humanPlayers={humanPlayers} colors={colors} profileNames={profileNames} roundHistory={roundHistory} onOnboardingComplete={beginPlaying} showResultDialog={flow.showResultDialog} matchOver={controls.matchOver} controlsVisible={flow.controlsVisible} outcome={state.outcome ?? null} gameMode={gameMode} rematchReady={flow.rematchReady} onRequestRematch={flow.handleRequestRematch} onQuit={flow.handleQuit} onExit={safeBack} onBackPress={controls.requestBack} backgroundPaused={controls.backgroundPaused} onResume={controls.resume} onConfirmQuit={controls.quit} />
+      <MatchOverlays phase={state.phase} orientationMode={orientationMode} p1OnRight={p1OnRight} settingsOpen={controls.settingsOpen} onSettingsDismiss={controls.closeSettings} onSettingsOpen={controls.openSettings} confirmVisible={controls.confirmVisible} cancelBack={controls.cancelBack} humanPlayers={humanPlayers} colors={colors} profileNames={profileNames} roundHistory={roundHistory} onOnboardingComplete={beginPlaying} showResultDialog={flow.showResultDialog} matchOver={controls.matchOver} controlsVisible={flow.controlsVisible} outcome={state.outcome ?? null} gameMode={gameMode} rematchReady={flow.rematchReady} onRequestRematch={flow.handleRequestRematch} onQuit={flow.handleQuit} onExit={safeBack} onBackPress={controls.requestBack} backgroundPaused={controls.backgroundPaused} onResume={controls.resume} onConfirmQuit={controls.quit} />
     </>
   )
 }

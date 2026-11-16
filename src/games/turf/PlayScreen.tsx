@@ -40,9 +40,15 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
   const { state, turn, activate, beginPlaying, rematch, timeLeftMs } = useTurfState({ width, height, cellPx, intervalMs, safeAreaInsetsPx, layout: orientationMode, p1OnRight, options, cpu: gameMode === 'vsCpu' ? settings.cpuDifficulty : null, paused: controls.paused })
 
   const humanPlayers = useMemo(() => humanPlayersFor(gameMode), [gameMode])
-  const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: state.players[1].direction, 2: state.players[2].direction }), [state.players])
+  // Keyed on the values in them, not on state.players (a new object every tick), so the memoized
+  // TouchInputLayer only re-renders when one of them changes (see its own comment). tangled too.
+  const direction1 = state.players[1].direction
+  const direction2 = state.players[2].direction
+  const currentDirections = useMemo<Record<Player, Direction>>(() => ({ 1: direction1, 2: direction2 }), [direction1, direction2])
   // Tangle reverses a person's swipes and keys in the input layer, as Hack does in Trap.
-  const tangled = useMemo<Record<Player, boolean>>(() => ({ 1: state.players[1].effects.reverse !== null, 2: state.players[2].effects.reverse !== null }), [state.players])
+  const tangled1 = state.players[1].effects.reverse !== null
+  const tangled2 = state.players[2].effects.reverse !== null
+  const tangled = useMemo<Record<Player, boolean>>(() => ({ 1: tangled1, 2: tangled2 }), [tangled1, tangled2])
   const held = useMemo(() => ({ 1: state.players[1].held, 2: state.players[2].held }), [state.players])
   // A crash plays out on the board as in Trap (TurfBoard's RiderCrash) and the result card waits
   // for the slower one; a round that ends on the clock holds on the final board for a beat instead.
@@ -79,7 +85,7 @@ function TurfRound({ width: widthAtMount, height: heightAtMount, liveWidth, live
 
       {state.phase !== 'onboarding' && <TurfHud insets={safeAreaInsetsPx} ground={state.ground} totalCells={state.grid.cols * state.grid.rows - state.blocked.reduce((sum, value) => sum + value, 0)} timeLeftMs={timeLeftMs} colors={colors} humanPlayers={humanPlayers} held={held} powerupsOn={options.powerups.length > 0} />}
 
-      <MatchOverlays phase={state.phase} orientationMode={orientationMode} p1OnRight={p1OnRight} settingsOpen={controls.settingsOpen} onSettingsDismiss={() => controls.setSettingsOpen(false)} onSettingsOpen={() => controls.setSettingsOpen(true)} confirmVisible={controls.confirmVisible} cancelBack={controls.cancelBack} humanPlayers={humanPlayers} colors={colors} profileNames={profileNames} roundHistory={roundHistory} onOnboardingComplete={beginPlaying} showResultDialog={flow.showResultDialog} matchOver={controls.matchOver} controlsVisible={flow.controlsVisible} outcome={state.outcome} gameMode={gameMode} rematchReady={flow.rematchReady} onRequestRematch={flow.handleRequestRematch} onQuit={flow.handleQuit} onExit={safeBack} onBackPress={controls.requestBack} backgroundPaused={controls.backgroundPaused} onResume={controls.resume} onConfirmQuit={controls.quit} />
+      <MatchOverlays phase={state.phase} orientationMode={orientationMode} p1OnRight={p1OnRight} settingsOpen={controls.settingsOpen} onSettingsDismiss={controls.closeSettings} onSettingsOpen={controls.openSettings} confirmVisible={controls.confirmVisible} cancelBack={controls.cancelBack} humanPlayers={humanPlayers} colors={colors} profileNames={profileNames} roundHistory={roundHistory} onOnboardingComplete={beginPlaying} showResultDialog={flow.showResultDialog} matchOver={controls.matchOver} controlsVisible={flow.controlsVisible} outcome={state.outcome} gameMode={gameMode} rematchReady={flow.rematchReady} onRequestRematch={flow.handleRequestRematch} onQuit={flow.handleQuit} onExit={safeBack} onBackPress={controls.requestBack} backgroundPaused={controls.backgroundPaused} onResume={controls.resume} onConfirmQuit={controls.quit} />
     </>
   )
 }

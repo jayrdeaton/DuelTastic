@@ -90,11 +90,16 @@ describe('chooseTagCpuMove near the edge', () => {
       const random = seeded(arena.length)
       let s = startTag(createTagState({ grid: { cols: 17, rows: 38 }, layout: 'faceToFace', arena, it: 2, ...OLD }))
       let dazes = 0
+      // Turns either CPU left waiting behind another: its decision should always replace what it queued.
+      let queuedBehind = 0
       for (let i = 0; i < 900; i++) {
-        s = tickTag(applyTagCpu(applyTagCpu(s, 1, level, random), 2, level, random), ['dash', 'freeze', 'mud', 'safe'], random)
+        s = applyTagCpu(applyTagCpu(s, 1, level, random), 2, level, random)
+        if (s.players[1].queuedDirection !== null || s.players[2].queuedDirection !== null) queuedBehind++
+        s = tickTag(s, ['dash', 'freeze', 'mud', 'safe'], random)
         dazes += s.events.dazed.length
       }
       expect(dazes).toBe(0)
+      expect(queuedBehind).toBe(0)
     }
   })
 })

@@ -1,6 +1,6 @@
 import { useVibration } from '@rific/feedback-press'
 import { applyControlInversion, isEffectiveTurn } from '@tastic/input'
-import { useEffect } from 'react'
+import { memo, useEffect } from 'react'
 import { Platform } from 'react-native'
 
 import { useSnakeSounds } from '@/games/snake/hooks/useSnakeSounds'
@@ -42,7 +42,7 @@ export interface KeyboardInputLayerProps {
 // in Safari, say) can still have a physical keyboard attached, so the listener itself stays live
 // regardless - exactly mirroring Trap's TouchInputLayer.web.tsx, which carries no touch-primary
 // check of its own either.
-export default function KeyboardInputLayer({ enabled, humanPlayers, controlScheme, onTurn, onActivate, controlInverted, currentDirections }: KeyboardInputLayerProps) {
+function KeyboardInputLayer({ enabled, humanPlayers, controlScheme, onTurn, onActivate, controlInverted, currentDirections }: KeyboardInputLayerProps) {
   const { playTurn } = useSnakeSounds()
   const { selection } = useVibration()
 
@@ -75,3 +75,6 @@ export default function KeyboardInputLayer({ enabled, humanPlayers, controlSchem
 
   return null
 }
+
+// Memoized like Snake's TouchInputLayer, so a tick doesn't re-register its key listener.
+export default memo(KeyboardInputLayer)

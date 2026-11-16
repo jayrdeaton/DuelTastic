@@ -1,10 +1,11 @@
-import { type Direction, type GridCell, type GridSize, isInBounds, stepCell } from '@tastic/grid'
+import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDirection, stepCell } from '@tastic/grid'
 
 import { buildArenaObstacles, buildArenaPortals } from '@/shared/match/arenas'
 import { GRID_CELL_PX } from '@/shared/match/constants'
 // Shared with Trap and Turf: each rider starts at the middle of its own half, facing the
 // other. Moves to shared/ when this repo takes the pack layout.
 import { startingStateFor } from '@/shared/match/grid'
+import { NO_TURNS, takeTurn } from '@/shared/match/turnQueue'
 import { activateEffect, expireEffects, isFrozen, isShielded, newPickup, NO_EFFECTS, pickupCell, speedMultiplier, takePickup } from '@/shared/powerups'
 
 import { TAG_DAZE_MS, TAG_EFFECT_MS, TAG_FREEZE_MS, TAG_IT_SPEED, TAG_MIN_PILLARS, TAG_PILLAR_MARGIN_PX, TAG_PILLAR_MARGIN_TIGHT_PX, TAG_PILLAR_SIZE_PX, TAG_PILLAR_SPACING_PX, TAG_PILLAR_SPACING_TIGHT_PX, TAG_POWERUP_EFFECTS, TAG_POWERUPS, TAG_REACH_PX, TAG_SPEED_INTERVAL_MS, TAG_TAIL_CELLS, TAG_UNIT_PX } from './constants'
@@ -140,7 +141,7 @@ export function createTagState({ grid, layout, p1OnRight = false, arena = 'pilla
   }
   const player = (seat: TagSeat): TagPlayer => {
     const { head, direction } = start(seat)
-    return { head, direction, pendingDirection: null, recent: [head], stride: 0, held: null, effects: NO_EFFECTS(), dazedThrough: 0, stuck: false }
+    return { head, direction, ...NO_TURNS, recent: [head], stride: 0, held: null, effects: NO_EFFECTS(), dazedThrough: 0, stuck: false }
   }
   return { phase: 'onboarding', grid, pillars, portals, blocked, unsafe, players: { 1: player(1), 2: player(2) }, pickups: [], it, frozenThrough: 0, itTicks: { 1: 0, 2: 0 }, tags: 0, outcome: null, tick: 0, sinceTick: 0, events: NO_EVENTS(), measures: measuresFor(cellPx, intervalMs) }
 }
@@ -152,20 +153,35 @@ export function startTag(state: TagState): TagState {
 // Queues a turn. With no trail behind it, a rider can turn straight back. A turn into a wall or a
 // pillar waits: the rider keeps going until the way opens, then takes it (as in Pac-Man), so a turn
 // pressed a moment early still lands. A turn queued while dazed is taken once the daze is over.
+//
+// Two deep, like every game's (the shared turnQueue), with Tag's own rule for what a new swipe does
+// to a turn already queued: behind a turn the next step will take (its way is open from where the
+// rider is now, and it stays open, pillars never moving), a second swipe waits and is taken on the
+// step after, so a quick up-then-left gets both; a swipe back the other way from the last turn
+// changes it instead, and a third is dropped. A turn still waiting for its opening is replaced by a
+// new swipe, as it always was, so a player is never stuck behind a turn that can't happen yet.
 export function applyTagTurn(state: TagState, seat: TagSeat, direction: Direction): TagState {
   if (state.phase !== 'playing') return state
   const p = state.players[seat]
-  if (direction === (p.pendingDirection ?? p.direction)) return state
-  return { ...state, players: { ...state.players, [seat]: { ...p, pendingDirection: direction === p.direction ? null : direction } } }
+  const queue = (pendingDirection: Direction | null, queuedDirection: Direction | null): TagState => ({ ...state, players: { ...state.players, [seat]: { ...p, pendingDirection, queuedDirection } } })
+  const { pendingDirection: pending, queuedDirection: queued } = p
+  if (pending === null) return direction === p.direction ? state : queue(direction, null)
+  if (!isOpen(state, nextCell(state, p.head, pending))) return direction === pending ? state : queue(direction === p.direction ? null : direction, null)
+  if (queued === null) {
+    if (direction === pending) return state
+    if (isOppositeDirection(direction, pending)) return queue(direction === p.direction ? null : direction, null)
+    return queue(pending, direction)
+  }
+  return isOppositeDirection(direction, queued) ? queue(pending, direction) : state
 }
 
-// One step for a rider: its queued turn if that way is open, else straight on if that is (keeping the
-// turn queued), else nowhere.
+// One step for a rider: its queued turn if that way is open (the turn swiped after it is next), else
+// straight on if that is (keeping its turns queued), else nowhere.
 function step(state: TagState, p: TagPlayer): TagPlayer | null {
   const turn = p.pendingDirection
   if (turn) {
     const next = nextCell(state, p.head, turn)
-    if (isOpen(state, next)) return { ...p, head: next, direction: turn, pendingDirection: null, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS), stuck: false }
+    if (isOpen(state, next)) return { ...p, head: next, direction: turn, ...takeTurn(p), recent: [...p.recent, next].slice(-TAG_TAIL_CELLS), stuck: false }
   }
   const next = nextCell(state, p.head, p.direction)
   return isOpen(state, next) ? { ...p, head: next, recent: [...p.recent, next].slice(-TAG_TAIL_CELLS), stuck: false } : null

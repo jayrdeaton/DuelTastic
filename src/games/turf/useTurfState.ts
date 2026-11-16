@@ -48,8 +48,14 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
   }, [width, height, cellPx, layout, p1OnRight, options.arena, safeAreaInsetsPx])
   const [state, setState] = useState(fresh)
 
+  // A swipe waits here for the next tick, which queues it (applyTurfTurn) before stepping, rather than
+  // going through setState itself: nothing on screen shows a queued turn, and rendering the round for
+  // each swipe kept a slower phone's JS thread busy right when the next tick was due (Trap's
+  // useGameState does the same). Emptied when the loop starts: the input layers are off during the
+  // countdown and a pause, so anything still here then landed as a round ended or a pause began.
+  const turnsRef = useRef<{ seat: TurfSeat; direction: Direction }[]>([])
   const turn = useCallback((seat: TurfSeat, direction: Direction) => {
-    setState((s) => ({ ...s, round: applyTurfTurn(s.round, seat, direction) }))
+    turnsRef.current.push({ seat, direction })
   }, [])
 
   // A person using their powerup (a tap or their powerup key).
@@ -76,6 +82,7 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
     let active = true
     let frame: number | null = null
     lastFrameRef.current = null
+    turnsRef.current = []
     const roundMs = options.roundSeconds * 1000
 
     const loop = (timestamp: number) => {
@@ -95,8 +102,12 @@ export function useTurfState({ width, height, cellPx, intervalMs, layout, p1OnRi
         const shouldUpdateClock = nextLeft !== prevLeft
         const shouldFinishOnTime = prevElapsedMs < roundMs && nextElapsedMs >= roundMs
         if (shouldTick || shouldUpdateClock || shouldFinishOnTime) {
+          // Taken out here, not inside the updater (which React may run twice).
+          const turns = shouldTick ? turnsRef.current : []
+          if (shouldTick) turnsRef.current = []
           setState((s) => {
             let { round, plan } = s
+            round = turns.reduce((r, t) => applyTurfTurn(r, t.seat, t.direction), round)
             if (shouldTick) {
               // Every tick's events, when a slow frame plays more than one, so a crash in the first
               // still sounds.

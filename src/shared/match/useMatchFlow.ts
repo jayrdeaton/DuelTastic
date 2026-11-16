@@ -20,6 +20,10 @@ import { useGameSound } from '@/shared/useGameSound'
 export interface MatchControls {
   settingsOpen: boolean
   setSettingsOpen: (open: boolean) => void
+  // The same, as callbacks that never change, so a round screen can hand them to MatchOverlays
+  // without making it re-render on every tick.
+  openSettings: () => void
+  closeSettings: () => void
   matchOver: boolean
   setMatchOver: (over: boolean) => void
   confirmVisible: boolean
@@ -38,6 +42,8 @@ export interface MatchControls {
 // Before the game's state hook: the dialogs that pause a match.
 export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const openSettings = useCallback(() => setSettingsOpen(true), [])
+  const closeSettings = useCallback(() => setSettingsOpen(false), [])
   // True once either player quits from a round card: the match is over, and it stays over.
   const [matchOver, setMatchOver] = useState(false)
   // The round's phase, kept here because the game's state, which holds it, is declared after this
@@ -64,7 +70,7 @@ export function useMatchControls(roundHistory: RoundOutcome[]): MatchControls {
   // from Providers.tsx's KeepAwakeBridge). The OS auto-lock only counts touches, so keyboard
   // steering or watching the CPU could otherwise let a release build lock mid-match.
   useKeepAwake('game')
-  return { settingsOpen, setSettingsOpen, matchOver, setMatchOver, confirmVisible, requestBack, cancelBack, backgroundPaused, resume, quit, paused: settingsOpen || confirmVisible || backgroundPaused, trackPhase }
+  return { settingsOpen, setSettingsOpen, openSettings, closeSettings, matchOver, setMatchOver, confirmVisible, requestBack, cancelBack, backgroundPaused, resume, quit, paused: settingsOpen || confirmVisible || backgroundPaused, trackPhase }
 }
 
 export interface UseMatchFlowParams {

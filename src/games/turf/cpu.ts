@@ -2,6 +2,7 @@ import { type Direction, type GridCell, type GridSize, isInBounds, isOppositeDir
 import { applyControlInversion } from '@tastic/input'
 
 import { distanceField } from '@/shared/distanceField'
+import { NO_TURNS } from '@/shared/match/turnQueue'
 import { compensatesForReverse, isShielded, isSlowed, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '@/shared/powerups'
 
 import { TURF_EFFECT_TICKS } from './constants'
@@ -358,5 +359,9 @@ export function applyTurfCpu(state: TurfState, seat: TurfSeat, difficulty: TurfC
   }
   const move = chooseTurfCpuMove(s, seat, difficulty, plan, rules, random)
   const tangled = s.players[seat].effects.reverse !== null && !compensatesForReverse(difficulty, random)
-  return { state: applyTurfTurn(s, seat, applyControlInversion(move.direction, tangled)), plan: move.plan }
+  // It decides afresh every tick from its real heading, so its decision replaces a turn it queued on
+  // an earlier tick (only left over while it's frozen or flying home) rather than queuing behind it.
+  const me = s.players[seat]
+  const fresh = me.pendingDirection === null ? s : { ...s, players: { ...s.players, [seat]: { ...me, ...NO_TURNS } } }
+  return { state: applyTurfTurn(fresh, seat, applyControlInversion(move.direction, tangled)), plan: move.plan }
 }

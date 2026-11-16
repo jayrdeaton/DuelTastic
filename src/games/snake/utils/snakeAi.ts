@@ -7,6 +7,7 @@ import { ALL_DIRECTIONS, cellKey, isInBounds, isOppositeDirection, stepCell, wra
 import { applyControlInversion } from '@tastic/input'
 
 import { Direction, GridCell, GridSize, SnakeEntity, SnakeGameState, SnakeId, SnakePowerupPickup, SnakePowerupType } from '@/games/snake/types'
+import { NO_TURNS } from '@/shared/match/turnQueue'
 
 import { countReachableCells, distanceToNearestTarget } from './floodFill'
 import { applySnakePowerupActivation, applySnakeTurnIntent, buildPortalLookup, buildSnakeOccupiedSet, buildTunnelCellSet, stepsForSnake } from './snakeEngine'
@@ -272,7 +273,10 @@ export function applyCpuSnakeTurn(state: SnakeGameState, cpuSnakeId: SnakeId, di
   const mesmerized = snake.effects.control?.type === 'mesmerize'
   const compensates = mesmerized && shouldCompensateForMesmerize(difficulty, random)
   const direction = mesmerized && !compensates ? applyControlInversion(rawDirection, true) : rawDirection
-  return applySnakeTurnIntent(state, cpuSnakeId, direction)
+  // It decides afresh every tick from its real heading, so its decision replaces a turn it queued on
+  // an earlier tick (only left over while it's frozen) rather than queuing behind it.
+  const fresh = snake.pendingDirection === null ? state : { ...state, snakes: state.snakes.map((s) => (s.id === cpuSnakeId ? { ...s, ...NO_TURNS } : s)) }
+  return applySnakeTurnIntent(fresh, cpuSnakeId, direction)
 }
 
 // Decides whether the CPU should activate its held powerup this tick - a difficulty-gated

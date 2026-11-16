@@ -6,7 +6,7 @@ import { GRID_CELL_PX } from '@/shared/match/constants'
 // Fills in the fields every fixture needs regardless of what it's actually testing, so each call
 // site only has to spell out what's relevant to it.
 function ps(overrides: Partial<PlayerState> & Pick<PlayerState, 'trail' | 'direction'>): PlayerState {
-  return { pendingDirection: null, alive: true, color: '#000', heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null, ...overrides }
+  return { pendingDirection: null, queuedDirection: null, alive: true, color: '#000', heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null, ...overrides }
 }
 
 function makeState(overrides: Partial<GameState> = {}): GameState {
@@ -133,6 +133,83 @@ describe('applyTurnIntent', () => {
   it('ignores turns for an eliminated player', () => {
     const state = makeState({ players: { ...makeState().players, 1: { ...makeState().players[1], alive: false } } })
     expect(applyTurnIntent(state, 1, 'up')).toBe(state)
+  })
+
+  describe('two swipes inside one tick', () => {
+    // Heading right from (2,5) in makeState.
+    it('takes a quick U-turn as both turns, one a tick, instead of dropping the second', () => {
+      let state = applyTurnIntent(applyTurnIntent(makeState(), 1, 'up'), 1, 'left')
+      expect(state.players[1].pendingDirection).toBe('up')
+      expect(state.players[1].queuedDirection).toBe('left')
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 2, y: 4 })
+      expect(state.players[1].pendingDirection).toBe('left')
+      expect(state.players[1].queuedDirection).toBeNull()
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 1, y: 4 })
+      expect(state.players[1].direction).toBe('left')
+      expect(state.players[1].pendingDirection).toBeNull()
+    })
+
+    it('takes a step to the side: up one cell, then on the way it was going', () => {
+      let state = applyTurnIntent(applyTurnIntent(makeState(), 1, 'up'), 1, 'right')
+      state = tickGame(tickGame(state))
+      expect(state.players[1].trail.slice(-2)).toEqual([
+        { x: 2, y: 4 },
+        { x: 3, y: 4 }
+      ])
+      expect(state.players[1].direction).toBe('right')
+    })
+
+    it('changes the queued turn on a swipe back the other way, rather than queuing a reversal', () => {
+      const state = applyTurnIntent(applyTurnIntent(makeState(), 1, 'up'), 1, 'down')
+      expect(state.players[1].pendingDirection).toBe('down')
+      expect(state.players[1].queuedDirection).toBeNull()
+    })
+
+    it('changes the second turn on a swipe back the other way from it', () => {
+      const state = applyTurnIntent(applyTurnIntent(applyTurnIntent(makeState(), 1, 'up'), 1, 'left'), 1, 'right')
+      expect(state.players[1].pendingDirection).toBe('up')
+      expect(state.players[1].queuedDirection).toBe('right')
+    })
+
+    it('drops a third turn, and a repeat of a queued one', () => {
+      const queued = applyTurnIntent(applyTurnIntent(makeState(), 1, 'up'), 1, 'left')
+      expect(applyTurnIntent(queued, 1, 'down')).toBe(queued)
+      expect(applyTurnIntent(queued, 1, 'up')).toBe(queued)
+      expect(applyTurnIntent(queued, 1, 'left')).toBe(queued)
+      const one = applyTurnIntent(makeState(), 1, 'up')
+      expect(applyTurnIntent(one, 1, 'up')).toBe(one)
+    })
+
+    it('never turns back into the trail, whatever order the swipes come in', () => {
+      const directions = ['up', 'down', 'left', 'right'] as const
+      for (const a of directions) {
+        for (const b of directions) {
+          for (const c of directions) {
+            let state = makeState({ grid: { cols: 20, rows: 20 }, players: { ...makeState().players, 1: ps({ trail: [{ x: 10, y: 10 }], direction: 'right' }), 2: ps({ trail: [{ x: 0, y: 0 }], direction: 'down' }) } })
+            state = applyTurnIntent(applyTurnIntent(applyTurnIntent(state, 1, a), 1, b), 1, c)
+            for (let i = 0; i < 3; i++) {
+              const before = state.players[1].direction
+              state = tickGame(state)
+              expect(state.players[1].alive).toBe(true)
+              expect(state.players[1].direction === 'left' && before === 'right').toBe(false)
+              expect(state.players[1].direction === 'right' && before === 'left').toBe(false)
+              expect(state.players[1].direction === 'up' && before === 'down').toBe(false)
+              expect(state.players[1].direction === 'down' && before === 'up').toBe(false)
+            }
+          }
+        }
+      }
+    })
+
+    it('clears both turns when the round ends', () => {
+      const state = applyTurnIntent(applyTurnIntent(makeState({ players: { ...makeState().players, 1: ps({ trail: [{ x: 9, y: 5 }], direction: 'right' }) } }), 2, 'up'), 2, 'right')
+      const next = tickGame(state)
+      expect(next.phase).toBe('roundOver')
+      expect(next.players[2].pendingDirection).toBeNull()
+      expect(next.players[2].queuedDirection).toBeNull()
+    })
   })
 
   it('still lets a frozen (Stasis) player queue a turn for whenever they unfreeze', () => {
@@ -461,9 +538,9 @@ describe('tickGame', () => {
     // right (each individually legal against the direction at the moment of the swipe) used to
     // compound into a full 180° once both swipes had each been resolved into `direction` on their
     // own frozen tick - so the player came out of Stasis still trailed to their right and
-    // immediately died stepping back into their own trail. The second turn intent must be rejected
-    // as an opposite-direction reversal instead, exactly as it would be if the player were never
-    // frozen at all.
+    // immediately died stepping back into their own trail. The second turn waits behind the first
+    // instead (the turn queue, see applyTurnIntent), so the player comes out of Stasis going up and
+    // only then turns right, exactly as it would if the player were never frozen at all.
     it('never lets two turns queued across separate frozen ticks compound into an unnoticed 180°', () => {
       let state = makeState({
         players: {
@@ -491,9 +568,21 @@ describe('tickGame', () => {
       expect(state.players[1].pendingDirection).toBe('up')
 
       // Second swipe while still frozen: 'right' IS opposite of the player's real direction
-      // ('left'), so it must be rejected - the earlier 'up' stays queued.
+      // ('left'), so it never replaces 'up': it waits behind it.
       state = applyTurnIntent(state, 1, 'right')
       expect(state.players[1].pendingDirection).toBe('up')
+      expect(state.players[1].queuedDirection).toBe('right')
+
+      // Out of Stasis: up first, then right, a quarter turn each.
+      state = { ...state, players: { ...state.players, 1: { ...state.players[1], effects: { speed: null, control: null, shield: null } } } }
+      state = tickGame(state)
+      expect(state.players[1].alive).toBe(true)
+      expect(state.players[1].direction).toBe('up')
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 2, y: 4 })
+      state = tickGame(state)
+      expect(state.players[1].alive).toBe(true)
+      expect(state.players[1].direction).toBe('right')
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 3, y: 4 })
     })
 
     it('clears a speed effect once its expiresAtTick has passed', () => {
@@ -1134,6 +1223,36 @@ describe('tickGame', () => {
       state = tickGame(state)
       expect(state.players[1].trail.at(-1)).toEqual({ x: 3, y: 2 })
       expect(state.players[1].direction).toBe('left')
+      expect(state.players[1].pendingDirection).toBeNull()
+    })
+
+    it('holds both turns of a quick double swipe on the crossing, then takes them in order', () => {
+      let state = makeState({
+        players: {
+          1: ps({
+            trail: [
+              { x: 4, y: 6 },
+              { x: 4, y: 5 }
+            ],
+            direction: 'up',
+            pendingDirection: 'left',
+            queuedDirection: 'down',
+            color: '#3B82F6'
+          }),
+          2: OUT_OF_THE_WAY
+        },
+        overpass: OVERPASS
+      })
+      // Straight on to (4,2), past the crossing, both turns still queued.
+      for (let i = 0; i < 3; i++) state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 4, y: 2 })
+      expect(state.players[1].pendingDirection).toBe('left')
+      expect(state.players[1].queuedDirection).toBe('down')
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 3, y: 2 })
+      state = tickGame(state)
+      expect(state.players[1].trail.at(-1)).toEqual({ x: 3, y: 3 })
+      expect(state.players[1].direction).toBe('down')
       expect(state.players[1].pendingDirection).toBeNull()
     })
 

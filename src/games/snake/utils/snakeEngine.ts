@@ -1,7 +1,8 @@
-import { cellKey, isInBounds, isOppositeDirection, stepCell, wrapCell } from '@tastic/grid'
+import { cellKey, isInBounds, stepCell, wrapCell } from '@tastic/grid'
 
 import { SNAKE_POWERUP_CONSTRICT_FRACTION, SNAKE_POWERUP_EFFECT_DURATION_TICKS } from '@/games/snake/constants/snake'
 import { Direction, GridCell, GridSize, RoundOutcome, SnakeControlEffect, SnakeEntity, SnakeGameState, SnakeId, SnakePortal, SnakeRoundSettings, SnakeShieldEffect, SnakeSpeedEffect, SnakeTunnel } from '@/games/snake/types'
+import { NO_TURNS, queueTurn, takeTurn } from '@/shared/match/turnQueue'
 
 import { buildArenaObstacles, buildArenaPortals, buildArenaTunnels } from './arenas'
 import { faceToFaceSpawnPoint, soloSpawnPoint } from './grid'
@@ -39,7 +40,7 @@ function buildSnake(id: SnakeId, spawn: { head: GridCell; direction: Direction }
     id,
     body: buildInitialBody(spawn.head, spawn.direction, SNAKE_START_LENGTH),
     direction: spawn.direction,
-    pendingDirection: null,
+    ...NO_TURNS,
     alive: true,
     score: 0,
     color,
@@ -170,22 +171,19 @@ export function createInitialSnakeState(grid: GridSize, snakeCount: 1 | 2, setti
   return { phase: 'playing', grid, snakes, food, wrapEdges: settings.wrapEdges, outcome: null, tick: 0, obstacles, portals, tunnels, enabledPowerups, pickups: [], unsafeCells }
 }
 
-// Queues a turn for the next tick. Ignored outside 'playing', for a dead snake, an unknown
-// `snakeId`, a direction matching the current heading (no-op already), or a 180° reversal into the
-// snake's own body - enforced here, once, rather than by every input source (human swipe or CPU
-// decision) that could dispatch a turn. Reuses isOppositeDirection verbatim from grid.ts. A snake
-// currently frozen (Coldblood, 0 steps this tick) can still queue a turn here - it just won't move
-// until it unfreezes; see tickSnake's own direction/pendingDirection resolution for why that's safe
-// across multiple frozen ticks.
+// Queues a turn for the next tick, two deep (the shared queueTurn, Trap's rule): never a 180° back
+// into the snake's own body, each turn checked against the one before it, and a quick second swipe
+// inside one tick taken on the tick after it. Ignored outside 'playing', for a dead snake or an
+// unknown `snakeId` - enforced here, once, rather than by every input source (human swipe or CPU
+// decision) that could dispatch a turn. A snake currently frozen (Coldblood, 0 steps this tick) can
+// still queue turns here - it just won't move until it unfreezes; see tickSnake's own
+// direction/queue resolution for why that's safe across multiple frozen ticks.
 export function applySnakeTurnIntent(state: SnakeGameState, snakeId: SnakeId, direction: Direction): SnakeGameState {
   if (state.phase !== 'playing') return state
   const snake = state.snakes.find((s) => s.id === snakeId)
   if (!snake || !snake.alive) return state
-  if (direction === snake.direction) return state
-  if (isOppositeDirection(direction, snake.direction)) return state
-  if (snake.pendingDirection === direction) return state
-
-  return { ...state, snakes: state.snakes.map((s) => (s.id === snakeId ? { ...s, pendingDirection: direction } : s)) }
+  const turns = queueTurn(snake.direction, snake, direction)
+  return turns ? { ...state, snakes: state.snakes.map((s) => (s.id === snakeId ? { ...s, ...turns } : s)) } : state
 }
 
 // Cells advanced in one tickSnake sub-step loop for a boosted/frozen snake - Coldblood's 0 isn't a
@@ -480,7 +478,7 @@ export function tickSnake(state: SnakeGameState, random: () => number = Math.ran
       body: bodies[i],
       alive: !dead[i],
       direction: steps[i] > 0 ? direction[i] : s.direction,
-      pendingDirection: steps[i] > 0 ? null : s.pendingDirection,
+      ...(steps[i] > 0 ? takeTurn(s) : { pendingDirection: s.pendingDirection, queuedDirection: s.queuedDirection }),
       score: s.score + scoreGain,
       heldPowerup: heldPowerup[i],
       effects: expireEffects(s.effects, tick),

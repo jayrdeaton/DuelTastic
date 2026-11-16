@@ -98,6 +98,39 @@ describe('moving', () => {
     expect(applyTurfTurn(s, 1, 'left').players[1].pendingDirection).toBe('left')
   })
 
+  it('takes a quick U-turn, two swipes inside one tick, as both turns, one a tick', () => {
+    let s = applyTurfTurn(applyTurfTurn(setup({ head: { x: 5, y: 10 }, direction: 'up' }, FAR), 1, 'left'), 1, 'down')
+    expect(s.players[1].queuedDirection).toBe('down')
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 4, y: 10 })
+    expect(s.players[1].pendingDirection).toBe('down')
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 4, y: 11 })
+    expect(s.players[1].direction).toBe('down')
+    expect(s.players[1].pendingDirection).toBeNull()
+  })
+
+  it('moves the queue up once a tick, even for a rider covering two cells', () => {
+    let s = use(setup({ head: { x: 10, y: 10 }, direction: 'up' }, FAR), 1, 'dash')
+    s = applyTurfTurn(applyTurfTurn(s, 1, 'left'), 1, 'down')
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 8, y: 10 })
+    expect(s.players[1].pendingDirection).toBe('down')
+    expect(s.players[1].queuedDirection).toBeNull()
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 8, y: 12 })
+  })
+
+  it('forgets its turns when it crashes home', () => {
+    // Into the left edge on the first tick, with a second turn queued behind the first.
+    let s = setup({ head: { x: 0, y: 10 }, direction: 'up' }, FAR, { radius: 2 })
+    s = applyTurfTurn(applyTurfTurn(s, 1, 'left'), 1, 'down')
+    s = run(s, 1, {}, HOME)
+    expect(s.events.sentHome).toEqual([1])
+    expect(s.players[1].pendingDirection).toBeNull()
+    expect(s.players[1].queuedDirection).toBeNull()
+  })
+
   it('ignores turns before the round starts', () => {
     const s = createTurfState({ grid: { cols: 20, rows: 20 }, layout: 'faceToFace' })
     expect(applyTurfTurn(s, 1, 'left')).toBe(s)

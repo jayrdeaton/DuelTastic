@@ -3,7 +3,7 @@ import { GameState, PlayerState } from '@/games/trap/types'
 import { applyCpuActivation, applyCpuTurn, chooseCpuDirection, shouldCpuActivate } from '@/games/trap/utils/cpuAi'
 
 function ps(overrides: Partial<PlayerState> & Pick<PlayerState, 'trail' | 'direction'>): PlayerState {
-  return { pendingDirection: null, alive: true, color: '#000', heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null, ...overrides }
+  return { pendingDirection: null, queuedDirection: null, alive: true, color: '#000', heldPowerup: null, effects: { speed: null, control: null, shield: null }, crashCell: null, ...overrides }
 }
 
 describe('chooseCpuDirection', () => {
@@ -232,6 +232,19 @@ describe('applyCpuTurn', () => {
   it('is a no-op outside the playing phase', () => {
     const state = { ...baseState(), phase: 'onboarding' as const }
     expect(applyCpuTurn(state, 'hard')).toBe(state)
+  })
+
+  it("replaces a turn it queued on an earlier frozen tick with this tick's decision, rather than queuing behind it", () => {
+    // A 1-row strip, frozen heading left with 'up' (off the board) left over from an earlier tick:
+    // straight on is the only way with room, so this tick it decides to go straight, and that
+    // replaces the old 'up' rather than queuing behind it (which would ride it off the board).
+    const state = baseState()
+    state.grid = { cols: 10, rows: 1 }
+    state.players[1] = { ...state.players[1], trail: [{ x: 9, y: 0 }], direction: 'left' }
+    state.players[2] = { ...state.players[2], trail: [{ x: 5, y: 0 }], direction: 'left', pendingDirection: 'up', effects: { speed: { type: 'stasis', multiplier: 0, expiresAtTick: 50 }, control: null, shield: null } }
+    const next = applyCpuTurn(state, 'hard')
+    expect(next.players[2].pendingDirection).toBeNull()
+    expect(next.players[2].queuedDirection).toBeNull()
   })
 
   it('is a no-op once the CPU has been eliminated', () => {

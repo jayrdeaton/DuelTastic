@@ -125,6 +125,9 @@ export interface SnakeEntity {
   // swipe/CPU decision landing between ticks isn't dropped and can't apply more than one turn per
   // tick. Same role as Trap's PlayerState.pendingDirection.
   pendingDirection: Direction | null
+  // A second turn, swiped after pendingDirection within the same tick, taken on the tick after it
+  // (the shared turnQueue), so a quick up-then-left U-turn gets both turns.
+  queuedDirection: Direction | null
   alive: boolean
   score: number
   color: string

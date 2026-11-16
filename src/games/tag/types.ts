@@ -63,7 +63,10 @@ export interface TagPortal {
 export interface TagPlayer {
   head: GridCell
   direction: Direction
+  // Its queued turns, two deep (applyTagTurn): the one its next step takes when that way is open,
+  // and one swiped after it, taken on the step after.
   pendingDirection: Direction | null
+  queuedDirection: Direction | null
   // The last few cells it rode through, oldest first, the head's cell last: the short tail drawn
   // behind it. Nothing collides with it.
   recent: GridCell[]

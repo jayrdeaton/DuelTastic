@@ -206,6 +206,46 @@ describe('moving', () => {
     expect(s.players[1].direction).toBe('up')
   })
 
+  it('takes a quick U-turn, two swipes before the next step, as both turns, one a step', () => {
+    let s = setup({ head: { x: 10, y: 10 }, direction: 'right' }, PARKED)
+    s = applyTagTurn(applyTagTurn(s, 1, 'up'), 1, 'left')
+    expect(s.players[1].pendingDirection).toBe('up')
+    expect(s.players[1].queuedDirection).toBe('left')
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 10, y: 9 })
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: 9, y: 9 })
+    expect(s.players[1].direction).toBe('left')
+    expect(s.players[1].pendingDirection).toBeNull()
+  })
+
+  it('takes a step to the side: up a cell, then on the way it was going', () => {
+    const s = run(applyTagTurn(applyTagTurn(setup({ head: { x: 10, y: 10 }, direction: 'right' }, PARKED), 1, 'up'), 1, 'right'), 2)
+    expect(s.players[1].head).toEqual({ x: 11, y: 9 })
+    expect(s.players[1].direction).toBe('right')
+  })
+
+  it('changes the turn on a swipe back the other way, and drops a third', () => {
+    const one = applyTagTurn(setup({ head: { x: 10, y: 10 }, direction: 'right' }, PARKED), 1, 'up')
+    expect(applyTagTurn(one, 1, 'down').players[1]).toMatchObject({ pendingDirection: 'down', queuedDirection: null })
+    const two = applyTagTurn(one, 1, 'left')
+    expect(applyTagTurn(two, 1, 'down')).toBe(two)
+    expect(applyTagTurn(two, 1, 'right').players[1]).toMatchObject({ pendingDirection: 'up', queuedDirection: 'right' })
+  })
+
+  it('replaces a turn still waiting for its opening rather than queuing behind it', () => {
+    const s0 = setup({ head: { x: 0, y: 0 }, direction: 'right' }, { head: { x: 19, y: 19 }, direction: 'down' }, { arena: 'pillars' })
+    const pillar = s0.pillars[0]
+    const row = pillar.y + pillar.height
+    let s: TagState = { ...s0, players: { ...s0.players, 1: { ...s0.players[1], head: { x: pillar.x, y: row } } } }
+    // Up is under the pillar, so it waits; turning straight back replaces it at once.
+    s = applyTagTurn(applyTagTurn(s, 1, 'up'), 1, 'left')
+    expect(s.players[1]).toMatchObject({ pendingDirection: 'left', queuedDirection: null })
+    s = run(s, 1)
+    expect(s.players[1].head).toEqual({ x: pillar.x - 1, y: row })
+    expect(s.players[1].direction).toBe('left')
+  })
+
   it('lets It ride a little faster', () => {
     const s = run(setup({ head: { x: 2, y: 40 }, direction: 'up' }, { head: { x: 18, y: 40 }, direction: 'up' }, { rows: 60 }), 18)
     expect(40 - s.players[1].head.y).toBe(18)

@@ -1,7 +1,7 @@
 import { callWorkletCallback, useWorkletCallback } from '@rific/core'
 import { useVibration } from '@rific/feedback-press'
 import { applyControlInversion, isEffectiveTurn } from '@tastic/input'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { SharedValue, useSharedValue } from 'react-native-reanimated'
@@ -47,7 +47,7 @@ export interface TouchInputLayerProps {
 // recognizer claimed which pointer, and lost one or both turns entirely. Two separate native
 // views/recognizers have nothing left to race: each one only ever sees the pointer that landed on
 // it. The canvas underneath still stays one undivided render - only touch handling is zoned.
-export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlayers, enabled, onTurn, onActivate, controlInverted, currentDirections }: TouchInputLayerProps) {
+function TouchInputLayer({ orientationMode, p1OnRight, humanPlayers, enabled, onTurn, onActivate, controlInverted, currentDirections }: TouchInputLayerProps) {
   const solo = humanPlayers.length === 1
 
   const playTurn = useGameSound(require('../../../assets/sounds/turn.wav'), { poolSize: 8 })
@@ -202,6 +202,14 @@ export default function TouchInputLayer({ orientationMode, p1OnRight, humanPlaye
     </View>
   )
 }
+
+// Memoized, and each round screen keys currentDirections and controlInverted on the values in them,
+// so a tick re-renders the round screen but not this. Every re-render here re-renders each
+// GestureDetector, whose props-keyed effect sends the live Pan's and Tap's config to native again
+// (setGestureHandlerConfig and configureRelations for each, which on Android resets the handler's
+// config before setting it), so a re-render every tick cost the JS thread that work 15 to 30 times
+// a second during play, all of it to keep the same gestures.
+export default memo(TouchInputLayer)
 
 const styles = StyleSheet.create({
   zone: { position: 'absolute' },

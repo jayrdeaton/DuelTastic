@@ -2,6 +2,7 @@ import { ALL_DIRECTIONS, type Direction, type GridCell, isOppositeDirection, ste
 import { applyControlInversion } from '@tastic/input'
 
 import { distanceField } from '@/shared/distanceField'
+import { NO_TURNS } from '@/shared/match/turnQueue'
 import { compensatesForReverse, isFrozen, isShielded, pickupFootprint, speedMultiplier, ticksFor, ticksLeft } from '@/shared/powerups'
 
 import { TAG_IT_SPEED } from './constants'
@@ -209,5 +210,8 @@ export function applyTagCpu(state: TagState, seat: TagSeat, difficulty: TagCpuDi
   if (s.players[seat].held && shouldTagCpuActivate(s, seat, difficulty, random)) s = applyTagActivation(s, seat)
   const direction = chooseTagCpuMove(s, seat, difficulty, random)
   const tangled = s.players[seat].effects.reverse !== null && !compensatesForReverse(difficulty, random)
-  return applyTagTurn(s, seat, applyControlInversion(direction, tangled))
+  // Its decision replaces whatever it queued before rather than waiting behind it.
+  const now = s.players[seat]
+  const fresh = now.pendingDirection === null ? s : { ...s, players: { ...s.players, [seat]: { ...now, ...NO_TURNS } } }
+  return applyTagTurn(fresh, seat, applyControlInversion(direction, tangled))
 }

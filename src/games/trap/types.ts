@@ -90,6 +90,9 @@ export interface PlayerState {
   // A turn queued by input but not yet applied - consumed (and cleared) on the next tick, so a
   // swipe that lands between ticks isn't dropped and can't apply more than one turn per tick.
   pendingDirection: Direction | null
+  // A second turn, swiped after pendingDirection within the same tick, taken on the tick after it
+  // (see applyTurnIntent): a quick up-then-left U-turn gets both turns rather than losing the left.
+  queuedDirection: Direction | null
   alive: boolean
   color: string
   // Single-slot inventory - null when empty. Set on pickup collection, cleared on activation.
