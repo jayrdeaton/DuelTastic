@@ -89,8 +89,8 @@ describe('SeatToasters', () => {
       />
     )
     expect(mockToasterProps.map(({ clearButton, historyButton, keyboardAware, limit, stack }) => ({ clearButton, historyButton, keyboardAware, limit, stack }))).toEqual([
-      { clearButton: null, historyButton: null, keyboardAware: false, limit: 3, stack: 'seat-1' },
-      { clearButton: null, historyButton: null, keyboardAware: false, limit: 3, stack: 'seat-2' }
+      { clearButton: null, historyButton: null, keyboardAware: false, limit: 1, stack: 'seat-1' },
+      { clearButton: null, historyButton: null, keyboardAware: false, limit: 1, stack: 'seat-2' }
     ])
   })
 })

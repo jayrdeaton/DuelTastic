@@ -37,7 +37,7 @@ function SeatToaster({ spot: { rotation, zone }, stack }: { spot: SeatToastSpot;
     [rotation, stack, zone]
   )
   // The main Toaster's settings (_layout.tsx), plus keyboardAware off: the keyboard rises from the screen's own bottom, not a turned frame's.
-  return <Toaster clearButton={null} historyButton={null} keyboardAware={false} limit={3} renderFrame={renderFrame} stack={stack} />
+  return <Toaster clearButton={null} historyButton={null} keyboardAware={false} limit={1} renderFrame={renderFrame} stack={stack} />
 }
 
 // The edge each half shares with the other one, which has no safe-area inset of its own.
