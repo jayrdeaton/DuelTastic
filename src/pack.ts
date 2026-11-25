@@ -6,8 +6,12 @@ import { snake } from '@/games/snake'
 import { tag } from '@/games/tag'
 import { trap } from '@/games/trap'
 import { turf } from '@/games/turf'
-import { HERO_FONTS } from '@/hero/fonts'
+import { HERO_FONTS, titleType } from '@/hero/fonts'
 import { HeroTitle } from '@/hero/HeroTitle'
+
+// Trap's blue (player 1) and red (player 2), which match @rific/auto-paper's ColorPicker swatches
+// exactly ('Blue' / 'Red'), so a fresh seat shows as picked on the swatch page.
+const SEAT_COLORS = { 1: '#2196f3', 2: '#f44336' } as const
 
 // DuelTastic: the pack's identity and its games, in Home's order. Trap first: the pack grew
 // out of it. Snake last for now.
@@ -18,9 +22,11 @@ export const pack: PackDefinition = {
   wordmark: ['Duel', 'Tastic'],
   colorCaption: 'DuelTastic only',
   games,
-  // Trap's blue (player 1) and red (player 2), which match @rific/auto-paper's ColorPicker
-  // swatches exactly ('Blue' / 'Red'), so a fresh seat shows as picked on the swatch page.
-  seatColors: { 1: '#2196f3', 2: '#f44336' },
+  seatColors: SEAT_COLORS,
+  // A new profile starts on seat 1's blue, as DuelTastic's Profiles screen did before the shell,
+  // rather than auto-paper's first swatch (red, seat 2's): picked for seat 1, a red profile took
+  // the CPU's color and swapped it to blue.
+  newProfileColor: SEAT_COLORS[1],
   // Dark on a fresh install, not the system's: the games are drawn for a dark board. Still
   // changeable in Settings.
   appearance: 'dark',
@@ -29,6 +35,8 @@ export const pack: PackDefinition = {
   fonts: HERO_FONTS,
   // Every Paper text variant in the system monospace, the pack's look.
   fontFamily: MONO_FONT,
+  // Titles in the hero's Orbitron (hero/fonts.ts' titleType); small labels stay in the monospace.
+  titleStyle: titleType,
   otaVersion: release.otaVersion
 }
 

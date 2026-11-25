@@ -104,7 +104,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
           />
           <SectionedDropdown id='snakeGridSize' host={host} icon='grid' accessibilityLabel='Grid size' sections={[{ kind: 'single', id: 'gridSize', options: GRID_SIZE_OPTIONS, value: settings.gridSizeTier, onChange: (gridSizeTier) => setSettings({ gridSizeTier }) }]} {...look} />
           <SectionedDropdown id='snakeSpeed' host={host} icon='speedometer' accessibilityLabel='Speed' sections={[{ kind: 'single', id: 'speed', options: SPEED_OPTIONS, value: settings.speedTier, onChange: (speedTier) => setSettings({ speedTier }) }]} {...look} />
-          <SectionedDropdown id='snakePowerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.enabledPowerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'powerups', options: POWERUP_OPTIONS, value: settings.enabledPowerups, onChange: (enabledPowerups) => setSettings({ enabledPowerups }), allClear: true }]} {...look} />
+          <SectionedDropdown id='snakePowerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.enabledPowerups.length > 0 ? 'on' : 'off'}`} title='Powerups' sections={[{ kind: 'multi', id: 'powerups', options: POWERUP_OPTIONS, value: settings.enabledPowerups, onChange: (enabledPowerups) => setSettings({ enabledPowerups }), allClear: true }]} {...look} />
         </LoadoutOptionsRow>
       )
     },

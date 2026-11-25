@@ -3,6 +3,7 @@ import type { Metadata } from 'expo-router/server'
 import * as homeRoute from '@/app/index'
 import * as loadoutRoute from '@/app/loadout/[game]'
 import * as playRoute from '@/app/play/[game]'
+import * as editProfileRoute from '@/app/profile/[id]'
 import * as profilesRoute from '@/app/profiles'
 import * as statsRoute from '@/app/stats'
 import { games } from '@/pack'
@@ -64,9 +65,10 @@ describe('the web pages', () => {
     expect(gameMetadata(undefined)).toEqual(homeMetadata())
   })
 
-  it('keep Stats and Profiles out of search results', () => {
+  it('keep Stats, Profiles and Edit Profile out of search results', () => {
     expect(metadataOf(statsRoute)).toMatchObject({ title: 'Stats | DuelTastic | Infinite Token Games', robots: 'noindex', alternates: { canonical: `${ORIGIN}/stats` } })
     expect(metadataOf(profilesRoute)).toMatchObject({ title: 'Profiles | DuelTastic | Infinite Token Games', robots: 'noindex', alternates: { canonical: `${ORIGIN}/profiles` } })
+    expect(metadataOf(editProfileRoute, { id: 'new' })).toMatchObject({ title: 'Edit Profile | DuelTastic | Infinite Token Games', robots: 'noindex', alternates: { canonical: `${ORIGIN}/profile/new` } })
     expect(screenMetadata('Stats', '/stats')).toEqual(metadataOf(statsRoute))
   })
 

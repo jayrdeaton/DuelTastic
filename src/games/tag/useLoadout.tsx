@@ -61,7 +61,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
           <SectionedDropdown id='tagRound' host={host} icon='timer-outline' accessibilityLabel='Round length' sections={[{ kind: 'single', id: 'tagRound', options: TAG_ROUND_OPTIONS, value: settings.roundSeconds, onChange: (roundSeconds) => setSettings({ roundSeconds }) }]} {...look} />
           <SectionedDropdown id='gridSize' host={host} icon='grid' accessibilityLabel='Grid size' sections={[{ kind: 'single', id: 'gridSize', options: GRID_SIZE_OPTIONS, value: settings.gridSizeTier, onChange: (gridSizeTier) => setSettings({ gridSizeTier }) }]} {...look} />
           <SectionedDropdown id='speed' host={host} icon='speedometer' accessibilityLabel='Speed' sections={[{ kind: 'single', id: 'speed', options: SPEED_OPTIONS, value: settings.speedTier, onChange: (speedTier) => setSettings({ speedTier }) }]} {...look} />
-          <SectionedDropdown id='tagPowerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.powerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'tagPowerups', options: TAG_POWERUP_OPTIONS, value: settings.powerups, onChange: (powerups) => setSettings({ powerups }), allClear: true }]} {...look} />
+          <SectionedDropdown id='tagPowerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.powerups.length > 0 ? 'on' : 'off'}`} title='Powerups' sections={[{ kind: 'multi', id: 'tagPowerups', options: TAG_POWERUP_OPTIONS, value: settings.powerups, onChange: (powerups) => setSettings({ powerups }), allClear: true }]} {...look} />
         </LoadoutOptionsRow>
       )
     },

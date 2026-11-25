@@ -27,20 +27,20 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 - **One app, one Home:** pick who's playing (seat 1), then a game from the list. Each game shows its How to Play cards the first time it's opened, and its rules button replays them.
 - **Seat 2, kept across games:** each loadout's seat 2 button picks the CPU (three difficulties per game: Drone, Bot and Mainframe, or Snake's Garter, Rattler and King Cobra), Player 2, a saved profile, or Nobody (Snake only). It's saved for the whole pack, so the same two people stay set up from one game to the next. In 2 Player on a phone, players sit face to face, each steering in their own half of the screen.
 - **Controls:** swipe to steer on touch devices. On desktop web each player picks the mouse, WASD, the arrow keys, IJKL or the numpad, each with its own powerup key.
-- **Player profiles:** saved names, colors and tags. On iOS the roster is shared with my other games through an App Group, and on games.infinitetoken.com through the browser's storage. A profile's color pick for a seat is kept for this pack only.
+- **Player profiles:** saved names, colors and tags, each edited on its own Edit Profile screen (from Profiles, or Settings' Profile row for whoever is in seat 1). A profile made from seat 1's Manage is picked for seat 1. On iOS the roster is shared with my other games through an App Group, and on games.infinitetoken.com through the browser's storage. A profile's color pick for a seat is kept for this pack only.
 - **Stats and achievements:** each game keeps its own stats and its own achievements (123 in all: Trap, Turf and Tag 30 each, Snake 33). One stats screen filters by player and by game, with per-profile and device-wide records, player rankings and day streaks. Unlocks show as toasts; in 2 Player each player's toasts face them in their own half.
-- **Settings:** sound, haptics, appearance, blur, Keep Awake, Edge Guard (an iOS option that makes system edge gestures need a second swipe during play), and Check for Updates. A match pauses when the app goes to the background and stays Paused until a player taps Resume.
+- **Settings:** your profile (or Profiles for a guest), sound, haptics, appearance, blur, Keep Awake, Edge Guard (an iOS option that makes system edge gestures need a second swipe during play), and Check for Updates. A match pauses when the app goes to the background and stays Paused until a player taps Resume.
 
 ## Under the hood
 
-- **One pack, four games.** `src/pack.ts` lists the games. Each is one `GameDefinition` (`src/games/<id>/index.ts`) that hands the shared shell (`src/shell/`: Home, the loadout, stats, profiles, settings and the store) its settings, loadout menus, play screen, stats and How to Play cards. The shell and shared code never import a game, and no game imports another; ESLint enforces it.
+- **One pack, four games.** `src/pack.ts` lists the games. Each is one `GameDefinition` (`src/games/<id>/index.ts`) that hands the shared shell ([`@tastic/shell`](https://www.npmjs.com/package/@tastic/shell): Home, the loadout, stats, profiles, settings and the store) its settings, loadout menus, play screen, stats and How to Play cards. The shell and shared code never import a game, and no game imports another; ESLint enforces it.
 - **Pure, deterministic engines.** Each game's rules are plain TypeScript (`gameEngine.ts` for Trap, `engine.ts` for Turf and Tag, `snakeEngine.ts` for Snake): a tick takes a state and returns the next one, with randomness injected so tests can seed it. Rounds run on `requestAnimationFrame` loops that stop cleanly on pause.
 - **CPU opponents.** Trap's CPU flood-fills ahead of each legal turn to measure how much open space it leaves, understanding portals, tunnels and wrap-around edges; Snake's measures the same room and how near each turn brings it to the food. Turf's plans loops out from its ground and heads home when its trail is threatened. Tag's chases by the shortest way around the pillars and, when running, heads for the cell the chaser would take longest to reach. Difficulty changes how well each CPU plays and how it uses powerups, not how fast it reacts.
 - **Skia rendering.** Boards, trails, snakes, death animations and powerup effects are drawn with React Native Skia and Reanimated. On web each board's host lazy-loads it only after CanvasKit (Skia's WASM build) has loaded, because Skia binds to it at module evaluation.
 - **Split-screen input.** In 2 Player each player gets their own gesture zone (`@tastic/split-screen`), and popovers stay in their own player's half. On web, pointer and keyboard input replace the gesture zones.
 - **Redux Toolkit + redux-persist.** One store, saved under `dueltastic:root`. Each game keeps its own keys (its settings per player, controls, achievements and How to Play progress), and the pack keeps seat 2, profiles, seat colors and app settings. Per-match state is never persisted.
 - **App lifecycle.** Leaving the app mid-match pauses it. The splash screen is held until the theme, fonts and profiles are ready (`@rific/splash-gate`). Over-the-air updates ship through `@rific/updater`, with failures shown as a toast.
-- **Tests.** 845 Jest tests across 48 suites cover each game's engine and CPU, input resolution, stats and achievements, the store's saved keys, every game's How to Play copy, the pause flow, and profile syncing.
+- **Tests.** 1087 Jest tests across 64 suites cover each game's engine and CPU, input resolution, stats and achievements, the store's saved keys, every game's How to Play copy, the pause flow, and profile syncing.
 
 ## Built on
 
@@ -50,9 +50,10 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 | [`@tastic/grid`](https://www.npmjs.com/package/@tastic/grid) | Grid coordinate math, stepping, edge wrap |
 | [`@tastic/input`](https://www.npmjs.com/package/@tastic/input) | Swipe/key direction resolution, key schemes, control inversion, conflict-free seat scheme assignment |
 | [`@tastic/split-screen`](https://www.npmjs.com/package/@tastic/split-screen) | Two-player zone layout and seat placement |
-| [`@tastic/hud`](https://www.npmjs.com/package/@tastic/hud) | Player setup panels, dropdowns, settings, overlay cards, confirm and update dialogs, stats screen sections, How to Play guide, Skia web loader |
+| [`@tastic/hud`](https://www.npmjs.com/package/@tastic/hud) | Player setup panels, dropdowns, settings, overlay cards, confirm and update dialogs, stats screen sections, How to Play guide, the pack's title lettering, Skia web loader |
 | [`@tastic/sprites`](https://www.npmjs.com/package/@tastic/sprites) | Skia board shapes (obstacles, the mystery powerup box) |
-| [`@tastic/profile`](https://www.npmjs.com/package/@tastic/profile) | Player profiles, the seat button, roster screen, per-profile seat colors, shared App Group sync |
+| [`@tastic/shell`](https://www.npmjs.com/package/@tastic/shell) | Home, the loadouts, the stats, Profiles and Edit Profile screens, Settings, the store and every root provider |
+| [`@tastic/profile`](https://www.npmjs.com/package/@tastic/profile) | Player profiles, the seat button, roster and Edit Profile screens, per-profile seat colors, shared App Group sync |
 | [`@tastic/achievements`](https://www.npmjs.com/package/@tastic/achievements) | Tiered achievement catalog, streak tracking, Redux-backed persistence |
 | [`@tastic/edge-guard`](https://www.npmjs.com/package/@tastic/edge-guard) | Optional guard against iOS edge system gestures during play |
 | [`@rific/core`](https://www.npmjs.com/package/@rific/core) | Redux settings slice factory, safe back navigation, Keep Awake |
@@ -84,9 +85,9 @@ CI runs the same command on pushes and pull requests to `main`. `npm run build` 
 
 ```
 src/
-  app/          thin expo-router routes: Home, profiles, stats, loadout/[game], play/[game]
-  pack.ts       DuelTastic: its games and its store
-  shell/        app-wide screens, providers, settings and store slices (imports no game)
+  app/          thin expo-router routes, each one of @tastic/shell's screens: Home, profiles, profile/[id], stats, loadout/[game], play/[game]
+  pack.ts       DuelTastic: its games, its look and its store
+  hero/         the light-trail wordmark and its Orbitron face, which the pack's titles share
   shared/       code two or more games use: the match flow, duel stats, powerups, player settings
   games/        trap/, turf/, tag/, snake/: one GameDefinition each
   testUtils/    shared test helpers

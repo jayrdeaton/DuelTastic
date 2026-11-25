@@ -100,7 +100,7 @@ export function useLoadout(mode: RoundMode): GameLoadout {
           {/* Speed ramp toggle hidden for now - settings.speedRampEnabled stays wired through
           gameEngine and useGameState and defaults to false, so this is a pure UI hide. */}
           <SectionedDropdown id='trailSpeed' host={host} icon='chart-line' accessibilityLabel='Trail speed' sections={[{ kind: 'single', id: 'trailSpeed', options: TRAIL_SPEED_OPTIONS, value: settings.trailSpeedTier, onChange: (trailSpeedTier) => setSettings({ trailSpeedTier }) }]} {...look} />
-          <SectionedDropdown id='powerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.enabledPowerups.length > 0 ? 'on' : 'off'}`} sections={[{ kind: 'multi', id: 'powerups', options: POWERUP_OPTIONS, value: settings.enabledPowerups, onChange: (enabledPowerups) => setSettings({ enabledPowerups }), allClear: true }]} {...look} />
+          <SectionedDropdown id='powerups' host={host} icon='flash' accessibilityLabel={`Powerups ${settings.enabledPowerups.length > 0 ? 'on' : 'off'}`} title='Powerups' sections={[{ kind: 'multi', id: 'powerups', options: POWERUP_OPTIONS, value: settings.enabledPowerups, onChange: (enabledPowerups) => setSettings({ enabledPowerups }), allClear: true }]} {...look} />
         </LoadoutOptionsRow>
       )
     },
