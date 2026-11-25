@@ -89,7 +89,8 @@
         }
       ],
       "expo-asset",
-      "@tastic/edge-guard"
+      "@tastic/edge-guard",
+      "./plugins/withOptionalFeatures"
     ],
     "extra": {
       "router": {
