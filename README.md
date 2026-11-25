@@ -24,7 +24,7 @@ DuelTastic is a pack of grid duel games for iOS, Android, and web, grown out of 
 
 ## Features
 
-- **One app, one Home:** pick who's playing (seat 1), then a game from the list. Each game shows its How to Play cards the first time it's opened, and its rules button replays them.
+- **One app, one Home:** pick a game from the list, and its loadout opens on who's playing (seat 1). Each game shows its How to Play cards the first time it's opened, and its rules button replays them.
 - **Seat 2, kept across games:** each loadout's seat 2 button picks the CPU (three difficulties per game: Drone, Bot and Mainframe, or Snake's Garter, Rattler and King Cobra), Player 2, a saved profile, or Nobody (Snake only). It's saved for the whole pack, so the same two people stay set up from one game to the next. In 2 Player on a phone, players sit face to face, each steering in their own half of the screen.
 - **Controls:** swipe to steer on touch devices. On desktop web each player picks the mouse, WASD, the arrow keys, IJKL or the numpad, each with its own powerup key.
 - **Player profiles:** saved names, colors and tags, each edited on its own Edit Profile screen (from Profiles, or Settings' Profile row for whoever is in seat 1). A profile made from seat 1's Manage is picked for seat 1. On iOS the roster is shared with my other games through an App Group, and on games.infinitetoken.com through the browser's storage. A profile's color pick for a seat is kept for this pack only.

@@ -22,6 +22,9 @@ export const pack: PackDefinition = {
   wordmark: ['Duel', 'Tastic'],
   colorCaption: 'DuelTastic only',
   games,
+  // Every game opens a setup screen with the player picker first (Jay, 2026-11-25, as CardTastic and
+  // AlphaTastic), so Home doesn't carry one too.
+  homePlayerPicker: false,
   seatColors: SEAT_COLORS,
   // A new profile starts on seat 1's blue, as DuelTastic's Profiles screen did before the shell,
   // rather than auto-paper's first swatch (red, seat 2's): picked for seat 1, a red profile took
