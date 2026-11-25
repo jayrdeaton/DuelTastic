@@ -6,5 +6,6 @@
   "outputDirectory": "web-build",
   "framework": null,
   "cleanUrls": true,
+  "redirects": [{ "source": "/", "destination": "/dueltastic", "permanent": false }],
   "rewrites": [{ "source": "/:game/:path*", "destination": "/:game/index" }]
 }
